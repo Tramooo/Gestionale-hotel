@@ -1759,6 +1759,52 @@ function escapeHtml(str) {
 }
 
 // =============================================
+// THEME
+// =============================================
+
+function getTheme() {
+    return localStorage.getItem('gs_theme') || 'auto';
+}
+
+function applyTheme(theme) {
+    if (theme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+    } else if (theme === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+    } else {
+        document.documentElement.removeAttribute('data-theme');
+    }
+    updateThemeToggle(theme);
+}
+
+function updateThemeToggle(theme) {
+    const btn = document.getElementById('themeToggle');
+    if (!btn) return;
+    const isDark = theme === 'dark' || (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    btn.classList.toggle('is-dark', isDark);
+}
+
+function toggleTheme() {
+    const current = getTheme();
+    const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    let next;
+    if (current === 'auto') {
+        next = systemDark ? 'light' : 'dark';
+    } else if (current === 'dark') {
+        next = 'light';
+    } else {
+        next = 'dark';
+    }
+
+    localStorage.setItem('gs_theme', next);
+    applyTheme(next);
+}
+
+// Apply saved theme immediately
+applyTheme(getTheme());
+
+// =============================================
 // INIT
 // =============================================
 
