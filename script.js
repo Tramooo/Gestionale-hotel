@@ -33,126 +33,7 @@ let currentFilter = 'all';
 let currentRoomFilter = 'all';
 let calendarDate = new Date();
 
-// ---- SEED DATA (if empty) ----
-
-function seedDataIfEmpty() {
-    if (rooms.length === 0) {
-        const types = ['single', 'double', 'twin', 'triple', 'suite', 'family', 'double', 'double', 'twin', 'single'];
-        const capacities = { single: 1, double: 2, twin: 2, triple: 3, suite: 4, family: 5, quad: 4 };
-        const prices = { single: 69, double: 99, twin: 95, triple: 129, suite: 249, family: 179, quad: 149 };
-
-        for (let floor = 1; floor <= 3; floor++) {
-            for (let r = 1; r <= 6; r++) {
-                const num = floor * 100 + r;
-                const type = types[(floor * 6 + r) % types.length];
-                rooms.push({
-                    id: generateId(),
-                    number: String(num),
-                    floor: floor,
-                    type: type,
-                    capacity: capacities[type],
-                    price: prices[type],
-                    status: 'available'
-                });
-            }
-        }
-        saveData(STORAGE_KEYS.rooms, rooms);
-    }
-
-    if (reservations.length === 0) {
-        const today = new Date();
-        const sampleGroups = [
-            {
-                groupName: 'Rossi Wedding Party',
-                organizer: 'Marco Rossi',
-                email: 'marco.rossi@email.com',
-                phone: '+39 333 1234567',
-                checkin: formatDate(addDays(today, 2)),
-                checkout: formatDate(addDays(today, 5)),
-                guestCount: 18,
-                roomCount: 8,
-                status: 'confirmed',
-                price: 4200,
-                notes: 'Late night reception on day 2. Need conference room for ceremony.'
-            },
-            {
-                groupName: 'TechCorp Annual Summit',
-                organizer: 'Laura Bianchi',
-                email: 'l.bianchi@techcorp.com',
-                phone: '+39 338 7654321',
-                checkin: formatDate(addDays(today, -1)),
-                checkout: formatDate(addDays(today, 3)),
-                guestCount: 25,
-                roomCount: 12,
-                status: 'confirmed',
-                price: 8500,
-                notes: 'Need projector and whiteboard. Breakfast included.'
-            },
-            {
-                groupName: 'University Sports Team',
-                organizer: 'Prof. Giuseppe Verdi',
-                email: 'g.verdi@unimi.it',
-                phone: '+39 340 9876543',
-                checkin: formatDate(addDays(today, 7)),
-                checkout: formatDate(addDays(today, 10)),
-                guestCount: 15,
-                roomCount: 7,
-                status: 'pending',
-                expiration: formatDate(addDays(today, 5)),
-                price: 3150,
-                notes: 'Require early breakfast at 6:30 AM. Group discount applied.'
-            },
-            {
-                groupName: 'Horizon Tour Group',
-                organizer: 'Anna Colombo',
-                email: 'anna@horizontours.it',
-                phone: '+39 345 1122334',
-                checkin: formatDate(addDays(today, -7)),
-                checkout: formatDate(addDays(today, -4)),
-                guestCount: 30,
-                roomCount: 15,
-                status: 'confirmed',
-                price: 9800,
-                notes: 'Tour group from Japan. Translators needed.'
-            }
-        ];
-
-        sampleGroups.forEach(g => {
-            const res = { id: generateId(), ...g, createdAt: new Date().toISOString() };
-            reservations.push(res);
-
-            // Create sample guests for each group
-            const firstNames = ['Maria', 'Francesco', 'Alessandro', 'Giulia', 'Andrea', 'Sara', 'Luca', 'Elena', 'Matteo', 'Chiara'];
-            const lastNames = ['Esposito', 'Russo', 'Ferrari', 'Romano', 'Colombo', 'Ricci', 'Marino', 'Greco', 'Bruno', 'Gallo'];
-
-            const numGuests = Math.min(g.guestCount, 5);
-            for (let i = 0; i < numGuests; i++) {
-                guests.push({
-                    id: generateId(),
-                    reservationId: res.id,
-                    firstName: firstNames[i % firstNames.length],
-                    lastName: lastNames[(i + 3) % lastNames.length],
-                    email: '',
-                    phone: '',
-                    docType: i === 0 ? 'id-card' : '',
-                    docNumber: i === 0 ? 'AX' + Math.floor(Math.random() * 9000000 + 1000000) : '',
-                    roomId: rooms[i] ? rooms[i].id : '',
-                    notes: ''
-                });
-            }
-        });
-
-        // Mark some rooms as occupied for the checked-in group
-        for (let i = 0; i < 6; i++) {
-            rooms[i].status = 'occupied';
-        }
-        rooms[rooms.length - 1].status = 'maintenance';
-
-        saveData(STORAGE_KEYS.reservations, reservations);
-        saveData(STORAGE_KEYS.guests, guests);
-        saveData(STORAGE_KEYS.rooms, rooms);
-    }
-}
+// No seed data — app starts blank
 
 // ---- HELPERS ----
 
@@ -450,26 +331,93 @@ function populateRoomChecklist(selectedRoomIds) {
     const sortedRooms = [...rooms].sort((a, b) => a.floor !== b.floor ? a.floor - b.floor : parseInt(a.number) - parseInt(b.number));
     const selected = new Set(selectedRoomIds || []);
 
-    checklist.innerHTML = sortedRooms.map(r => `
-        <label class="room-check-item">
-            <input type="checkbox" value="${r.id}" ${selected.has(r.id) ? 'checked' : ''} onchange="updateRoomSelectAll()">
-            <span>${r.number}</span>
-            <span class="room-check-type">${r.type}</span>
-        </label>
-    `).join('');
+    let html = '';
+    let currentFloor = null;
+    sortedRooms.forEach(r => {
+        if (r.floor !== currentFloor) {
+            currentFloor = r.floor;
+            const floorRooms = sortedRooms.filter(rm => rm.floor === r.floor);
+            const allChecked = floorRooms.every(rm => selected.has(rm.id));
+            html += `<label class="room-check-floor-header"><input type="checkbox" data-floor="${r.floor}" ${allChecked ? 'checked' : ''} onchange="toggleFloorCheckboxes(this)"> Floor ${r.floor}</label>`;
+        }
+        const checked = selected.has(r.id);
+        html += `
+            <label class="room-check-item${checked ? ' checked' : ''}">
+                <input type="checkbox" value="${r.id}" ${checked ? 'checked' : ''} onchange="onRoomCheckChange(this)">
+                <div class="room-check-info">
+                    <span class="room-check-number">${r.number}</span>
+                    <span class="room-check-type">${r.type} &middot; ${r.capacity} pax</span>
+                </div>
+            </label>`;
+    });
 
-    document.getElementById('resRoomSelectAll').checked = selected.size === rooms.length;
+    if (sortedRooms.length === 0) {
+        html = '<div style="padding:20px;text-align:center;color:var(--text-tertiary);font-size:13px">No rooms yet.<br>Add rooms first.</div>';
+    }
+
+    checklist.innerHTML = html;
+    document.getElementById('resRoomSelectAll').checked = selected.size > 0 && selected.size === rooms.length;
+    updateRoomCount();
 }
 
 function toggleAllRoomCheckboxes(el) {
-    const checks = document.querySelectorAll('#resRoomChecklist input[type="checkbox"]');
-    checks.forEach(c => { c.checked = el.checked; });
+    const checklist = document.getElementById('resRoomChecklist');
+    checklist.querySelectorAll('input[type="checkbox"]').forEach(c => {
+        c.checked = el.checked;
+        const item = c.closest('.room-check-item');
+        if (item) item.classList.toggle('checked', el.checked);
+    });
+    updateRoomCount();
 }
 
-function updateRoomSelectAll() {
-    const checks = document.querySelectorAll('#resRoomChecklist input[type="checkbox"]');
-    const all = checks.length > 0 && [...checks].every(c => c.checked);
+function onRoomCheckChange(el) {
+    el.closest('.room-check-item').classList.toggle('checked', el.checked);
+    updateFloorAndSelectAll();
+    updateRoomCount();
+}
+
+function toggleFloorCheckboxes(el) {
+    const floor = el.dataset.floor;
+    const checklist = document.getElementById('resRoomChecklist');
+    // Find room checkboxes that belong to this floor — they follow the floor header
+    const roomItems = checklist.querySelectorAll('.room-check-item');
+    roomItems.forEach(item => {
+        const cb = item.querySelector('input[type="checkbox"]');
+        const roomId = cb.value;
+        const room = rooms.find(r => r.id === roomId);
+        if (room && String(room.floor) === floor) {
+            cb.checked = el.checked;
+            item.classList.toggle('checked', el.checked);
+        }
+    });
+    updateFloorAndSelectAll();
+    updateRoomCount();
+}
+
+function updateFloorAndSelectAll() {
+    const checklist = document.getElementById('resRoomChecklist');
+    const roomChecks = checklist.querySelectorAll('.room-check-item input[type="checkbox"]');
+    const floorChecks = checklist.querySelectorAll('.room-check-floor-header input[type="checkbox"]');
+
+    // Update each floor checkbox
+    floorChecks.forEach(fc => {
+        const floor = fc.dataset.floor;
+        const floorRoomChecks = [...roomChecks].filter(c => {
+            const room = rooms.find(r => r.id === c.value);
+            return room && String(room.floor) === floor;
+        });
+        fc.checked = floorRoomChecks.length > 0 && floorRoomChecks.every(c => c.checked);
+    });
+
+    // Update select all
+    const all = roomChecks.length > 0 && [...roomChecks].every(c => c.checked);
     document.getElementById('resRoomSelectAll').checked = all;
+}
+
+function updateRoomCount() {
+    const count = document.querySelectorAll('#resRoomChecklist input[type="checkbox"]:checked').length;
+    const el = document.getElementById('resRoomCount');
+    if (el) el.textContent = `${count} room${count !== 1 ? 's' : ''} selected`;
 }
 
 function getSelectedRoomIds() {
@@ -1539,5 +1487,5 @@ function escapeHtml(str) {
 // INIT
 // =============================================
 
-seedDataIfEmpty();
 renderDashboard();
+renderCalendar();
