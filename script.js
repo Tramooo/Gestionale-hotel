@@ -892,6 +892,14 @@ function renderAlloggiatiResults(container, data, mode) {
                 <span style="color:${g.recordLength === 168 ? 'var(--green)' : 'var(--red)'}">${g.recordLength} chars</span>
             </div>`;
         });
+        if (data.debug) {
+            html += `<div style="margin-top:8px;padding:8px;background:var(--bg-tertiary);border-radius:6px;font-size:11px;font-family:monospace;word-break:break-all">
+                <div>checkin raw: ${data.debug.checkinRaw} (${data.debug.checkinType})</div>
+                <div>checkout raw: ${data.debug.checkoutRaw}</div>
+                <div>record[0]: ${data.debug.record0}</div>
+                <div>length: ${data.debug.recordLength}</div>
+            </div>`;
+        }
         html += `</div></div>`;
     } else {
         const icon = data.success ? '&#10003;' : '&#10007;';

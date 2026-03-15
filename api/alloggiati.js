@@ -197,6 +197,13 @@ export default async function handler(req, res) {
       if (action === 'build') {
         return res.status(200).json({
           records,
+          debug: {
+            checkinRaw: reservation.checkin,
+            checkoutRaw: reservation.checkout,
+            checkinType: typeof reservation.checkin,
+            record0: records[0],
+            recordLength: records[0] ? records[0].length : 0
+          },
           guests: guestsData.map(g => ({
             id: g.id,
             name: `${g.firstName} ${g.lastName}`,
