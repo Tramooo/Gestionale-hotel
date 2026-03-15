@@ -9,7 +9,8 @@ const API = {
     rooms: '/api/rooms',
     guests: '/api/guests',
     init: '/api/init',
-    assignments: '/api/assignments'
+    assignments: '/api/assignments',
+    plannerConfig: '/api/planner-config'
 };
 
 async function apiGet(url) {
@@ -810,8 +811,17 @@ async function toggleRoomAssignment(btn, roomId, reservationId) {
 }
 
 // =============================================
-// ROOM ASSIGNMENT SPREADSHEET
+// ROOM ASSIGNMENT SPREADSHEET (Dynamic Columns)
 // =============================================
+
+const DEFAULT_PLANNER_COLUMNS = [
+    { id: 'usage', name: 'Usage' },
+    { id: 'group', name: 'Group' },
+    { id: 'occ', name: 'Occ.' },
+    { id: 'notes', name: 'Notes' }
+];
+
+let plannerColumns = [];
 
 async function openRoomAssignment(reservationId) {
     currentAssignmentReservationId = reservationId;
@@ -820,7 +830,17 @@ async function openRoomAssignment(reservationId) {
 
     document.getElementById('assignmentModalTitle').textContent = 'Room Planner — ' + r.groupName;
 
-    // Load existing assignments for this reservation
+    // Load column config
+    try {
+        const config = await apiGet(API.plannerConfig + '?reservation_id=' + reservationId);
+        plannerColumns = (config && config.columns && config.columns.length > 0)
+            ? config.columns
+            : DEFAULT_PLANNER_COLUMNS.map(c => ({ ...c }));
+    } catch {
+        plannerColumns = DEFAULT_PLANNER_COLUMNS.map(c => ({ ...c }));
+    }
+
+    // Load existing assignments
     try {
         assignmentData = await apiGet(API.assignments + '?reservation_id=' + reservationId);
     } catch {
@@ -847,15 +867,12 @@ function renderAssignmentSpreadsheet() {
     const assignMap = {};
     assignmentData.forEach(a => { assignMap[a.roomId] = a; });
 
-    // Count totals
-    let totalOccupancy = 0;
-    assignmentData.forEach(a => { totalOccupancy += (a.occupancy || 0); });
+    const totalCols = 2 + plannerColumns.length + 1; // room + type + dynamic cols + add btn
 
     let html = `
         <div class="assignment-toolbar">
-            <div class="assignment-stats">
-                <span>Rooms assigned: <strong>${assignmentData.filter(a => a.usageType).length}</strong> / ${rooms.length}</span>
-                <span>Total occupancy: <strong>${totalOccupancy}</strong></span>
+            <div class="assignment-stats" id="assignmentStats">
+                ${getAssignmentStatsHTML()}
             </div>
         </div>
         <table class="assignment-table">
@@ -863,50 +880,45 @@ function renderAssignmentSpreadsheet() {
                 <tr>
                     <th class="col-room">Room</th>
                     <th class="col-type">Type</th>
-                    <th class="col-usage">Usage</th>
-                    <th class="col-group">Group</th>
-                    <th class="col-occ">Occ.</th>
-                    <th class="col-notes">Notes</th>
+                    ${plannerColumns.map((col, i) => `
+                        <th class="col-dynamic">
+                            <div class="col-header-wrap">
+                                <input type="text" class="col-header-input" value="${escapeHtml(col.name)}"
+                                    data-col-idx="${i}" onchange="renamePlannerColumn(this)" onkeydown="if(event.key==='Enter')this.blur()">
+                                <button class="col-remove-btn" onclick="removePlannerColumn(${i})" title="Remove column">&times;</button>
+                            </div>
+                        </th>
+                    `).join('')}
+                    <th class="col-add">
+                        <button class="col-add-btn" onclick="addPlannerColumn()" title="Add column">+</button>
+                    </th>
                 </tr>
             </thead>
             <tbody>
     `;
 
-    const usageOptions = ['', 'singola', 'doppia', 'tripla', 'quadrupla', 'family'];
-
     for (const [floor, floorRooms] of Object.entries(floors)) {
-        html += `<tr class="floor-header-row"><td colspan="6">Floor ${floor}</td></tr>`;
+        html += `<tr class="floor-header-row"><td colspan="${totalCols}">Floor ${floor}</td></tr>`;
 
         for (const rm of floorRooms) {
             const a = assignMap[rm.id] || {};
-            const usageType = a.usageType || '';
-            const groupLabel = a.groupLabel || '';
-            const occupancy = a.occupancy || '';
-            const notes = a.notes || '';
+            const vals = a.cellValues || {};
+            const hasData = Object.values(vals).some(v => v !== '' && v !== 0 && v != null);
 
             html += `
-                <tr class="assignment-row ${usageType ? 'assigned' : ''}" data-room-id="${rm.id}">
-                    <td class="col-room">
-                        <strong>${escapeHtml(rm.number)}</strong>
-                    </td>
+                <tr class="assignment-row ${hasData ? 'assigned' : ''}" data-room-id="${rm.id}">
+                    <td class="col-room"><strong>${escapeHtml(rm.number)}</strong></td>
                     <td class="col-type">${escapeHtml(rm.type)} (${rm.capacity})</td>
-                    <td class="col-usage">
-                        <select class="cell-input" data-field="usageType" data-room="${rm.id}" onchange="onAssignmentChange(this)">
-                            ${usageOptions.map(o => `<option value="${o}" ${o === usageType ? 'selected' : ''}>${o || '—'}</option>`).join('')}
-                        </select>
-                    </td>
-                    <td class="col-group">
-                        <input type="text" class="cell-input" data-field="groupLabel" data-room="${rm.id}"
-                            value="${escapeHtml(groupLabel)}" placeholder="..." onchange="onAssignmentChange(this)">
-                    </td>
-                    <td class="col-occ">
-                        <input type="number" class="cell-input cell-number" data-field="occupancy" data-room="${rm.id}"
-                            value="${occupancy}" min="0" max="10" onchange="onAssignmentChange(this)">
-                    </td>
-                    <td class="col-notes">
-                        <input type="text" class="cell-input" data-field="notes" data-room="${rm.id}"
-                            value="${escapeHtml(notes)}" placeholder="..." onchange="onAssignmentChange(this)">
-                    </td>
+                    ${plannerColumns.map(col => {
+                        const val = vals[col.id] != null ? vals[col.id] : '';
+                        return `
+                            <td class="col-dynamic">
+                                <input type="text" class="cell-input" data-col="${col.id}" data-room="${rm.id}"
+                                    value="${escapeHtml(String(val))}" placeholder="..." onchange="onAssignmentChange(this)">
+                            </td>
+                        `;
+                    }).join('')}
+                    <td class="col-add"></td>
                 </tr>
             `;
         }
@@ -916,10 +928,22 @@ function renderAssignmentSpreadsheet() {
     body.innerHTML = html;
 }
 
+function getAssignmentStatsHTML() {
+    let filled = 0;
+    assignmentData.forEach(a => {
+        const vals = a.cellValues || {};
+        if (Object.values(vals).some(v => v !== '' && v !== 0 && v != null)) filled++;
+    });
+    return `
+        <span>Rooms assigned: <strong>${filled}</strong> / ${rooms.length}</span>
+        <span>Columns: <strong>${plannerColumns.length}</strong></span>
+    `;
+}
+
 function onAssignmentChange(el) {
     const roomId = el.dataset.room;
-    const field = el.dataset.field;
-    const value = field === 'occupancy' ? (parseInt(el.value) || 0) : el.value;
+    const colId = el.dataset.col;
+    const value = el.value;
 
     let existing = assignmentData.find(a => a.roomId === roomId);
     if (!existing) {
@@ -927,35 +951,58 @@ function onAssignmentChange(el) {
             id: generateId(),
             reservationId: currentAssignmentReservationId,
             roomId: roomId,
-            usageType: '',
-            groupLabel: '',
-            occupancy: 0,
-            notes: '',
+            cellValues: {},
             _isNew: true
         };
         assignmentData.push(existing);
     }
-    existing[field] = value;
+    if (!existing.cellValues) existing.cellValues = {};
+    existing.cellValues[colId] = value;
     existing._dirty = true;
 
     // Update row styling
     const row = el.closest('tr');
-    if (existing.usageType) {
-        row.classList.add('assigned');
-    } else {
-        row.classList.remove('assigned');
-    }
+    const vals = existing.cellValues;
+    const hasData = Object.values(vals).some(v => v !== '' && v !== 0 && v != null);
+    row.classList.toggle('assigned', hasData);
 
     // Update stats
-    const toolbar = document.querySelector('.assignment-stats');
-    if (toolbar) {
-        let totalOcc = 0;
-        assignmentData.forEach(a => { totalOcc += (a.occupancy || 0); });
-        toolbar.innerHTML = `
-            <span>Rooms assigned: <strong>${assignmentData.filter(a => a.usageType).length}</strong> / ${rooms.length}</span>
-            <span>Total occupancy: <strong>${totalOcc}</strong></span>
-        `;
+    const stats = document.getElementById('assignmentStats');
+    if (stats) stats.innerHTML = getAssignmentStatsHTML();
+}
+
+function addPlannerColumn() {
+    const id = 'col_' + Date.now().toString(36);
+    const name = 'Column ' + (plannerColumns.length + 1);
+    plannerColumns.push({ id, name });
+    renderAssignmentSpreadsheet();
+}
+
+function removePlannerColumn(idx) {
+    const col = plannerColumns[idx];
+    if (!confirm(`Remove column "${col.name}"? Data in this column will be lost on save.`)) return;
+
+    plannerColumns.splice(idx, 1);
+
+    // Remove this column's data from assignments
+    assignmentData.forEach(a => {
+        if (a.cellValues && a.cellValues[col.id] !== undefined) {
+            delete a.cellValues[col.id];
+            a._dirty = true;
+        }
+    });
+
+    renderAssignmentSpreadsheet();
+}
+
+function renamePlannerColumn(el) {
+    const idx = parseInt(el.dataset.colIdx);
+    const newName = el.value.trim();
+    if (!newName) {
+        el.value = plannerColumns[idx].name;
+        return;
     }
+    plannerColumns[idx].name = newName;
 }
 
 async function saveAllAssignments() {
@@ -964,12 +1011,20 @@ async function saveAllAssignments() {
     btn.disabled = true;
 
     try {
+        // Save column config
+        await apiPut(API.plannerConfig, {
+            reservationId: currentAssignmentReservationId,
+            columns: plannerColumns
+        });
+
+        // Save cell data
         for (const a of assignmentData) {
             if (!a._dirty) continue;
 
-            // Skip empty assignments (no usage type set)
-            if (!a.usageType && !a.groupLabel && !a.occupancy) {
-                // If it existed on server, delete it
+            const vals = a.cellValues || {};
+            const hasData = Object.values(vals).some(v => v !== '' && v !== 0 && v != null);
+
+            if (!hasData) {
                 if (!a._isNew) {
                     await apiDelete(API.assignments, a.id);
                 }
@@ -980,10 +1035,7 @@ async function saveAllAssignments() {
                 id: a.id,
                 reservationId: a.reservationId,
                 roomId: a.roomId,
-                usageType: a.usageType,
-                groupLabel: a.groupLabel,
-                occupancy: a.occupancy || 0,
-                notes: a.notes || ''
+                cellValues: vals
             };
 
             if (a._isNew) {

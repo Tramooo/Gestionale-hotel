@@ -16,28 +16,26 @@ export default async function handler(req, res) {
         id: a.id,
         reservationId: a.reservation_id,
         roomId: a.room_id,
-        usageType: a.usage_type,
-        groupLabel: a.group_label,
-        occupancy: a.occupancy,
-        notes: a.notes
+        cellValues: JSON.parse(a.cell_values || '{}')
       })));
     }
 
     if (req.method === 'POST') {
       const a = req.body;
+      const cellValues = JSON.stringify(a.cellValues || {});
       await sql`
-        INSERT INTO room_assignments (id, reservation_id, room_id, usage_type, group_label, occupancy, notes)
-        VALUES (${a.id}, ${a.reservationId}, ${a.roomId}, ${a.usageType}, ${a.groupLabel}, ${a.occupancy}, ${a.notes})
+        INSERT INTO room_assignments (id, reservation_id, room_id, cell_values)
+        VALUES (${a.id}, ${a.reservationId}, ${a.roomId}, ${cellValues})
       `;
       return res.status(201).json({ success: true });
     }
 
     if (req.method === 'PUT') {
       const a = req.body;
+      const cellValues = JSON.stringify(a.cellValues || {});
       await sql`
-        UPDATE room_assignments SET usage_type=${a.usageType}, group_label=${a.groupLabel},
-        occupancy=${a.occupancy}, notes=${a.notes}
-        WHERE id=${a.id}
+        UPDATE room_assignments SET cell_values = ${cellValues}
+        WHERE id = ${a.id}
       `;
       return res.status(200).json({ success: true });
     }

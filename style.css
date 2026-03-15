@@ -1539,6 +1539,92 @@ select.cell-input option {
     color: var(--text-primary);
 }
 
+/* Dynamic column headers */
+.col-dynamic {
+    min-width: 120px;
+}
+
+.col-header-wrap {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.col-header-input {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 4px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    font-family: inherit;
+    width: 100%;
+    min-width: 60px;
+}
+
+.col-header-input:hover {
+    border-color: var(--border);
+}
+
+.col-header-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.col-remove-btn {
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+    border-radius: 4px;
+    opacity: 0;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+
+.col-header-wrap:hover .col-remove-btn {
+    opacity: 1;
+}
+
+.col-remove-btn:hover {
+    color: var(--red);
+    background: var(--red-light);
+}
+
+.col-add {
+    width: 40px;
+    text-align: center;
+}
+
+.col-add-btn {
+    background: none;
+    border: 1px dashed var(--border);
+    color: var(--text-tertiary);
+    font-size: 18px;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+}
+
+.col-add-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-light);
+}
+
 @keyframes slideUp {
     from { opacity: 0; transform: translateY(20px) scale(0.98); }
     to { opacity: 1; transform: translateY(0) scale(1); }

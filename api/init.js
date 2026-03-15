@@ -66,6 +66,18 @@ export default async function handler(req, res) {
       )
     `;
 
+    await sql`
+      CREATE TABLE IF NOT EXISTS planner_configs (
+        reservation_id TEXT PRIMARY KEY REFERENCES reservations(id) ON DELETE CASCADE,
+        columns TEXT NOT NULL DEFAULT '[]'
+      )
+    `;
+
+    // Add cell_values column to room_assignments if missing
+    await sql`
+      ALTER TABLE room_assignments ADD COLUMN IF NOT EXISTS cell_values TEXT DEFAULT '{}'
+    `;
+
     res.status(200).json({ message: 'Tables created successfully' });
   } catch (err) {
     console.error('Init error:', err);
