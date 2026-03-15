@@ -22,7 +22,10 @@ async function apiGet(url) {
 
 async function apiPost(url, data) {
     const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-    if (!res.ok) throw new Error(`API error: ${res.status}`);
+    if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `API error: ${res.status}`);
+    }
     return res.json();
 }
 
@@ -1580,8 +1583,8 @@ async function saveGuest(e) {
             showToast('Guest added to group');
         }
     } catch (err) {
-        console.error(err);
-        showToast('Failed to save guest', 'error');
+        console.error('Save guest error:', err);
+        showToast('Failed to save guest: ' + err.message, 'error');
         return;
     }
 
