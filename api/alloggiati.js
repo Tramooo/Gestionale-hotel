@@ -60,20 +60,26 @@ function buildRecord(guest, checkinDate, checkoutDate) {
   const pad = (val, len) => (val || '').toString().substring(0, len).padEnd(len, ' ');
   const padNum = (val, len) => (val || '').toString().substring(0, len).padStart(len, '0');
 
-  // Calculate nights (max 30)
-  const ci = new Date(checkinDate);
-  const co = new Date(checkoutDate);
+  // Calculate nights (max 30) — parse as UTC to avoid timezone issues
+  const parseUTC = (s) => { const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? new Date(Date.UTC(m[1], m[2]-1, m[3])) : new Date(s); };
+  const ci = parseUTC(checkinDate);
+  const co = parseUTC(checkoutDate);
   let nights = Math.round((co - ci) / (1000 * 60 * 60 * 24));
   if (nights < 1) nights = 1;
   if (nights > 30) nights = 30;
 
-  // Format dates as dd/mm/yyyy
+  // Format dates as dd/mm/yyyy (parse without timezone shift)
   const fmtDate = (dateStr) => {
     if (!dateStr) return '          '; // 10 spaces
-    const d = new Date(dateStr);
-    const dd = String(d.getDate()).padStart(2, '0');
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const yyyy = d.getFullYear();
+    const str = String(dateStr);
+    // If it's already YYYY-MM-DD, just reformat
+    const match = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) return `${match[3]}/${match[2]}/${match[1]}`;
+    // Otherwise parse as Date (UTC)
+    const d = new Date(str);
+    const dd = String(d.getUTCDate()).padStart(2, '0');
+    const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const yyyy = d.getUTCFullYear();
     return `${dd}/${mm}/${yyyy}`;
   };
 
