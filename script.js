@@ -8,7 +8,8 @@ const API = {
     reservations: '/api/reservations',
     rooms: '/api/rooms',
     guests: '/api/guests',
-    init: '/api/init'
+    init: '/api/init',
+    assignments: '/api/assignments'
 };
 
 async function apiGet(url) {
@@ -60,6 +61,8 @@ let guests = [];
 let currentFilter = 'all';
 let currentRoomFilter = 'all';
 let calendarDate = new Date();
+let currentAssignmentReservationId = null;
+let assignmentData = []; // current working copy of room assignments
 
 // ---- HELPERS ----
 
@@ -670,6 +673,7 @@ function openReservationDetail(id) {
             <div class="detail-actions">
                 <button class="btn btn-secondary btn-sm" onclick="openEditReservation('${r.id}')">Edit</button>
                 <button class="btn btn-secondary btn-sm" onclick="openAssignRooms('${r.id}')">Assign Rooms</button>
+                <button class="btn btn-secondary btn-sm" onclick="openRoomAssignment('${r.id}')">Room Planner</button>
                 <button class="btn btn-danger btn-sm" onclick="deleteReservation('${r.id}')">Delete</button>
             </div>
         </div>
@@ -803,6 +807,202 @@ async function toggleRoomAssignment(btn, roomId, reservationId) {
         console.error(err);
         showToast('Failed to save room assignment', 'error');
     }
+}
+
+// =============================================
+// ROOM ASSIGNMENT SPREADSHEET
+// =============================================
+
+async function openRoomAssignment(reservationId) {
+    currentAssignmentReservationId = reservationId;
+    const r = reservations.find(x => x.id === reservationId);
+    if (!r) return;
+
+    document.getElementById('assignmentModalTitle').textContent = 'Room Planner — ' + r.groupName;
+
+    // Load existing assignments for this reservation
+    try {
+        assignmentData = await apiGet(API.assignments + '?reservation_id=' + reservationId);
+    } catch {
+        assignmentData = [];
+    }
+
+    renderAssignmentSpreadsheet();
+    closeModal('reservationDetailModal');
+    openModal('roomAssignmentModal');
+}
+
+function renderAssignmentSpreadsheet() {
+    const body = document.getElementById('roomAssignmentBody');
+    const sortedRooms = [...rooms].sort((a, b) => a.floor - b.floor || a.number.localeCompare(b.number, undefined, { numeric: true }));
+
+    // Group by floor
+    const floors = {};
+    sortedRooms.forEach(rm => {
+        if (!floors[rm.floor]) floors[rm.floor] = [];
+        floors[rm.floor].push(rm);
+    });
+
+    // Build assignment lookup
+    const assignMap = {};
+    assignmentData.forEach(a => { assignMap[a.roomId] = a; });
+
+    // Count totals
+    let totalOccupancy = 0;
+    assignmentData.forEach(a => { totalOccupancy += (a.occupancy || 0); });
+
+    let html = `
+        <div class="assignment-toolbar">
+            <div class="assignment-stats">
+                <span>Rooms assigned: <strong>${assignmentData.filter(a => a.usageType).length}</strong> / ${rooms.length}</span>
+                <span>Total occupancy: <strong>${totalOccupancy}</strong></span>
+            </div>
+        </div>
+        <table class="assignment-table">
+            <thead>
+                <tr>
+                    <th class="col-room">Room</th>
+                    <th class="col-type">Type</th>
+                    <th class="col-usage">Usage</th>
+                    <th class="col-group">Group</th>
+                    <th class="col-occ">Occ.</th>
+                    <th class="col-notes">Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    const usageOptions = ['', 'singola', 'doppia', 'tripla', 'quadrupla', 'family'];
+
+    for (const [floor, floorRooms] of Object.entries(floors)) {
+        html += `<tr class="floor-header-row"><td colspan="6">Floor ${floor}</td></tr>`;
+
+        for (const rm of floorRooms) {
+            const a = assignMap[rm.id] || {};
+            const usageType = a.usageType || '';
+            const groupLabel = a.groupLabel || '';
+            const occupancy = a.occupancy || '';
+            const notes = a.notes || '';
+
+            html += `
+                <tr class="assignment-row ${usageType ? 'assigned' : ''}" data-room-id="${rm.id}">
+                    <td class="col-room">
+                        <strong>${escapeHtml(rm.number)}</strong>
+                    </td>
+                    <td class="col-type">${escapeHtml(rm.type)} (${rm.capacity})</td>
+                    <td class="col-usage">
+                        <select class="cell-input" data-field="usageType" data-room="${rm.id}" onchange="onAssignmentChange(this)">
+                            ${usageOptions.map(o => `<option value="${o}" ${o === usageType ? 'selected' : ''}>${o || '—'}</option>`).join('')}
+                        </select>
+                    </td>
+                    <td class="col-group">
+                        <input type="text" class="cell-input" data-field="groupLabel" data-room="${rm.id}"
+                            value="${escapeHtml(groupLabel)}" placeholder="..." onchange="onAssignmentChange(this)">
+                    </td>
+                    <td class="col-occ">
+                        <input type="number" class="cell-input cell-number" data-field="occupancy" data-room="${rm.id}"
+                            value="${occupancy}" min="0" max="10" onchange="onAssignmentChange(this)">
+                    </td>
+                    <td class="col-notes">
+                        <input type="text" class="cell-input" data-field="notes" data-room="${rm.id}"
+                            value="${escapeHtml(notes)}" placeholder="..." onchange="onAssignmentChange(this)">
+                    </td>
+                </tr>
+            `;
+        }
+    }
+
+    html += `</tbody></table>`;
+    body.innerHTML = html;
+}
+
+function onAssignmentChange(el) {
+    const roomId = el.dataset.room;
+    const field = el.dataset.field;
+    const value = field === 'occupancy' ? (parseInt(el.value) || 0) : el.value;
+
+    let existing = assignmentData.find(a => a.roomId === roomId);
+    if (!existing) {
+        existing = {
+            id: generateId(),
+            reservationId: currentAssignmentReservationId,
+            roomId: roomId,
+            usageType: '',
+            groupLabel: '',
+            occupancy: 0,
+            notes: '',
+            _isNew: true
+        };
+        assignmentData.push(existing);
+    }
+    existing[field] = value;
+    existing._dirty = true;
+
+    // Update row styling
+    const row = el.closest('tr');
+    if (existing.usageType) {
+        row.classList.add('assigned');
+    } else {
+        row.classList.remove('assigned');
+    }
+
+    // Update stats
+    const toolbar = document.querySelector('.assignment-stats');
+    if (toolbar) {
+        let totalOcc = 0;
+        assignmentData.forEach(a => { totalOcc += (a.occupancy || 0); });
+        toolbar.innerHTML = `
+            <span>Rooms assigned: <strong>${assignmentData.filter(a => a.usageType).length}</strong> / ${rooms.length}</span>
+            <span>Total occupancy: <strong>${totalOcc}</strong></span>
+        `;
+    }
+}
+
+async function saveAllAssignments() {
+    const btn = document.getElementById('saveAssignmentsBtn');
+    btn.textContent = 'Saving...';
+    btn.disabled = true;
+
+    try {
+        for (const a of assignmentData) {
+            if (!a._dirty) continue;
+
+            // Skip empty assignments (no usage type set)
+            if (!a.usageType && !a.groupLabel && !a.occupancy) {
+                // If it existed on server, delete it
+                if (!a._isNew) {
+                    await apiDelete(API.assignments, a.id);
+                }
+                continue;
+            }
+
+            const payload = {
+                id: a.id,
+                reservationId: a.reservationId,
+                roomId: a.roomId,
+                usageType: a.usageType,
+                groupLabel: a.groupLabel,
+                occupancy: a.occupancy || 0,
+                notes: a.notes || ''
+            };
+
+            if (a._isNew) {
+                await apiPost(API.assignments, payload);
+                a._isNew = false;
+            } else {
+                await apiPut(API.assignments, payload);
+            }
+            a._dirty = false;
+        }
+
+        showToast('Room assignments saved');
+    } catch (err) {
+        console.error(err);
+        showToast('Failed to save assignments', 'error');
+    }
+
+    btn.textContent = 'Save';
+    btn.disabled = false;
 }
 
 // =============================================
