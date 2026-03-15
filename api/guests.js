@@ -16,7 +16,15 @@ export default async function handler(req, res) {
         docType: g.doc_type,
         docNumber: g.doc_number,
         roomId: g.room_id,
-        notes: g.notes
+        notes: g.notes,
+        sex: g.sex,
+        birthDate: g.birth_date,
+        birthComune: g.birth_comune,
+        birthProvince: g.birth_province,
+        birthCountry: g.birth_country,
+        citizenship: g.citizenship,
+        docIssuedPlace: g.doc_issued_place,
+        guestType: g.guest_type || '16'
       })));
     }
 
@@ -24,8 +32,10 @@ export default async function handler(req, res) {
       const g = req.body;
       const roomId = g.roomId || null;
       await sql`
-        INSERT INTO guests (id, reservation_id, first_name, last_name, email, phone, doc_type, doc_number, room_id, notes)
-        VALUES (${g.id}, ${g.reservationId}, ${g.firstName}, ${g.lastName}, ${g.email}, ${g.phone}, ${g.docType}, ${g.docNumber}, ${roomId}, ${g.notes})
+        INSERT INTO guests (id, reservation_id, first_name, last_name, email, phone, doc_type, doc_number, room_id, notes,
+          sex, birth_date, birth_comune, birth_province, birth_country, citizenship, doc_issued_place, guest_type)
+        VALUES (${g.id}, ${g.reservationId}, ${g.firstName}, ${g.lastName}, ${g.email}, ${g.phone}, ${g.docType}, ${g.docNumber}, ${roomId}, ${g.notes},
+          ${g.sex || null}, ${g.birthDate || null}, ${g.birthComune || null}, ${g.birthProvince || null}, ${g.birthCountry || null}, ${g.citizenship || null}, ${g.docIssuedPlace || null}, ${g.guestType || '16'})
       `;
       return res.status(201).json({ success: true });
     }
@@ -36,7 +46,11 @@ export default async function handler(req, res) {
       await sql`
         UPDATE guests SET reservation_id=${g.reservationId}, first_name=${g.firstName}, last_name=${g.lastName},
         email=${g.email}, phone=${g.phone}, doc_type=${g.docType}, doc_number=${g.docNumber},
-        room_id=${roomId}, notes=${g.notes}
+        room_id=${roomId}, notes=${g.notes},
+        sex=${g.sex || null}, birth_date=${g.birthDate || null}, birth_comune=${g.birthComune || null},
+        birth_province=${g.birthProvince || null}, birth_country=${g.birthCountry || null},
+        citizenship=${g.citizenship || null}, doc_issued_place=${g.docIssuedPlace || null},
+        guest_type=${g.guestType || '16'}
         WHERE id=${g.id}
       `;
       return res.status(200).json({ success: true });

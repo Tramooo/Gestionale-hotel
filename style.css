@@ -2470,3 +2470,37 @@ select.cell-input option {
     border-color: var(--accent);
     color: white;
 }
+
+/* Alloggiati */
+.alloggiati-records {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.alloggiati-record-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--bg-primary);
+    border-radius: 8px;
+    font-size: 13px;
+}
+
+.alloggiati-record-item.success {
+    border-left: 3px solid var(--green);
+}
+
+.alloggiati-record-item.error {
+    border-left: 3px solid var(--red);
+}
+
+.alloggiati-record-item .badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--accent-light);
+    color: var(--accent);
+}

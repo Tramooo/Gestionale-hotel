@@ -10,7 +10,8 @@ const API = {
     guests: '/api/guests',
     init: '/api/init',
     assignments: '/api/assignments',
-    plannerConfig: '/api/planner-config'
+    plannerConfig: '/api/planner-config',
+    alloggiati: '/api/alloggiati'
 };
 
 async function apiGet(url) {
@@ -720,15 +721,125 @@ function openReservationDetail(id) {
                                 <strong>${escapeHtml(g.firstName + ' ' + g.lastName)}</strong><br>
                                 <span>${room ? 'Room ' + room.number : 'No room assigned'}${g.docNumber ? ' &middot; ' + g.docType + ': ' + g.docNumber : ''}</span>
                             </div>
+                            <button class="btn btn-ghost btn-sm" onclick="openEditGuestModal('${g.id}')">Edit</button>
                             <button class="btn btn-ghost btn-sm" onclick="deleteGuest('${g.id}', '${r.id}')">Remove</button>
                         </div>
                     `;
                 }).join('')}
             </div>
         </div>
+
+        <div class="detail-section" style="margin-top:16px">
+            <h3>Schedine Alloggiati</h3>
+            <div id="alloggiatiPanel">
+                <p style="color:var(--text-secondary);margin-bottom:12px">
+                    Send guest registration forms to the Italian police (Alloggiati Web).
+                </p>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                    <button class="btn btn-sm btn-secondary" onclick="alloggiatiPreview('${r.id}')">Preview Records</button>
+                    <button class="btn btn-sm btn-secondary" onclick="alloggiatiTest('${r.id}')">Test</button>
+                    <button class="btn btn-sm btn-primary" onclick="alloggiatiSend('${r.id}')">Send to Police</button>
+                </div>
+                <div id="alloggiatiResults" style="margin-top:12px"></div>
+            </div>
+        </div>
     `;
 
     openModal('reservationDetailModal');
+}
+
+// ---- Alloggiati Web ----
+
+let alloggiatiToken = null;
+let alloggiatiTokenExpires = null;
+
+async function getAlloggiatiToken() {
+    // Reuse token if still valid (with 5 min buffer)
+    if (alloggiatiToken && alloggiatiTokenExpires && new Date(alloggiatiTokenExpires) > new Date(Date.now() + 5 * 60000)) {
+        return alloggiatiToken;
+    }
+    const data = await apiGet(API.alloggiati + '?action=token');
+    alloggiatiToken = data.token;
+    alloggiatiTokenExpires = data.expires;
+    return alloggiatiToken;
+}
+
+function renderAlloggiatiResults(container, data, mode) {
+    if (!data) return;
+
+    let html = '';
+    if (mode === 'preview') {
+        html += `<div class="alloggiati-preview">
+            <p><strong>${data.guests.length} record(s) built</strong></p>
+            <div class="alloggiati-records">`;
+        data.guests.forEach((g, i) => {
+            html += `<div class="alloggiati-record-item">
+                <span>${g.name}</span>
+                <span class="badge">${g.guestType === '17' ? 'Leader' : g.guestType === '18' ? 'Member' : g.guestType === '19' ? 'Family Head' : g.guestType === '20' ? 'Family' : 'Single'}</span>
+                <span style="color:${g.recordLength === 168 ? 'var(--green)' : 'var(--red)'}">${g.recordLength} chars</span>
+            </div>`;
+        });
+        html += `</div></div>`;
+    } else {
+        const icon = data.success ? '&#10003;' : '&#10007;';
+        const color = data.success ? 'var(--green)' : 'var(--red)';
+        html += `<div style="margin-bottom:8px">
+            <span style="color:${color};font-weight:bold">${icon} ${mode === 'test' ? 'Test' : 'Send'}: ${data.validCount}/${data.totalCount} valid</span>
+        </div>`;
+        if (data.details && data.details.length > 0) {
+            html += '<div class="alloggiati-records">';
+            data.details.forEach(d => {
+                const ok = d.esito;
+                html += `<div class="alloggiati-record-item ${ok ? 'success' : 'error'}">
+                    <span>${d.guestName}</span>
+                    <span style="color:${ok ? 'var(--green)' : 'var(--red)'}">${ok ? 'OK' : d.errorDesc + (d.errorDetail ? ': ' + d.errorDetail : '')}</span>
+                </div>`;
+            });
+            html += '</div>';
+        }
+    }
+    container.innerHTML = html;
+}
+
+async function alloggiatiPreview(reservationId) {
+    const container = document.getElementById('alloggiatiResults');
+    container.innerHTML = '<p>Building records...</p>';
+    try {
+        const data = await apiGet(API.alloggiati + '?action=build&reservationId=' + reservationId);
+        renderAlloggiatiResults(container, data, 'preview');
+    } catch (err) {
+        container.innerHTML = `<p style="color:var(--red)">Error: ${err.message}</p>`;
+    }
+}
+
+async function alloggiatiTest(reservationId) {
+    const container = document.getElementById('alloggiatiResults');
+    container.innerHTML = '<p>Getting token & testing...</p>';
+    try {
+        const token = await getAlloggiatiToken();
+        const data = await apiPost(API.alloggiati + '?action=test', { reservationId, token });
+        renderAlloggiatiResults(container, data, 'test');
+    } catch (err) {
+        container.innerHTML = `<p style="color:var(--red)">Error: ${err.message}</p>`;
+    }
+}
+
+async function alloggiatiSend(reservationId) {
+    if (!confirm('Send schedine to the police? Make sure you tested first.')) return;
+    const container = document.getElementById('alloggiatiResults');
+    container.innerHTML = '<p>Sending to Alloggiati Web...</p>';
+    try {
+        const token = await getAlloggiatiToken();
+        const data = await apiPost(API.alloggiati + '?action=send', { reservationId, token });
+        renderAlloggiatiResults(container, data, 'send');
+        if (data.success && data.validCount === data.totalCount) {
+            showToast('All schedine sent successfully!');
+        } else {
+            showToast(`${data.validCount}/${data.totalCount} schedine accepted`, 'error');
+        }
+    } catch (err) {
+        container.innerHTML = `<p style="color:var(--red)">Error: ${err.message}</p>`;
+    }
 }
 
 // ---- Assign Rooms ----
@@ -1262,6 +1373,40 @@ function openAddGuestModal(reservationId) {
     openModal('guestModal');
 }
 
+function openEditGuestModal(guestId) {
+    const g = guests.find(x => x.id === guestId);
+    if (!g) return;
+
+    document.getElementById('guestForm').reset();
+    document.getElementById('guestId').value = g.id;
+    document.getElementById('guestReservationId').value = g.reservationId;
+    document.getElementById('guestFirstName').value = g.firstName || '';
+    document.getElementById('guestLastName').value = g.lastName || '';
+    document.getElementById('guestEmail').value = g.email || '';
+    document.getElementById('guestPhone').value = g.phone || '';
+    document.getElementById('guestDocType').value = g.docType || '';
+    document.getElementById('guestDocNumber').value = g.docNumber || '';
+    document.getElementById('guestNotes').value = g.notes || '';
+    document.getElementById('guestSex').value = g.sex || '';
+    document.getElementById('guestBirthDate').value = g.birthDate || '';
+    document.getElementById('guestBirthComune').value = g.birthComune || '';
+    document.getElementById('guestBirthProvince').value = g.birthProvince || '';
+    document.getElementById('guestBirthCountry').value = g.birthCountry || '';
+    document.getElementById('guestCitizenship').value = g.citizenship || '';
+    document.getElementById('guestDocIssuedPlace').value = g.docIssuedPlace || '';
+    document.getElementById('guestType').value = g.guestType || '16';
+
+    // Populate room dropdown
+    const select = document.getElementById('guestRoom');
+    select.innerHTML = '<option value="">Unassigned</option>';
+    rooms.filter(r => r.status === 'available' || r.status === 'occupied').forEach(r => {
+        select.innerHTML += `<option value="${r.id}" ${r.id === g.roomId ? 'selected' : ''}>Room ${r.number} (${r.type})</option>`;
+    });
+
+    closeModal('reservationDetailModal');
+    openModal('guestModal');
+}
+
 async function saveGuest(e) {
     e.preventDefault();
 
@@ -1275,7 +1420,15 @@ async function saveGuest(e) {
         docType: document.getElementById('guestDocType').value,
         docNumber: document.getElementById('guestDocNumber').value.trim(),
         roomId: document.getElementById('guestRoom').value,
-        notes: document.getElementById('guestNotes').value.trim()
+        notes: document.getElementById('guestNotes').value.trim(),
+        sex: document.getElementById('guestSex').value,
+        birthDate: document.getElementById('guestBirthDate').value,
+        birthComune: document.getElementById('guestBirthComune').value.trim(),
+        birthProvince: document.getElementById('guestBirthProvince').value.trim().toUpperCase(),
+        birthCountry: document.getElementById('guestBirthCountry').value.trim(),
+        citizenship: document.getElementById('guestCitizenship').value.trim(),
+        docIssuedPlace: document.getElementById('guestDocIssuedPlace').value.trim(),
+        guestType: document.getElementById('guestType').value
     };
 
     try {
