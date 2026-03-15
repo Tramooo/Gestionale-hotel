@@ -509,8 +509,9 @@
                             <input type="date" id="guestBirthDate">
                         </div>
                         <div class="form-group">
-                            <label>Citizenship (Cod. Stato)</label>
-                            <input type="text" id="guestCitizenship" placeholder="e.g. 100000100">
+                            <label>Citizenship</label>
+                            <input type="text" id="guestCitizenshipSearch" placeholder="Search country..." list="countriesList" autocomplete="off">
+                            <input type="hidden" id="guestCitizenship">
                         </div>
                         <div class="form-group">
                             <label>Guest Type (Tipo Alloggiato)</label>
@@ -527,12 +528,14 @@
                     <p style="font-size:12px;color:var(--text-tertiary);margin:16px 0 12px">Birth Place (Luogo di Nascita)</p>
                     <div class="form-grid">
                         <div class="form-group">
-                            <label>Country (Cod. Stato)</label>
-                            <input type="text" id="guestBirthCountry" placeholder="e.g. 100000100 (Italia)">
+                            <label>Country</label>
+                            <input type="text" id="guestBirthCountrySearch" placeholder="Search country..." list="countriesList" autocomplete="off">
+                            <input type="hidden" id="guestBirthCountry">
                         </div>
                         <div class="form-group">
-                            <label>Comune (Cod. Comune)</label>
-                            <input type="text" id="guestBirthComune" placeholder="If born in Italy">
+                            <label>Comune</label>
+                            <input type="text" id="guestBirthComuneSearch" placeholder="Search comune..." list="comuniList" autocomplete="off">
+                            <input type="hidden" id="guestBirthComune">
                         </div>
                         <div class="form-group">
                             <label>Province (Sigla)</label>
@@ -558,8 +561,9 @@
                             <input type="text" id="guestDocNumber">
                         </div>
                         <div class="form-group">
-                            <label>Issued Place (Cod. Stato/Comune)</label>
-                            <input type="text" id="guestDocIssuedPlace" placeholder="Code of issuing place">
+                            <label>Issued Place</label>
+                            <input type="text" id="guestDocIssuedPlaceSearch" placeholder="Search place..." list="luoghiList" autocomplete="off">
+                            <input type="hidden" id="guestDocIssuedPlace">
                         </div>
                     </div>
 
@@ -595,6 +599,10 @@
 
     <!-- Toast -->
     <div class="toast-container" id="toastContainer"></div>
+
+    <datalist id="countriesList"></datalist>
+    <datalist id="comuniList"></datalist>
+    <datalist id="luoghiList"></datalist>
 
     <script src="script.js"></script>
 </body>

@@ -265,7 +265,30 @@ export default async function handler(req, res) {
       });
     }
 
-    return res.status(400).json({ error: 'Invalid action. Use: token, build, test, send, ricevuta' });
+    // ---- Download reference table ----
+    if (action === 'tabella') {
+      const { token, tipo } = req.query;
+      if (!token || !tipo) {
+        return res.status(400).json({ error: 'token and tipo are required (Luoghi, Tipi_Documento, Tipi_Alloggiato, TipoErrore, ListaAppartamenti)' });
+      }
+
+      const xml = await soapCall('Tabella', `
+        <all:Tabella>
+          <all:Utente>${UTENTE}</all:Utente>
+          <all:token>${token}</all:token>
+          <all:tipo>${tipo}</all:tipo>
+        </all:Tabella>`);
+
+      const esito = extractEsito(xml, 'TabellaResult');
+      if (!esito.esito) {
+        return res.status(400).json({ error: 'Table download failed', details: esito });
+      }
+
+      const csv = extractTag(xml, 'CSV');
+      return res.status(200).json({ success: true, csv });
+    }
+
+    return res.status(400).json({ error: 'Invalid action. Use: token, build, test, send, ricevuta, tabella' });
 
   } catch (err) {
     console.error('Alloggiati API error:', err);

@@ -752,6 +752,115 @@ function openReservationDetail(id) {
 
 let alloggiatiToken = null;
 let alloggiatiTokenExpires = null;
+let alloggiatiLuoghi = null; // cached: [{code, name}]
+let alloggiatiStati = null;  // cached: [{code, name}]
+
+async function loadAlloggiatiTables() {
+    if (alloggiatiLuoghi && alloggiatiStati) return;
+    try {
+        const token = await getAlloggiatiToken();
+        const data = await apiGet(API.alloggiati + '?action=tabella&token=' + encodeURIComponent(token) + '&tipo=Luoghi');
+        if (!data.csv) return;
+
+        const lines = data.csv.split('\n').filter(l => l.trim());
+        const luoghi = [];
+        const stati = [];
+
+        for (const line of lines) {
+            const parts = line.split(';');
+            if (parts.length < 2) continue;
+            const code = parts[0].trim();
+            const name = parts[1].trim();
+            if (!code || !name) continue;
+
+            // Codes starting with 1-9 and length 9 are states, comuni also have 9-char codes
+            // States typically have pattern like 100000100, comuni like 415063049
+            const entry = { code, name };
+            if (code.length === 9 && code.startsWith('1') && code.charAt(1) === '0') {
+                stati.push(entry);
+            }
+            luoghi.push(entry);
+        }
+
+        alloggiatiLuoghi = luoghi;
+        alloggiatiStati = stati.length > 0 ? stati : luoghi;
+
+        // Populate countries datalist
+        const countriesList = document.getElementById('countriesList');
+        countriesList.innerHTML = alloggiatiStati.map(s =>
+            `<option value="${s.name}" data-code="${s.code}">${s.name} (${s.code})</option>`
+        ).join('');
+
+        // Populate all luoghi (comuni + states) for issued place
+        const luoghiList = document.getElementById('luoghiList');
+        luoghiList.innerHTML = alloggiatiLuoghi.slice(0, 5000).map(l =>
+            `<option value="${l.name}" data-code="${l.code}">${l.name} (${l.code})</option>`
+        ).join('');
+
+        // Comuni list (non-state entries)
+        const comuniList = document.getElementById('comuniList');
+        const comuni = alloggiatiLuoghi.filter(l => !alloggiatiStati.includes(l));
+        comuniList.innerHTML = comuni.slice(0, 5000).map(c =>
+            `<option value="${c.name}" data-code="${c.code}">${c.name} (${c.code})</option>`
+        ).join('');
+
+    } catch (err) {
+        console.error('Failed to load Alloggiati tables:', err);
+    }
+}
+
+function findCodeFromName(list, name) {
+    if (!list || !name) return '';
+    const lower = name.toLowerCase().trim();
+    const match = list.find(l => l.name.toLowerCase() === lower);
+    return match ? match.code : '';
+}
+
+function findNameFromCode(list, code) {
+    if (!list || !code) return '';
+    const match = list.find(l => l.code === code);
+    return match ? match.name : '';
+}
+
+function setupAlloggiatiSearchField(searchId, hiddenId, listSource) {
+    const searchEl = document.getElementById(searchId);
+    if (!searchEl) return;
+
+    const resolveCode = () => {
+        const list = listSource === 'stati' ? alloggiatiStati : alloggiatiLuoghi;
+        const code = findCodeFromName(list, searchEl.value);
+        // If no match found, treat the typed value as a raw code (fallback)
+        document.getElementById(hiddenId).value = code || searchEl.value.trim();
+    };
+
+    searchEl.addEventListener('change', resolveCode);
+    searchEl.addEventListener('blur', resolveCode);
+
+    // Filter datalist for comuni (large list) on input
+    if (searchId === 'guestBirthComuneSearch' || searchId === 'guestDocIssuedPlaceSearch') {
+        searchEl.addEventListener('input', () => {
+            const query = searchEl.value.toLowerCase().trim();
+            if (query.length < 2 || !alloggiatiLuoghi) return;
+            const listId = searchId === 'guestBirthComuneSearch' ? 'comuniList' : 'luoghiList';
+            const dlEl = document.getElementById(listId);
+            const source = searchId === 'guestBirthComuneSearch'
+                ? alloggiatiLuoghi.filter(l => !alloggiatiStati.includes(l))
+                : alloggiatiLuoghi;
+            const filtered = source.filter(l => l.name.toLowerCase().includes(query)).slice(0, 200);
+            dlEl.innerHTML = filtered.map(l =>
+                `<option value="${l.name}" data-code="${l.code}">${l.name} (${l.code})</option>`
+            ).join('');
+        });
+    }
+}
+
+// Initialize search fields once DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    setupAlloggiatiSearchField('guestCitizenshipSearch', 'guestCitizenship', 'stati');
+    setupAlloggiatiSearchField('guestBirthCountrySearch', 'guestBirthCountry', 'stati');
+    setupAlloggiatiSearchField('guestBirthComuneSearch', 'guestBirthComune', 'luoghi');
+    setupAlloggiatiSearchField('guestDocIssuedPlaceSearch', 'guestDocIssuedPlace', 'luoghi');
+});
 
 async function getAlloggiatiToken() {
     // Reuse token if still valid (with 5 min buffer)
@@ -1362,6 +1471,13 @@ function openAddGuestModal(reservationId) {
     document.getElementById('guestId').value = '';
     document.getElementById('guestReservationId').value = reservationId;
 
+    // Clear search fields and hidden code fields
+    ['guestCitizenshipSearch', 'guestBirthCountrySearch', 'guestBirthComuneSearch', 'guestDocIssuedPlaceSearch',
+     'guestCitizenship', 'guestBirthCountry', 'guestBirthComune', 'guestDocIssuedPlace'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+
     // Populate room dropdown
     const select = document.getElementById('guestRoom');
     select.innerHTML = '<option value="">Unassigned</option>';
@@ -1371,6 +1487,7 @@ function openAddGuestModal(reservationId) {
 
     closeModal('reservationDetailModal');
     openModal('guestModal');
+    loadAlloggiatiTables(); // load in background
 }
 
 function openEditGuestModal(guestId) {
@@ -1395,6 +1512,27 @@ function openEditGuestModal(guestId) {
     document.getElementById('guestCitizenship').value = g.citizenship || '';
     document.getElementById('guestDocIssuedPlace').value = g.docIssuedPlace || '';
     document.getElementById('guestType').value = g.guestType || '16';
+
+    // Populate search fields with resolved names
+    const setSearch = (searchId, code, list) => {
+        const el = document.getElementById(searchId);
+        if (!el) return;
+        const name = findNameFromCode(list, code);
+        el.value = name || code || '';
+    };
+    // Do this after tables load
+    loadAlloggiatiTables().then(() => {
+        setSearch('guestCitizenshipSearch', g.citizenship, alloggiatiStati);
+        setSearch('guestBirthCountrySearch', g.birthCountry, alloggiatiStati);
+        setSearch('guestBirthComuneSearch', g.birthComune, alloggiatiLuoghi);
+        setSearch('guestDocIssuedPlaceSearch', g.docIssuedPlace, alloggiatiLuoghi);
+    }).catch(() => {
+        // If tables fail to load, show raw codes
+        document.getElementById('guestCitizenshipSearch').value = g.citizenship || '';
+        document.getElementById('guestBirthCountrySearch').value = g.birthCountry || '';
+        document.getElementById('guestBirthComuneSearch').value = g.birthComune || '';
+        document.getElementById('guestDocIssuedPlaceSearch').value = g.docIssuedPlace || '';
+    });
 
     // Populate room dropdown
     const select = document.getElementById('guestRoom');
