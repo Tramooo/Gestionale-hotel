@@ -1,12 +1,11 @@
-import { getSQL } from './_db.js';
+import { neon } from '@neondatabase/serverless';
 
 export default async function handler(req, res) {
-  const sql = getSQL();
+  const sql = neon(process.env.DATABASE_URL);
 
   try {
     if (req.method === 'GET') {
       const rows = await sql(`SELECT * FROM reservations ORDER BY created_at DESC`);
-      // Convert snake_case to camelCase for frontend compatibility
       const reservations = rows.map(r => ({
         id: r.id,
         groupName: r.group_name,
