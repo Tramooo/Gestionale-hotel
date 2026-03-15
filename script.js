@@ -773,10 +773,15 @@ async function loadAlloggiatiTables() {
             const name = parts[1].trim();
             if (!code || !name) continue;
 
-            // Codes starting with 1-9 and length 9 are states, comuni also have 9-char codes
-            // States typically have pattern like 100000100, comuni like 415063049
-            const entry = { code, name };
-            if (code.length === 9 && code.startsWith('1') && code.charAt(1) === '0') {
+            // Try to get province from CSV (usually 3rd or 4th column)
+            const prov = (parts.length >= 3 ? parts[2].trim() : '') || (parts.length >= 4 ? parts[3].trim() : '');
+
+            // Build a display label: "San Leo (RN)" for comuni, just "ITALIA" for states
+            const isState = code.length === 9 && code.startsWith('1') && code.charAt(1) === '0';
+            const label = prov && !isState ? `${name} (${prov})` : name;
+
+            const entry = { code, name, prov, label };
+            if (isState) {
                 stati.push(entry);
             }
             luoghi.push(entry);
@@ -785,41 +790,34 @@ async function loadAlloggiatiTables() {
         alloggiatiLuoghi = luoghi;
         alloggiatiStati = stati.length > 0 ? stati : luoghi;
 
-        // Populate countries datalist
+        // Populate countries datalist — just show country name
         const countriesList = document.getElementById('countriesList');
         countriesList.innerHTML = alloggiatiStati.map(s =>
-            `<option value="${s.name}" data-code="${s.code}">${s.name} (${s.code})</option>`
+            `<option value="${s.label}">`
         ).join('');
 
-        // Populate all luoghi (comuni + states) for issued place
-        const luoghiList = document.getElementById('luoghiList');
-        luoghiList.innerHTML = alloggiatiLuoghi.slice(0, 5000).map(l =>
-            `<option value="${l.name}" data-code="${l.code}">${l.name} (${l.code})</option>`
-        ).join('');
-
-        // Comuni list (non-state entries)
-        const comuniList = document.getElementById('comuniList');
-        const comuni = alloggiatiLuoghi.filter(l => !alloggiatiStati.includes(l));
-        comuniList.innerHTML = comuni.slice(0, 5000).map(c =>
-            `<option value="${c.name}" data-code="${c.code}">${c.name} (${c.code})</option>`
-        ).join('');
+        // Don't pre-populate comuni/luoghi — they're filtered on input (too large)
 
     } catch (err) {
         console.error('Failed to load Alloggiati tables:', err);
     }
 }
 
-function findCodeFromName(list, name) {
-    if (!list || !name) return '';
-    const lower = name.toLowerCase().trim();
-    const match = list.find(l => l.name.toLowerCase() === lower);
-    return match ? match.code : '';
+function findCodeFromLabel(list, label) {
+    if (!list || !label) return '';
+    const lower = label.toLowerCase().trim();
+    // First try exact match on display label
+    const match = list.find(l => l.label.toLowerCase() === lower);
+    if (match) return match.code;
+    // Fallback: match by name only
+    const nameMatch = list.find(l => l.name.toLowerCase() === lower);
+    return nameMatch ? nameMatch.code : '';
 }
 
-function findNameFromCode(list, code) {
+function findLabelFromCode(list, code) {
     if (!list || !code) return '';
     const match = list.find(l => l.code === code);
-    return match ? match.name : '';
+    return match ? match.label : '';
 }
 
 function setupAlloggiatiSearchField(searchId, hiddenId, listSource) {
@@ -828,7 +826,7 @@ function setupAlloggiatiSearchField(searchId, hiddenId, listSource) {
 
     const resolveCode = () => {
         const list = listSource === 'stati' ? alloggiatiStati : alloggiatiLuoghi;
-        const code = findCodeFromName(list, searchEl.value);
+        const code = findCodeFromLabel(list, searchEl.value);
         // If no match found, treat the typed value as a raw code (fallback)
         document.getElementById(hiddenId).value = code || searchEl.value.trim();
     };
@@ -846,9 +844,9 @@ function setupAlloggiatiSearchField(searchId, hiddenId, listSource) {
             const source = searchId === 'guestBirthComuneSearch'
                 ? alloggiatiLuoghi.filter(l => !alloggiatiStati.includes(l))
                 : alloggiatiLuoghi;
-            const filtered = source.filter(l => l.name.toLowerCase().includes(query)).slice(0, 200);
+            const filtered = source.filter(l => l.label.toLowerCase().includes(query)).slice(0, 200);
             dlEl.innerHTML = filtered.map(l =>
-                `<option value="${l.name}" data-code="${l.code}">${l.name} (${l.code})</option>`
+                `<option value="${l.label}">`
             ).join('');
         });
     }
@@ -1517,7 +1515,7 @@ function openEditGuestModal(guestId) {
     const setSearch = (searchId, code, list) => {
         const el = document.getElementById(searchId);
         if (!el) return;
-        const name = findNameFromCode(list, code);
+        const name = findLabelFromCode(list, code);
         el.value = name || code || '';
     };
     // Do this after tables load
