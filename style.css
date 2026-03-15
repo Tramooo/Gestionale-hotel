@@ -1845,8 +1845,8 @@ select.cell-input option {
 
 /* Reservation modal: two-column layout */
 #reservationModal .modal {
-    max-width: 780px;
-    max-height: 90vh;
+    max-width: 960px;
+    max-height: 95vh;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -1881,7 +1881,7 @@ select.cell-input option {
 }
 
 .res-form-right {
-    width: 240px;
+    width: 300px;
     flex-shrink: 0;
     border-left: 1px solid var(--border-light);
     padding-left: 20px;
