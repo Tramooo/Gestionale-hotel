@@ -55,6 +55,32 @@ function extractAllEsiti(xml) {
   return details;
 }
 
+// Common country name → code fallback (for when lookup tables didn't load)
+const COUNTRY_FALLBACK = {
+  'italia': '100000100', 'italy': '100000100',
+  'germania': '100000214', 'germany': '100000214',
+  'francia': '100000212', 'france': '100000212',
+  'spagna': '100000239', 'spain': '100000239',
+  'regno unito': '100000219', 'united kingdom': '100000219',
+  'svizzera': '100000241', 'switzerland': '100000241',
+  'austria': '100000203', 'stati uniti': '100000536', 'usa': '100000536',
+  'romania': '100000235', 'polonia': '100000233', 'poland': '100000233',
+  'paesi bassi': '100000232', 'netherlands': '100000232', 'olanda': '100000232',
+  'belgio': '100000206', 'belgium': '100000206',
+  'portogallo': '100000234', 'portugal': '100000234',
+  'croazia': '100000250', 'croatia': '100000250',
+  'albania': '100000201', 'grecia': '100000220', 'greece': '100000220',
+};
+
+function resolveCountryCode(val) {
+  if (!val) return '';
+  const v = val.trim();
+  // Already a 9-digit code
+  if (/^\d{9}$/.test(v)) return v;
+  // Try fallback lookup
+  return COUNTRY_FALLBACK[v.toLowerCase()] || v;
+}
+
 // Build a 168-char fixed-width record from guest data
 function buildRecord(guest, checkinDate, checkoutDate) {
   const pad = (val, len) => (val || '').toString().substring(0, len).padEnd(len, ' ');
@@ -98,8 +124,8 @@ function buildRecord(guest, checkinDate, checkoutDate) {
   record += birthDate;                            // 95-104: Data Nascita (10)
   record += pad(guest.birthComune, 9);            // 105-113: Comune Nascita (9)
   record += pad(guest.birthProvince, 2);          // 114-115: Provincia Nascita (2)
-  record += pad(guest.birthCountry, 9);           // 116-124: Stato Nascita (9)
-  record += pad(guest.citizenship, 9);            // 125-133: Cittadinanza (9)
+  record += pad(resolveCountryCode(guest.birthCountry), 9);  // 116-124: Stato Nascita (9)
+  record += pad(resolveCountryCode(guest.citizenship), 9);   // 125-133: Cittadinanza (9)
 
   if (isFamily) {
     record += pad('', 5);                         // 134-138: Tipo Documento (blank)
