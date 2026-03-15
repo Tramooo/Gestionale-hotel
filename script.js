@@ -2,22 +2,50 @@
 // GroupStay — Hotel Group Reservation Manager
 // =============================================
 
-// ---- DATA STORE (localStorage-backed) ----
+// ---- DATA STORE (Neon Postgres via API) ----
 
-const STORAGE_KEYS = {
-    reservations: 'gs_reservations',
-    rooms: 'gs_rooms',
-    guests: 'gs_guests'
+const API = {
+    reservations: '/api/reservations',
+    rooms: '/api/rooms',
+    guests: '/api/guests',
+    init: '/api/init'
 };
 
-function loadData(key) {
-    try {
-        return JSON.parse(localStorage.getItem(key)) || [];
-    } catch { return []; }
+async function apiGet(url) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`API error: ${res.status}`);
+    return res.json();
 }
 
-function saveData(key, data) {
-    localStorage.setItem(key, JSON.stringify(data));
+async function apiPost(url, data) {
+    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    if (!res.ok) throw new Error(`API error: ${res.status}`);
+    return res.json();
+}
+
+async function apiPut(url, data) {
+    const res = await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    if (!res.ok) throw new Error(`API error: ${res.status}`);
+    return res.json();
+}
+
+async function apiDelete(url, id) {
+    const res = await fetch(`${url}?id=${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(`API error: ${res.status}`);
+    return res.json();
+}
+
+async function loadAllData() {
+    try {
+        [reservations, rooms, guests] = await Promise.all([
+            apiGet(API.reservations),
+            apiGet(API.rooms),
+            apiGet(API.guests)
+        ]);
+    } catch (err) {
+        console.error('Failed to load data from database:', err);
+        showToast('Failed to connect to database', 'error');
+    }
 }
 
 function generateId() {
@@ -26,14 +54,12 @@ function generateId() {
 
 // ---- STATE ----
 
-let reservations = loadData(STORAGE_KEYS.reservations);
-let rooms = loadData(STORAGE_KEYS.rooms);
-let guests = loadData(STORAGE_KEYS.guests);
+let reservations = [];
+let rooms = [];
+let guests = [];
 let currentFilter = 'all';
 let currentRoomFilter = 'all';
 let calendarDate = new Date();
-
-// No seed data — app starts blank
 
 // ---- HELPERS ----
 
@@ -556,7 +582,7 @@ function openEditReservation(id) {
     openModal('reservationModal');
 }
 
-function saveReservation(e) {
+async function saveReservation(e) {
     e.preventDefault();
 
     const id = document.getElementById('resId').value;
@@ -583,29 +609,42 @@ function saveReservation(e) {
         return;
     }
 
-    if (id) {
-        const idx = reservations.findIndex(r => r.id === id);
-        if (idx !== -1) {
-            reservations[idx] = { ...reservations[idx], ...data };
+    try {
+        if (id) {
+            const idx = reservations.findIndex(r => r.id === id);
+            if (idx !== -1) {
+                reservations[idx] = { ...reservations[idx], ...data };
+            }
+            await apiPut(API.reservations, { ...data, id });
+            showToast('Reservation updated');
+        } else {
+            const newRes = { id: generateId(), ...data, createdAt: new Date().toISOString() };
+            reservations.push(newRes);
+            await apiPost(API.reservations, newRes);
+            showToast('Group reservation created');
         }
-        showToast('Reservation updated');
-    } else {
-        reservations.push({ id: generateId(), ...data, createdAt: new Date().toISOString() });
-        showToast('Group reservation created');
+    } catch (err) {
+        console.error(err);
+        showToast('Failed to save reservation', 'error');
+        return;
     }
 
-    saveData(STORAGE_KEYS.reservations, reservations);
     closeModal('reservationModal');
     renderDashboard();
     refreshCalendar();
 }
 
-function deleteReservation(id) {
+async function deleteReservation(id) {
     if (!confirm('Delete this group reservation and all associated guests?')) return;
     reservations = reservations.filter(r => r.id !== id);
     guests = guests.filter(g => g.reservationId !== id);
-    saveData(STORAGE_KEYS.reservations, reservations);
-    saveData(STORAGE_KEYS.guests, guests);
+    try {
+        await apiDelete(API.reservations, id);
+    } catch (err) {
+        console.error(err);
+        showToast('Failed to delete reservation', 'error');
+        return;
+    }
     closeModal('reservationDetailModal');
     showToast('Reservation deleted');
     renderDashboard();
@@ -730,7 +769,7 @@ function openAssignRooms(reservationId) {
     openModal('assignRoomsModal');
 }
 
-function toggleRoomAssignment(btn, roomId, reservationId) {
+async function toggleRoomAssignment(btn, roomId, reservationId) {
     const isSelected = btn.classList.contains('selected');
 
     if (isSelected) {
@@ -753,8 +792,17 @@ function toggleRoomAssignment(btn, roomId, reservationId) {
         if (roomIdx !== -1) rooms[roomIdx].status = 'occupied';
     }
 
-    saveData(STORAGE_KEYS.rooms, rooms);
-    saveData(STORAGE_KEYS.guests, guests);
+    try {
+        // Save all modified rooms and guests
+        const modifiedRoom = rooms.find(r => r.id === roomId);
+        if (modifiedRoom) await apiPut(API.rooms, modifiedRoom);
+        for (const g of guests.filter(g => g.reservationId === reservationId)) {
+            await apiPut(API.guests, g);
+        }
+    } catch (err) {
+        console.error(err);
+        showToast('Failed to save room assignment', 'error');
+    }
 }
 
 // =============================================
@@ -832,7 +880,7 @@ function openEditRoom(id) {
     openModal('roomModal');
 }
 
-function saveRoom(e) {
+async function saveRoom(e) {
     e.preventDefault();
 
     const id = document.getElementById('roomId').value;
@@ -844,34 +892,47 @@ function saveRoom(e) {
         status: 'available'
     };
 
-    if (id) {
-        const idx = rooms.findIndex(r => r.id === id);
-        if (idx !== -1) rooms[idx] = { ...rooms[idx], ...data };
-        showToast('Room updated');
-    } else {
-        if (rooms.some(r => r.number === data.number)) {
-            showToast('Room number already exists', 'error');
-            return;
+    try {
+        if (id) {
+            const idx = rooms.findIndex(r => r.id === id);
+            if (idx !== -1) rooms[idx] = { ...rooms[idx], ...data };
+            await apiPut(API.rooms, { ...data, id });
+            showToast('Room updated');
+        } else {
+            if (rooms.some(r => r.number === data.number)) {
+                showToast('Room number already exists', 'error');
+                return;
+            }
+            const newRoom = { id: generateId(), ...data };
+            rooms.push(newRoom);
+            await apiPost(API.rooms, newRoom);
+            showToast('Room added');
         }
-        rooms.push({ id: generateId(), ...data });
-        showToast('Room added');
+    } catch (err) {
+        console.error(err);
+        showToast('Failed to save room', 'error');
+        return;
     }
 
-    saveData(STORAGE_KEYS.rooms, rooms);
     closeModal('roomModal');
     renderRooms();
     renderDashboard();
     refreshCalendar();
 }
 
-function deleteRoom() {
+async function deleteRoom() {
     const id = document.getElementById('roomId').value;
     if (!id) return;
     if (!confirm('Delete this room?')) return;
     rooms = rooms.filter(r => r.id !== id);
     guests = guests.filter(g => g.roomId !== id);
-    saveData(STORAGE_KEYS.rooms, rooms);
-    saveData(STORAGE_KEYS.guests, guests);
+    try {
+        await apiDelete(API.rooms, id);
+    } catch (err) {
+        console.error(err);
+        showToast('Failed to delete room', 'error');
+        return;
+    }
     closeModal('roomModal');
     showToast('Room deleted');
     renderRooms();
@@ -949,7 +1010,7 @@ function openAddGuestModal(reservationId) {
     openModal('guestModal');
 }
 
-function saveGuest(e) {
+async function saveGuest(e) {
     e.preventDefault();
 
     const id = document.getElementById('guestId').value;
@@ -965,16 +1026,24 @@ function saveGuest(e) {
         notes: document.getElementById('guestNotes').value.trim()
     };
 
-    if (id) {
-        const idx = guests.findIndex(g => g.id === id);
-        if (idx !== -1) guests[idx] = { ...guests[idx], ...data };
-        showToast('Guest updated');
-    } else {
-        guests.push({ id: generateId(), ...data });
-        showToast('Guest added to group');
+    try {
+        if (id) {
+            const idx = guests.findIndex(g => g.id === id);
+            if (idx !== -1) guests[idx] = { ...guests[idx], ...data };
+            await apiPut(API.guests, { ...data, id });
+            showToast('Guest updated');
+        } else {
+            const newGuest = { id: generateId(), ...data };
+            guests.push(newGuest);
+            await apiPost(API.guests, newGuest);
+            showToast('Guest added to group');
+        }
+    } catch (err) {
+        console.error(err);
+        showToast('Failed to save guest', 'error');
+        return;
     }
 
-    saveData(STORAGE_KEYS.guests, guests);
     closeModal('guestModal');
 
     // Reopen reservation detail
@@ -982,10 +1051,16 @@ function saveGuest(e) {
     renderGuests();
 }
 
-function deleteGuest(guestId, reservationId) {
+async function deleteGuest(guestId, reservationId) {
     if (!confirm('Remove this guest?')) return;
     guests = guests.filter(g => g.id !== guestId);
-    saveData(STORAGE_KEYS.guests, guests);
+    try {
+        await apiDelete(API.guests, guestId);
+    } catch (err) {
+        console.error(err);
+        showToast('Failed to delete guest', 'error');
+        return;
+    }
     showToast('Guest removed');
 
     // Refresh detail if open
@@ -1487,5 +1562,8 @@ function escapeHtml(str) {
 // INIT
 // =============================================
 
-renderDashboard();
-renderCalendar();
+(async function init() {
+    await loadAllData();
+    renderDashboard();
+    renderCalendar();
+})();
