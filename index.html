@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <link rel="stylesheet" href="style.css">
+    <title>GroupStay — Hotel Group Reservations</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <div class="logo-icon">G</div>
+                <span class="logo-text">GroupStay</span>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="#" class="nav-item active" data-page="dashboard">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+                <span>Dashboard</span>
+            </a>
+            <a href="#" class="nav-item" data-page="rooms">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                <span>Rooms</span>
+            </a>
+            <a href="#" class="nav-item" data-page="calendar">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <span>Calendar</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="sidebar-profile">
+                <div class="avatar">RM</div>
+                <div class="profile-info">
+                    <span class="profile-name">Reception Manager</span>
+                    <span class="profile-role">Admin</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Mobile Bottom Tab Bar -->
+    <nav class="mobile-tab-bar" id="mobileTabBar">
+        <a href="#" class="tab-item active" data-page="dashboard">
+            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+            <span>Dashboard</span>
+        </a>
+        <a href="#" class="tab-item" data-page="rooms">
+            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+            <span>Rooms</span>
+        </a>
+        <a href="#" class="tab-item" data-page="calendar">
+            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <span>Calendar</span>
+        </a>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content" id="mainContent">
+
+        <!-- ======================== DASHBOARD ======================== -->
+        <section class="page active" id="page-dashboard">
+            <header class="page-header">
+                <div>
+                    <h1 class="page-title">Dashboard</h1>
+                    <p class="page-subtitle">Overview of your hotel operations</p>
+                </div>
+                <button class="btn btn-primary" onclick="openNewReservationModal()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    New Group
+                </button>
+            </header>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon blue">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-active-groups">0</span>
+                        <span class="stat-label">Active Groups</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon green">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-total-guests">0</span>
+                        <span class="stat-label">Total Guests</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon orange">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-rooms-occupied">0</span>
+                        <span class="stat-label">Rooms Occupied</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon purple">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-revenue">&euro;0</span>
+                        <span class="stat-label">This Month</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Upcoming Check-ins</h3>
+                        <a href="#" class="card-link" onclick="navigateTo('reservations')">View All</a>
+                    </div>
+                    <div class="card-body" id="upcoming-checkins">
+                        <div class="empty-state small">
+                            <p>No upcoming check-ins</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Today's Activity</h3>
+                    </div>
+                    <div class="card-body" id="today-activity">
+                        <div class="empty-state small">
+                            <p>No activity today</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card occupancy-card">
+                    <div class="card-header">
+                        <h3>Room Occupancy</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="occupancy-ring-container">
+                            <div class="occupancy-ring" id="occupancy-ring">
+                                <svg viewBox="0 0 120 120">
+                                    <circle cx="60" cy="60" r="52" fill="none" stroke="var(--bg-tertiary)" stroke-width="10"/>
+                                    <circle cx="60" cy="60" r="52" fill="none" stroke="var(--accent)" stroke-width="10" stroke-dasharray="326.73" stroke-dashoffset="326.73" stroke-linecap="round" transform="rotate(-90 60 60)" id="occupancy-circle"/>
+                                </svg>
+                                <div class="occupancy-percent" id="occupancy-percent">0%</div>
+                            </div>
+                        </div>
+                        <div class="occupancy-legend">
+                            <div class="legend-item"><span class="legend-dot occupied"></span>Occupied <strong id="legend-occupied">0</strong></div>
+                            <div class="legend-item"><span class="legend-dot available"></span>Available <strong id="legend-available">0</strong></div>
+                            <div class="legend-item"><span class="legend-dot maintenance"></span>Maintenance <strong id="legend-maintenance">0</strong></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ======================== ROOMS ======================== -->
+        <section class="page" id="page-rooms">
+            <header class="page-header">
+                <div>
+                    <h1 class="page-title">Rooms</h1>
+                    <p class="page-subtitle">Manage hotel rooms and availability</p>
+                </div>
+                <button class="btn btn-primary" onclick="openNewRoomModal()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Add Room
+                </button>
+            </header>
+
+            <div class="filters-bar">
+                <div class="search-box">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" placeholder="Search rooms..." id="searchRooms" oninput="filterRooms()">
+                </div>
+                <div class="filter-chips">
+                    <button class="chip active" data-filter="all" onclick="setRoomFilter('all', this)">All</button>
+                    <button class="chip" data-filter="available" onclick="setRoomFilter('available', this)">Available</button>
+                    <button class="chip" data-filter="occupied" onclick="setRoomFilter('occupied', this)">Occupied</button>
+                    <button class="chip" data-filter="maintenance" onclick="setRoomFilter('maintenance', this)">Maintenance</button>
+                </div>
+            </div>
+
+            <div class="rooms-grid" id="roomsGrid">
+                <!-- Populated by JS -->
+            </div>
+        </section>
+
+        <!-- ======================== CALENDAR (Planning Board) ======================== -->
+        <section class="page" id="page-calendar">
+            <!-- Top toolbar -->
+            <div class="planner-toolbar">
+                <div class="planner-toolbar-left">
+                    <h1 class="page-title" style="margin-right:16px">Calendar</h1>
+                    <button class="btn btn-ghost" onclick="calendarPrev()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="15 18 9 12 15 6"/></svg>
+                    </button>
+                    <button class="btn btn-secondary btn-sm" onclick="calendarToday()">Today</button>
+                    <button class="btn btn-ghost" onclick="calendarNext()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+                </div>
+                <div class="planner-toolbar-right">
+                    <button class="btn btn-primary btn-sm" onclick="openNewReservationModal()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        New Booking
+                    </button>
+                    <div class="planner-legend">
+                        <span class="planner-legend-item"><span class="planner-legend-dot" style="background:var(--green)"></span>Confirmed</span>
+                        <span class="planner-legend-item"><span class="planner-legend-dot" style="background:var(--orange)"></span>Pending</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Planning board -->
+            <div class="planner-wrapper">
+                <div class="planner-board" id="plannerBoard">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Month quick-nav bar -->
+            <div class="planner-month-bar" id="plannerMonthBar">
+                <!-- Populated by JS -->
+            </div>
+        </section>
+
+        <!-- ======================== GUESTS ======================== -->
+        <section class="page" id="page-guests">
+            <header class="page-header">
+                <div>
+                    <h1 class="page-title">Guests</h1>
+                    <p class="page-subtitle">All guests across groups</p>
+                </div>
+            </header>
+
+            <div class="filters-bar">
+                <div class="search-box">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" placeholder="Search guests..." id="searchGuests" oninput="filterGuests()">
+                </div>
+            </div>
+
+            <div class="guests-table-wrap">
+                <table class="guests-table" id="guestsTable">
+                    <thead>
+                        <tr>
+                            <th>Guest</th>
+                            <th>Group</th>
+                            <th>Room</th>
+                            <th>Check-in</th>
+                            <th>Check-out</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="guestsTableBody">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <!-- ======================== MODALS ======================== -->
+
+    <!-- New / Edit Reservation Modal -->
+    <div class="modal-overlay" id="reservationModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="reservationModalTitle">New Group Reservation</h2>
+                <button class="modal-close" onclick="closeModal('reservationModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="reservationForm" onsubmit="saveReservation(event)">
+                    <input type="hidden" id="resId">
+                    <div class="form-grid">
+                        <div class="form-group full">
+                            <label>Group Name</label>
+                            <input type="text" id="resGroupName" placeholder="e.g. Smith Family Reunion" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Check-in</label>
+                            <input type="hidden" id="resCheckin" required>
+                            <div class="mini-cal-wrapper" data-target="resCheckin">
+                                <div class="mini-cal-input" onclick="toggleDatePicker(this)">
+                                    <span class="mini-cal-display">Select date...</span>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                </div>
+                                <div class="mini-cal-dropdown">
+                                    <div class="mini-cal-header">
+                                        <button type="button" class="mini-cal-nav" onclick="datePickerNav(this,-1)">&lsaquo;</button>
+                                        <span class="mini-cal-month-label"></span>
+                                        <button type="button" class="mini-cal-nav" onclick="datePickerNav(this,1)">&rsaquo;</button>
+                                    </div>
+                                    <div class="mini-cal-days-header"><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span></div>
+                                    <div class="mini-cal-grid"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Check-out</label>
+                            <input type="hidden" id="resCheckout" required>
+                            <div class="mini-cal-wrapper" data-target="resCheckout">
+                                <div class="mini-cal-input" onclick="toggleDatePicker(this)">
+                                    <span class="mini-cal-display">Select date...</span>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                </div>
+                                <div class="mini-cal-dropdown">
+                                    <div class="mini-cal-header">
+                                        <button type="button" class="mini-cal-nav" onclick="datePickerNav(this,-1)">&lsaquo;</button>
+                                        <span class="mini-cal-month-label"></span>
+                                        <button type="button" class="mini-cal-nav" onclick="datePickerNav(this,1)">&rsaquo;</button>
+                                    </div>
+                                    <div class="mini-cal-days-header"><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span></div>
+                                    <div class="mini-cal-grid"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group full">
+                            <label>
+                                Rooms
+                                <label class="room-select-all-label"><input type="checkbox" id="resRoomSelectAll" onchange="toggleAllRoomCheckboxes(this)"> Select All</label>
+                            </label>
+                            <div class="room-checklist" id="resRoomChecklist">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Status</label>
+                            <select id="resStatus" onchange="toggleExpirationField()">
+                                <option value="pending">Pending</option>
+                                <option value="confirmed">Confirmed</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="resExpirationGroup" style="display:none">
+                            <label>Expiration Date</label>
+                            <input type="hidden" id="resExpiration">
+                            <div class="mini-cal-wrapper" data-target="resExpiration">
+                                <div class="mini-cal-input" onclick="toggleDatePicker(this)">
+                                    <span class="mini-cal-display">Select date...</span>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                </div>
+                                <div class="mini-cal-dropdown">
+                                    <div class="mini-cal-header">
+                                        <button type="button" class="mini-cal-nav" onclick="datePickerNav(this,-1)">&lsaquo;</button>
+                                        <span class="mini-cal-month-label"></span>
+                                        <button type="button" class="mini-cal-nav" onclick="datePickerNav(this,1)">&rsaquo;</button>
+                                    </div>
+                                    <div class="mini-cal-days-header"><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span></div>
+                                    <div class="mini-cal-grid"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Total Price (&euro;)</label>
+                            <input type="number" id="resPrice" min="0" step="0.01" placeholder="0.00">
+                        </div>
+                        <div class="form-group full">
+                            <label>Notes</label>
+                            <textarea id="resNotes" rows="3" placeholder="Special requests, dietary needs, etc."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-ghost" onclick="closeModal('reservationModal')">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Reservation</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reservation Detail Modal -->
+    <div class="modal-overlay" id="reservationDetailModal">
+        <div class="modal modal-large">
+            <div class="modal-header">
+                <h2 id="detailGroupName">Group Details</h2>
+                <button class="modal-close" onclick="closeModal('reservationDetailModal')">&times;</button>
+            </div>
+            <div class="modal-body" id="reservationDetailBody">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- New Room Modal -->
+    <div class="modal-overlay" id="roomModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="roomModalTitle">Add Room</h2>
+                <button class="modal-close" onclick="closeModal('roomModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="roomForm" onsubmit="saveRoom(event)">
+                    <input type="hidden" id="roomId">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Room Number</label>
+                            <input type="text" id="roomNumber" placeholder="e.g. 101" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Floor</label>
+                            <input type="number" id="roomFloor" min="0" value="1">
+                        </div>
+                        <div class="form-group">
+                            <label>Type</label>
+                            <select id="roomType">
+                                <option value="single">Single</option>
+                                <option value="double">Double</option>
+                                <option value="twin">Twin</option>
+                                <option value="triple">Triple</option>
+                                <option value="quad">Quad</option>
+                                <option value="suite">Suite</option>
+                                <option value="family">Family</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Capacity</label>
+                            <input type="number" id="roomCapacity" min="1" value="2">
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-danger" id="deleteRoomBtn" onclick="deleteRoom()" style="margin-right:auto;display:none">Delete</button>
+                        <button type="button" class="btn btn-ghost" onclick="closeModal('roomModal')">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Room</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assign Rooms Modal -->
+    <div class="modal-overlay" id="assignRoomsModal">
+        <div class="modal modal-large">
+            <div class="modal-header">
+                <h2>Assign Rooms to Group</h2>
+                <button class="modal-close" onclick="closeModal('assignRoomsModal')">&times;</button>
+            </div>
+            <div class="modal-body" id="assignRoomsBody">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Guest Modal -->
+    <div class="modal-overlay" id="guestModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Add Guest to Group</h2>
+                <button class="modal-close" onclick="closeModal('guestModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="guestForm" onsubmit="saveGuest(event)">
+                    <input type="hidden" id="guestId">
+                    <input type="hidden" id="guestReservationId">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>First Name</label>
+                            <input type="text" id="guestFirstName" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Last Name</label>
+                            <input type="text" id="guestLastName" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="guestEmail">
+                        </div>
+                        <div class="form-group">
+                            <label>Phone</label>
+                            <input type="tel" id="guestPhone">
+                        </div>
+                        <div class="form-group">
+                            <label>Document Type</label>
+                            <select id="guestDocType">
+                                <option value="">Select...</option>
+                                <option value="passport">Passport</option>
+                                <option value="id-card">ID Card</option>
+                                <option value="drivers-license">Driver's License</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Document Number</label>
+                            <input type="text" id="guestDocNumber">
+                        </div>
+                        <div class="form-group">
+                            <label>Assigned Room</label>
+                            <select id="guestRoom">
+                                <option value="">Unassigned</option>
+                            </select>
+                        </div>
+                        <div class="form-group full">
+                            <label>Notes</label>
+                            <textarea id="guestNotes" rows="2" placeholder="Allergies, preferences..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-ghost" onclick="closeModal('guestModal')">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Guest</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
