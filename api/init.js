@@ -8,7 +8,7 @@ export default async function handler(req, res) {
   try {
     const sql = neon(process.env.DATABASE_URL);
 
-    await sql(`
+    await sql`
       CREATE TABLE IF NOT EXISTS rooms (
         id TEXT PRIMARY KEY,
         number TEXT UNIQUE NOT NULL,
@@ -18,9 +18,9 @@ export default async function handler(req, res) {
         status TEXT NOT NULL DEFAULT 'available',
         price NUMERIC DEFAULT 0
       )
-    `);
+    `;
 
-    await sql(`
+    await sql`
       CREATE TABLE IF NOT EXISTS reservations (
         id TEXT PRIMARY KEY,
         group_name TEXT NOT NULL,
@@ -37,9 +37,9 @@ export default async function handler(req, res) {
         notes TEXT,
         created_at TIMESTAMPTZ DEFAULT NOW()
       )
-    `);
+    `;
 
-    await sql(`
+    await sql`
       CREATE TABLE IF NOT EXISTS guests (
         id TEXT PRIMARY KEY,
         reservation_id TEXT REFERENCES reservations(id) ON DELETE CASCADE,
@@ -52,11 +52,11 @@ export default async function handler(req, res) {
         room_id TEXT,
         notes TEXT
       )
-    `);
+    `;
 
     res.status(200).json({ message: 'Tables created successfully' });
   } catch (err) {
     console.error('Init error:', err);
-    res.status(500).json({ error: err.message, stack: err.stack });
+    res.status(500).json({ error: err.message });
   }
 }

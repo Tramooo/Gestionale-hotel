@@ -5,7 +5,7 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const rows = await sql(`SELECT * FROM reservations ORDER BY created_at DESC`);
+      const rows = await sql`SELECT * FROM reservations ORDER BY created_at DESC`;
       const reservations = rows.map(r => ({
         id: r.id,
         groupName: r.group_name,
@@ -27,27 +27,32 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST') {
       const r = req.body;
-      await sql(`
+      const roomIds = JSON.stringify(r.roomIds || []);
+      const expiration = r.expiration || null;
+      await sql`
         INSERT INTO reservations (id, group_name, organizer, email, checkin, checkout, guest_count, room_count, room_ids, status, expiration, price, notes, created_at)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
-      `, [r.id, r.groupName, r.organizer, r.email, r.checkin, r.checkout, r.guestCount, r.roomCount, JSON.stringify(r.roomIds || []), r.status, r.expiration || null, r.price, r.notes, r.createdAt]);
+        VALUES (${r.id}, ${r.groupName}, ${r.organizer}, ${r.email}, ${r.checkin}, ${r.checkout}, ${r.guestCount}, ${r.roomCount}, ${roomIds}, ${r.status}, ${expiration}, ${r.price}, ${r.notes}, ${r.createdAt})
+      `;
       return res.status(201).json({ success: true });
     }
 
     if (req.method === 'PUT') {
       const r = req.body;
-      await sql(`
-        UPDATE reservations SET group_name=$1, organizer=$2, email=$3, checkin=$4, checkout=$5,
-        guest_count=$6, room_count=$7, room_ids=$8, status=$9, expiration=$10, price=$11, notes=$12
-        WHERE id=$13
-      `, [r.groupName, r.organizer, r.email, r.checkin, r.checkout, r.guestCount, r.roomCount, JSON.stringify(r.roomIds || []), r.status, r.expiration || null, r.price, r.notes, r.id]);
+      const roomIds = JSON.stringify(r.roomIds || []);
+      const expiration = r.expiration || null;
+      await sql`
+        UPDATE reservations SET group_name=${r.groupName}, organizer=${r.organizer}, email=${r.email},
+        checkin=${r.checkin}, checkout=${r.checkout}, guest_count=${r.guestCount}, room_count=${r.roomCount},
+        room_ids=${roomIds}, status=${r.status}, expiration=${expiration}, price=${r.price}, notes=${r.notes}
+        WHERE id=${r.id}
+      `;
       return res.status(200).json({ success: true });
     }
 
     if (req.method === 'DELETE') {
       const { id } = req.query;
-      await sql(`DELETE FROM guests WHERE reservation_id = $1`, [id]);
-      await sql(`DELETE FROM reservations WHERE id = $1`, [id]);
+      await sql`DELETE FROM guests WHERE reservation_id = ${id}`;
+      await sql`DELETE FROM reservations WHERE id = ${id}`;
       return res.status(200).json({ success: true });
     }
 
