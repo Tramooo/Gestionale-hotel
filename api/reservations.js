@@ -6,18 +6,19 @@ export default async function handler(req, res) {
   try {
     if (req.method === 'GET') {
       const rows = await sql`SELECT * FROM reservations ORDER BY created_at DESC`;
+      const toDateStr = (d) => d ? new Date(d).toISOString().split('T')[0] : null;
       const reservations = rows.map(r => ({
         id: r.id,
         groupName: r.group_name,
         organizer: r.organizer,
         email: r.email,
-        checkin: r.checkin,
-        checkout: r.checkout,
+        checkin: toDateStr(r.checkin),
+        checkout: toDateStr(r.checkout),
         guestCount: r.guest_count,
         roomCount: r.room_count,
         roomIds: JSON.parse(r.room_ids || '[]'),
         status: r.status,
-        expiration: r.expiration,
+        expiration: toDateStr(r.expiration),
         price: Number(r.price),
         notes: r.notes,
         createdAt: r.created_at
