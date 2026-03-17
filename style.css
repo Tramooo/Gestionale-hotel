@@ -1207,7 +1207,7 @@ body {
     text-transform: uppercase;
     letter-spacing: 0.5px;
     background: var(--bg-primary);
-    border-bottom: 1px solid var(--border-light);
+    border-bottom: 1px solid var(--border);
 }
 
 .planner-room-status {
@@ -1249,18 +1249,18 @@ body {
     cursor: crosshair;
 }
 
-/* Floor header row in grid */
+/* Floor header row in grid — solid unified bar */
 .p-grid-floor-row {
     height: 26px;
     display: flex;
     background: var(--bg-primary);
+    border-bottom: 1px solid var(--border);
 }
 
 .p-floor-cell {
     height: 100%;
-    border-right: 1px solid var(--border-light);
-    border-bottom: 1px solid var(--border-light);
     flex-shrink: 0;
+    border: none;
 }
 
 /* Room row in grid */
@@ -1277,11 +1277,14 @@ body {
     border-right: 1px solid var(--border-light);
     flex-shrink: 0;
 }
-.p-grid-cell.weekend { background: rgba(0,0,0,0.015); }
-.p-grid-cell.today-col { background: rgba(0, 122, 255, 0.04); }
+.p-grid-cell.weekend { background: rgba(0,0,0,0.06); }
+.p-grid-cell.today-col { background: rgba(0, 122, 255, 0.06); }
+
+[data-theme="dark"] .p-grid-cell.weekend { background: rgba(255,255,255,0.06); }
+[data-theme="dark"] .p-grid-cell.today-col { background: rgba(0, 122, 255, 0.1); }
 
 @media (prefers-color-scheme: dark) {
-    .p-grid-cell.weekend { background: rgba(255,255,255,0.02); }
+    :not([data-theme="light"]) .p-grid-cell.weekend { background: rgba(255,255,255,0.06); }
 }
 
 /* Drag-to-select overlay */
