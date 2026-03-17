@@ -1281,12 +1281,17 @@ body {
 .p-grid-cell.weekend { background: #bdbfbf; }
 .p-grid-cell.today-col { background: rgba(0, 122, 255, 0.08); }
 
-[data-theme="dark"] .p-grid-cell { background: #2a2a2e; }
+/* Ensure light mode always uses these colors */
+[data-theme="light"] .p-grid-cell { background: #f5f9fa; }
+[data-theme="light"] .p-grid-cell.weekend { background: #bdbfbf; }
+[data-theme="light"] .p-grid-cell.today-col { background: rgba(0, 122, 255, 0.08); }
+
+[data-theme="dark"] .p-grid-cell { background: #2a2a2e; border-right-color: #3a3a3e; }
 [data-theme="dark"] .p-grid-cell.weekend { background: #333338; }
 [data-theme="dark"] .p-grid-cell.today-col { background: rgba(0, 122, 255, 0.15); }
 
 @media (prefers-color-scheme: dark) {
-    :not([data-theme="light"]) .p-grid-cell { background: #2a2a2e; }
+    :not([data-theme="light"]) .p-grid-cell { background: #2a2a2e; border-right-color: #3a3a3e; }
     :not([data-theme="light"]) .p-grid-cell.weekend { background: #333338; }
 }
 
