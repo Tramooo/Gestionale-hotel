@@ -1228,6 +1228,7 @@ body {
     display: flex;
     position: relative;
     border-bottom: 1px solid var(--border-light);
+    overflow: visible;
 }
 
 .p-grid-cell {
@@ -1268,36 +1269,33 @@ body {
     box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
-/* Reservation bar */
+/* Reservation bar — right-pointing arrow shape */
 .planner-res-bar {
     position: absolute;
-    top: 3px;
-    height: 28px;
-    border-radius: 6px;
+    top: 0;
+    height: 100%;
     display: flex;
     align-items: center;
-    padding: 0 8px;
+    padding: 0 14px 0 6px;
     font-size: 11px;
     font-weight: 600;
     color: white;
     cursor: pointer;
     z-index: 2;
-    overflow: hidden;
     white-space: nowrap;
-    text-overflow: ellipsis;
-    transition: filter 0.15s ease, transform 0.15s ease;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    transition: filter 0.15s ease;
+    background: var(--accent);
+    clip-path: polygon(0% 0%, calc(100% - 12px) 0%, 100% 50%, calc(100% - 12px) 100%, 0% 100%);
 }
 
 .planner-res-bar:hover {
-    filter: brightness(1.1);
-    transform: scaleY(1.08);
+    filter: brightness(1.15);
     z-index: 3;
-    box-shadow: 0 3px 8px rgba(0,0,0,0.25);
 }
 
-.planner-res-bar.confirmed { background: var(--green); }
+.planner-res-bar.confirmed { background: var(--accent); }
 .planner-res-bar.pending { background: var(--orange); }
+.planner-res-bar.cancelled { background: var(--red); }
 
 .planner-res-bar .bar-label { overflow: hidden; text-overflow: ellipsis; }
 

@@ -1882,7 +1882,7 @@ function buildBoardHTML() {
             // Reservation bars
             (rb[room.id] || []).forEach(b => {
                 const left = b.startIdx * DW;
-                const width = (b.endIdx - b.startIdx) * DW - 2;
+                const width = (b.endIdx - b.startIdx) * DW;
                 const label = escapeHtml(b.res.groupName);
                 grid += `<div class="planner-res-bar ${b.res.status}" style="left:${left}px;width:${width}px" onclick="openReservationDetail('${b.res.id}')" title="${label} (${formatDateDisplay(b.res.checkin)} - ${formatDateDisplay(b.res.checkout)})"><span class="bar-label">${label}</span></div>`;
             });
