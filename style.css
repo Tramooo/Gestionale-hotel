@@ -1277,7 +1277,7 @@ body {
     border-right: 1px solid var(--border-light);
     flex-shrink: 0;
 }
-.p-grid-cell.weekend { background: #f0f0f4; }
+.p-grid-cell.weekend { background: #f7f7f9; }
 .p-grid-cell.today-col { background: rgba(0, 122, 255, 0.08); }
 
 [data-theme="dark"] .p-grid-cell.weekend { background: #232326; }

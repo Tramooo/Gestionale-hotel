@@ -1720,6 +1720,7 @@ function renderCalendar() {
     const board = document.getElementById('plannerBoard');
     const anchor = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), calendarDate.getDate());
     plannerStartDate = new Date(anchor);
+    plannerStartDate.setHours(0, 0, 0, 0);
     plannerStartDate.setDate(plannerStartDate.getDate() - PLANNER_INITIAL_PAST);
     plannerTotalDays = PLANNER_INITIAL_PAST + PLANNER_INITIAL_FUTURE;
 
@@ -1855,8 +1856,10 @@ function buildBoardHTML() {
     // === 4. GRID BODY (bottom-right, master scroller) ===
     let grid = '<div class="p-grid-panel"><div class="p-grid-inner">';
 
-    // Today line
-    const todayIdx = dateToDayIndex(new Date());
+    // Today line — use midnight to avoid timezone drift
+    const todayMidnight = new Date();
+    todayMidnight.setHours(0, 0, 0, 0);
+    const todayIdx = dateToDayIndex(todayMidnight);
     if (todayIdx >= 0 && todayIdx < plannerTotalDays) {
         grid += `<div class="planner-today-line" style="left:${todayIdx * DW + DW / 2}px"></div>`;
     }
