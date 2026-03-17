@@ -712,46 +712,66 @@ function openReservationDetail(id) {
         ${r.notes ? `<div class="detail-item" style="margin-bottom:16px"><span class="label">Notes</span><span class="value">${escapeHtml(r.notes)}</span></div>` : ''}
 
         <div class="detail-section">
-            <h3>
-                Guests (${resGuests.length})
-                <button class="btn btn-sm btn-primary" onclick="openAddGuestModal('${r.id}')">Add Guest</button>
-            </h3>
-            <div class="detail-guests-list">
-                ${resGuests.length === 0 ? '<div class="empty-state small"><p>No guests added yet</p></div>' :
-                resGuests.map(g => {
-                    const room = g.roomId ? rooms.find(rm => rm.id === g.roomId) : null;
-                    return `
-                        <div class="detail-guest-item">
-                            <div class="guest-avatar">${getInitials(g.firstName + ' ' + g.lastName)}</div>
-                            <div class="guest-info">
-                                <strong>${escapeHtml(g.firstName + ' ' + g.lastName)}</strong><br>
-                                <span>${room ? 'Room ' + room.number : 'No room assigned'}${g.docNumber ? ' &middot; ' + g.docType + ': ' + g.docNumber : ''}</span>
-                            </div>
-                            <button class="btn btn-ghost btn-sm" onclick="openEditGuestModal('${g.id}')">Edit</button>
-                            <button class="btn btn-ghost btn-sm" onclick="deleteGuest('${g.id}', '${r.id}')">Remove</button>
-                        </div>
-                    `;
-                }).join('')}
+            <div style="display:flex;align-items:center;justify-content:space-between">
+                <span style="color:var(--text-secondary);font-size:14px">Guests: <strong style="color:var(--text-primary)">${resGuests.length}</strong></span>
+                <button class="btn btn-sm btn-secondary" onclick="openGuestsList('${r.id}')">Manage Guests</button>
             </div>
         </div>
+    `;
 
-        <div class="detail-section" style="margin-top:16px">
+    openModal('reservationDetailModal');
+}
+
+// ---- Guests List Modal ----
+
+function openGuestsList(reservationId) {
+    const r = reservations.find(x => x.id === reservationId);
+    if (!r) return;
+
+    const resGuests = guests.filter(g => g.reservationId === reservationId);
+
+    document.getElementById('guestsListTitle').textContent = `Guests — ${r.groupName}`;
+    const body = document.getElementById('guestsListBody');
+    body.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+            <span style="color:var(--text-secondary)">${resGuests.length} guest(s)</span>
+            <button class="btn btn-sm btn-primary" onclick="openAddGuestModal('${reservationId}')">Add Guest</button>
+        </div>
+        <div class="detail-guests-list">
+            ${resGuests.length === 0 ? '<div class="empty-state small"><p>No guests added yet</p></div>' :
+            resGuests.map(g => {
+                const room = g.roomId ? rooms.find(rm => rm.id === g.roomId) : null;
+                return `
+                    <div class="detail-guest-item">
+                        <div class="guest-avatar">${getInitials(g.firstName + ' ' + g.lastName)}</div>
+                        <div class="guest-info">
+                            <strong>${escapeHtml(g.firstName + ' ' + g.lastName)}</strong><br>
+                            <span>${room ? 'Room ' + room.number : 'No room assigned'}${g.docNumber ? ' &middot; ' + g.docType + ': ' + g.docNumber : ''}</span>
+                        </div>
+                        <button class="btn btn-ghost btn-sm" onclick="openEditGuestModal('${g.id}')">Edit</button>
+                        <button class="btn btn-ghost btn-sm" onclick="deleteGuest('${g.id}', '${reservationId}')">Remove</button>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+
+        <div class="detail-section" style="margin-top:24px">
             <h3>Schedine Alloggiati</h3>
             <div id="alloggiatiPanel">
                 <p style="color:var(--text-secondary);margin-bottom:12px">
                     Send guest registration forms to the Italian police (Alloggiati Web).
                 </p>
                 <div style="display:flex;gap:8px;flex-wrap:wrap">
-                    <button class="btn btn-sm btn-secondary" onclick="alloggiatiPreview('${r.id}')">Preview Records</button>
-                    <button class="btn btn-sm btn-secondary" onclick="alloggiatiTest('${r.id}')">Test</button>
-                    <button class="btn btn-sm btn-primary" onclick="alloggiatiSend('${r.id}')">Send to Police</button>
+                    <button class="btn btn-sm btn-secondary" onclick="alloggiatiPreview('${reservationId}')">Preview Records</button>
+                    <button class="btn btn-sm btn-secondary" onclick="alloggiatiTest('${reservationId}')">Test</button>
+                    <button class="btn btn-sm btn-primary" onclick="alloggiatiSend('${reservationId}')">Send to Police</button>
                 </div>
                 <div id="alloggiatiResults" style="margin-top:12px"></div>
             </div>
         </div>
     `;
 
-    openModal('reservationDetailModal');
+    openModal('guestsListModal');
 }
 
 // ---- Alloggiati Web ----
@@ -1497,7 +1517,7 @@ function openAddGuestModal(reservationId) {
         select.innerHTML += `<option value="${r.id}">Room ${r.number} (${r.type})</option>`;
     });
 
-    closeModal('reservationDetailModal');
+    closeModal('guestsListModal');
     openModal('guestModal');
     loadAlloggiatiTables(); // load in background
 }
@@ -1553,7 +1573,7 @@ function openEditGuestModal(guestId) {
         select.innerHTML += `<option value="${r.id}" ${r.id === g.roomId ? 'selected' : ''}>Room ${r.number} (${r.type})</option>`;
     });
 
-    closeModal('reservationDetailModal');
+    closeModal('guestsListModal');
     openModal('guestModal');
 }
 
@@ -1601,7 +1621,8 @@ async function saveGuest(e) {
 
     closeModal('guestModal');
 
-    // Reopen reservation detail
+    // Reopen guests list and refresh reservation detail
+    openGuestsList(data.reservationId);
     openReservationDetail(data.reservationId);
     renderGuests();
 }
@@ -1618,11 +1639,9 @@ async function deleteGuest(guestId, reservationId) {
     }
     showToast('Guest removed');
 
-    // Refresh detail if open
-    const detailModal = document.getElementById('reservationDetailModal');
-    if (detailModal.classList.contains('open')) {
-        openReservationDetail(reservationId);
-    }
+    // Refresh guests list and reservation detail
+    openGuestsList(reservationId);
+    openReservationDetail(reservationId);
     renderGuests();
 }
 
