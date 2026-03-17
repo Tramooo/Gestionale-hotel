@@ -1269,14 +1269,14 @@ body {
     box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
-/* Reservation bar — chevron/arrow shape */
+/* Reservation bar — arrow shape pointing right on both ends */
 .planner-res-bar {
     position: absolute;
     top: 1px;
     height: calc(100% - 2px);
     display: flex;
     align-items: center;
-    padding: 0 10px 0 8px;
+    padding: 0 12px 0 12px;
     font-size: 11px;
     font-weight: 600;
     color: white;
@@ -1285,17 +1285,18 @@ body {
     white-space: nowrap;
     transition: filter 0.15s ease;
     background: var(--accent);
-    clip-path: polygon(6px 0%, calc(100% - 6px) 0%, 100% 50%, calc(100% - 6px) 100%, 6px 100%, 0% 50%);
+    /* Left: right-pointing notch; Right: right-pointing arrow */
+    clip-path: polygon(8px 0%, calc(100% - 8px) 0%, 100% 50%, calc(100% - 8px) 100%, 8px 100%, 0% 50%);
 }
 
+/* First bar in a sequence — flat left edge, arrow right */
 .planner-res-bar.bar-first {
-    clip-path: polygon(0% 0%, calc(100% - 6px) 0%, 100% 50%, calc(100% - 6px) 100%, 0% 100%);
+    clip-path: polygon(0% 0%, calc(100% - 8px) 0%, 100% 50%, calc(100% - 8px) 100%, 0% 100%);
     padding-left: 6px;
 }
 
 .planner-res-bar:hover {
     filter: brightness(1.15);
-    z-index: 3;
 }
 
 .planner-res-bar.confirmed { background: var(--accent); }

@@ -1879,16 +1879,18 @@ function buildBoardHTML() {
                 else if (dow === 0 || dow === 6) c += ' weekend';
                 grid += `<div class="${c}" style="width:${DW}px" data-day="${i}"></div>`;
             }
-            // Reservation bars — sort by start, overlap arrows by 6px
+            // Reservation bars — sort by start
             const bookings = (rb[room.id] || []).slice().sort((a, b) => a.startIdx - b.startIdx);
             bookings.forEach((b, bi) => {
-                const ARROW = 6;
-                const isFirst = bi === 0 || bookings[bi - 1].endIdx < b.startIdx;
-                const hasPrev = !isFirst;
-                const left = b.startIdx * DW - (hasPrev ? ARROW : 0);
-                const width = (b.endIdx - b.startIdx) * DW + (hasPrev ? ARROW : 0);
+                const ARROW = 8;
+                const hasNext = bi < bookings.length - 1 && bookings[bi + 1].startIdx <= b.endIdx;
+                const hasPrev = bi > 0 && bookings[bi - 1].endIdx >= b.startIdx;
+                // Extend right into next bar's notch area
+                const left = b.startIdx * DW;
+                const width = (b.endIdx - b.startIdx) * DW + (hasNext ? ARROW : 0);
                 const label = escapeHtml(b.res.groupName);
-                const cls = `planner-res-bar ${b.res.status}${isFirst ? ' bar-first' : ''}`;
+                const cls = `planner-res-bar ${b.res.status}${hasPrev ? '' : ' bar-first'}`;
+                // Earlier bars get lower z-index so their arrow sits UNDER the next bar's notch
                 grid += `<div class="${cls}" style="left:${left}px;width:${width}px;z-index:${2 + bi}" onclick="openReservationDetail('${b.res.id}')" title="${label} (${formatDateDisplay(b.res.checkin)} - ${formatDateDisplay(b.res.checkout)})"><span class="bar-label">${label}</span></div>`;
             });
             grid += '</div>';
