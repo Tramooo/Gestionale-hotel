@@ -2110,8 +2110,7 @@ function onGridDragEnd() {
     }
     dragState = null;
 
-    // Only open modal if dragged at least 1 day
-    if (endIdx - startIdx < 1) return;
+    // Allow single click (1 night) or drag
 
     const checkinDate = dayIndexToDate(startIdx);
     const checkoutDate = dayIndexToDate(endIdx + 1);
