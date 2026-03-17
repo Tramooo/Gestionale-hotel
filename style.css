@@ -1269,14 +1269,14 @@ body {
     box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
-/* Reservation bar — right-pointing arrow shape */
+/* Reservation bar — chevron/arrow shape */
 .planner-res-bar {
     position: absolute;
     top: 0;
     height: 100%;
     display: flex;
     align-items: center;
-    padding: 0 14px 0 6px;
+    padding: 0 16px 0 14px;
     font-size: 11px;
     font-weight: 600;
     color: white;
@@ -1285,7 +1285,14 @@ body {
     white-space: nowrap;
     transition: filter 0.15s ease;
     background: var(--accent);
+    /* Notched left + pointed right: chevron shape */
+    clip-path: polygon(12px 0%, calc(100% - 12px) 0%, 100% 50%, calc(100% - 12px) 100%, 12px 100%, 0% 50%);
+}
+
+/* First bar or bar starting at day 0 — flat left edge */
+.planner-res-bar.bar-first {
     clip-path: polygon(0% 0%, calc(100% - 12px) 0%, 100% 50%, calc(100% - 12px) 100%, 0% 100%);
+    padding-left: 6px;
 }
 
 .planner-res-bar:hover {
