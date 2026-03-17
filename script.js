@@ -1879,10 +1879,10 @@ function buildBoardHTML() {
                 else if (dow === 0 || dow === 6) c += ' weekend';
                 grid += `<div class="${c}" style="width:${DW}px" data-day="${i}"></div>`;
             }
-            // Reservation bars — sort by start, overlap arrows by 12px
+            // Reservation bars — sort by start, overlap arrows by 6px
             const bookings = (rb[room.id] || []).slice().sort((a, b) => a.startIdx - b.startIdx);
             bookings.forEach((b, bi) => {
-                const ARROW = 12;
+                const ARROW = 6;
                 const isFirst = bi === 0 || bookings[bi - 1].endIdx < b.startIdx;
                 const hasPrev = !isFirst;
                 const left = b.startIdx * DW - (hasPrev ? ARROW : 0);
