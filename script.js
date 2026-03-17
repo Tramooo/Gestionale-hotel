@@ -452,13 +452,13 @@ function updateFloorAndSelectAll() {
 }
 
 function updateRoomCount() {
-    const count = document.querySelectorAll('#resRoomChecklist input[type="checkbox"]:checked').length;
+    const count = document.querySelectorAll('#resRoomChecklist .room-check-item input[type="checkbox"]:checked').length;
     const el = document.getElementById('resRoomCount');
     if (el) el.textContent = `${count} room${count !== 1 ? 's' : ''} selected`;
 }
 
 function getSelectedRoomIds() {
-    return [...document.querySelectorAll('#resRoomChecklist input[type="checkbox"]:checked')].map(c => c.value);
+    return [...document.querySelectorAll('#resRoomChecklist .room-check-item input[type="checkbox"]:checked')].map(c => c.value);
 }
 
 function getAssignedRoomIds(resId) {
