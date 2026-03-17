@@ -1269,14 +1269,14 @@ body {
     box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
-/* Reservation bar — arrow shape pointing right on both ends */
+/* Reservation bar — arrow shape */
 .planner-res-bar {
     position: absolute;
     top: 1px;
     height: calc(100% - 2px);
     display: flex;
     align-items: center;
-    padding: 0 12px 0 12px;
+    padding: 0 10px 0 8px;
     font-size: 11px;
     font-weight: 600;
     color: white;
@@ -1285,14 +1285,14 @@ body {
     white-space: nowrap;
     transition: filter 0.15s ease;
     background: var(--accent);
-    /* Left: right-pointing notch; Right: right-pointing arrow */
-    clip-path: polygon(8px 0%, calc(100% - 8px) 0%, 100% 50%, calc(100% - 8px) 100%, 8px 100%, 0% 50%);
+    /* Flat left, arrow right */
+    clip-path: polygon(0% 0%, calc(100% - 10px) 0%, 100% 50%, calc(100% - 10px) 100%, 0% 100%);
 }
 
-/* First bar in a sequence — flat left edge, arrow right */
-.planner-res-bar.bar-first {
-    clip-path: polygon(0% 0%, calc(100% - 8px) 0%, 100% 50%, calc(100% - 8px) 100%, 0% 100%);
-    padding-left: 6px;
+/* Bar with a predecessor — add right-pointing notch on left */
+.planner-res-bar.bar-has-prev {
+    clip-path: polygon(0% 0%, calc(100% - 10px) 0%, 100% 50%, calc(100% - 10px) 100%, 0% 100%, 10px 50%);
+    padding-left: 12px;
 }
 
 .planner-res-bar:hover {

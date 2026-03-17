@@ -1882,15 +1882,14 @@ function buildBoardHTML() {
             // Reservation bars — sort by start
             const bookings = (rb[room.id] || []).slice().sort((a, b) => a.startIdx - b.startIdx);
             bookings.forEach((b, bi) => {
-                const ARROW = 8;
+                const ARROW = 10;
                 const hasNext = bi < bookings.length - 1 && bookings[bi + 1].startIdx <= b.endIdx;
                 const hasPrev = bi > 0 && bookings[bi - 1].endIdx >= b.startIdx;
-                // Extend right into next bar's notch area
                 const left = b.startIdx * DW;
+                // Extend arrow tip into next bar's notch
                 const width = (b.endIdx - b.startIdx) * DW + (hasNext ? ARROW : 0);
                 const label = escapeHtml(b.res.groupName);
-                const cls = `planner-res-bar ${b.res.status}${hasPrev ? '' : ' bar-first'}`;
-                // Earlier bars get lower z-index so their arrow sits UNDER the next bar's notch
+                const cls = `planner-res-bar ${b.res.status}${hasPrev ? ' bar-has-prev' : ''}`;
                 grid += `<div class="${cls}" style="left:${left}px;width:${width}px;z-index:${2 + bi}" onclick="openReservationDetail('${b.res.id}')" title="${label} (${formatDateDisplay(b.res.checkin)} - ${formatDateDisplay(b.res.checkout)})"><span class="bar-label">${label}</span></div>`;
             });
             grid += '</div>';
