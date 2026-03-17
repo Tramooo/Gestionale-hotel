@@ -1655,7 +1655,7 @@ async function deleteGuest(guestId, reservationId) {
 //
 // Only .p-grid-panel scrolls. JS syncs header (h) and rooms (v).
 
-const PLANNER_DAY_WIDTH = 38;
+let PLANNER_DAY_WIDTH = 38;
 const PLANNER_INITIAL_PAST = 180;
 const PLANNER_INITIAL_FUTURE = 365;
 const PLANNER_EXTEND_CHUNK = 90;
@@ -1840,9 +1840,10 @@ function buildBoardHTML() {
     // === 3. ROOMS (bottom-left, v-scroll synced) ===
     let roomsPanel = '<div class="p-rooms-panel"><div class="p-rooms-inner">';
     floorKeys.forEach(floor => {
+        const RH = PLANNER_ROW_HEIGHT;
         roomsPanel += `<div class="p-floor-left">Floor ${floor}</div>`;
         floors[floor].forEach(room => {
-            roomsPanel += `<div class="p-room-left" onclick="openEditRoom('${room.id}')">
+            roomsPanel += `<div class="p-room-left" style="height:${RH}px" onclick="openEditRoom('${room.id}')">
                 <span class="planner-room-status ${room.status}"></span>
                 <span class="planner-room-label">${room.number}</span>
                 <span class="planner-room-type">${room.type.substring(0, 3)}</span>
@@ -1870,7 +1871,7 @@ function buildBoardHTML() {
 
         // Room rows
         floors[floor].forEach(room => {
-            grid += `<div class="p-grid-room-row" data-room-id="${room.id}">`;
+            grid += `<div class="p-grid-room-row" style="height:${PLANNER_ROW_HEIGHT}px" data-room-id="${room.id}">`;
             for (let i = 0; i < plannerTotalDays; i++) {
                 const d = dayIndexToDate(i);
                 const dow = d.getDay();
@@ -2163,21 +2164,55 @@ function updateThemeToggle(theme) {
     btn.classList.toggle('is-dark', isDark);
 }
 
-function toggleTheme() {
+function setTheme(theme) {
+    localStorage.setItem('gs_theme', theme);
+    applyTheme(theme);
+    updateThemeButtons();
+}
+
+function updateThemeButtons() {
     const current = getTheme();
-    const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.querySelectorAll('.settings-toggle-btn[data-theme-val]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.themeVal === current);
+    });
+}
 
-    let next;
-    if (current === 'auto') {
-        next = systemDark ? 'light' : 'dark';
-    } else if (current === 'dark') {
-        next = 'light';
-    } else {
-        next = 'dark';
-    }
+// Calendar size settings
+let PLANNER_ROW_HEIGHT = parseInt(localStorage.getItem('gs_row_height')) || 34;
 
-    localStorage.setItem('gs_theme', next);
-    applyTheme(next);
+function updateCalendarSize() {
+    const colW = document.getElementById('settingColWidth');
+    const rowH = document.getElementById('settingRowHeight');
+    if (!colW || !rowH) return;
+
+    const cw = parseInt(colW.value);
+    const rh = parseInt(rowH.value);
+
+    document.getElementById('settingColWidthVal').textContent = cw + 'px';
+    document.getElementById('settingRowHeightVal').textContent = rh + 'px';
+
+    PLANNER_DAY_WIDTH = cw;
+    PLANNER_ROW_HEIGHT = rh;
+
+    localStorage.setItem('gs_col_width', cw);
+    localStorage.setItem('gs_row_height', rh);
+
+    renderCalendar();
+}
+
+function initSettingsModal() {
+    const savedCW = parseInt(localStorage.getItem('gs_col_width')) || 38;
+    const savedRH = parseInt(localStorage.getItem('gs_row_height')) || 34;
+
+    PLANNER_DAY_WIDTH = savedCW;
+    PLANNER_ROW_HEIGHT = savedRH;
+
+    const colW = document.getElementById('settingColWidth');
+    const rowH = document.getElementById('settingRowHeight');
+    if (colW) { colW.value = savedCW; document.getElementById('settingColWidthVal').textContent = savedCW + 'px'; }
+    if (rowH) { rowH.value = savedRH; document.getElementById('settingRowHeightVal').textContent = savedRH + 'px'; }
+
+    updateThemeButtons();
 }
 
 // Apply saved theme immediately
@@ -2188,6 +2223,7 @@ applyTheme(getTheme());
 // =============================================
 
 (async function init() {
+    initSettingsModal();
     await loadAllData();
     renderDashboard();
     renderCalendar();

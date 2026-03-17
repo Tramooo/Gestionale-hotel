@@ -185,7 +185,7 @@ body {
     border-top: 1px solid var(--border-light);
 }
 
-.theme-toggle {
+.settings-btn {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -202,22 +202,63 @@ body {
     transition: all var(--transition);
 }
 
-.theme-toggle:hover {
+.settings-btn:hover {
     color: var(--text-primary);
     border-color: var(--accent);
 }
 
-.theme-icon {
-    width: 18px;
-    height: 18px;
-    flex-shrink: 0;
+/* Settings modal */
+.settings-section {
+    margin-bottom: 20px;
 }
 
-.theme-icon.moon { display: none; }
-.theme-icon.sun { display: block; }
+.settings-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
 
-.theme-toggle.is-dark .theme-icon.moon { display: block; }
-.theme-toggle.is-dark .theme-icon.sun { display: none; }
+.settings-toggle-group {
+    display: flex;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.settings-toggle-btn {
+    flex: 1;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-family: inherit;
+    border: none;
+    background: var(--bg-primary);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition);
+    border-right: 1px solid var(--border);
+}
+
+.settings-toggle-btn:last-child {
+    border-right: none;
+}
+
+.settings-toggle-btn.active {
+    background: var(--accent);
+    color: white;
+}
+
+.settings-toggle-btn:hover:not(.active) {
+    background: var(--bg-tertiary);
+}
+
+#settingColWidth,
+#settingRowHeight {
+    flex: 1;
+    accent-color: var(--accent);
+}
 
 .sidebar-profile {
     display: flex;
@@ -1140,7 +1181,7 @@ body {
 }
 
 .p-room-left {
-    height: 34px;
+    height: 34px; /* overridden by inline style from settings */
     display: flex;
     align-items: center;
     padding: 0 10px;

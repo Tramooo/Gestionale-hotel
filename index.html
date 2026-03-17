@@ -32,10 +32,9 @@
             </a>
         </nav>
         <div class="sidebar-footer">
-            <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle theme">
-                <svg class="theme-icon sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-                <svg class="theme-icon moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-                <span class="theme-label">Theme</span>
+            <button class="settings-btn" onclick="openModal('settingsModal')" title="Settings">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                <span>Settings</span>
             </button>
             <div class="sidebar-profile">
                 <div class="avatar">RM</div>
@@ -611,6 +610,42 @@
     </div>
 
     <!-- Toast -->
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal" style="max-width:440px">
+            <div class="modal-header">
+                <h2>Settings</h2>
+                <button class="modal-close" onclick="closeModal('settingsModal')">&times;</button>
+            </div>
+            <div class="modal-body" style="padding:20px">
+                <div class="settings-section">
+                    <label class="settings-label">Theme</label>
+                    <div class="settings-toggle-group">
+                        <button class="settings-toggle-btn" data-theme-val="light" onclick="setTheme('light')">Light</button>
+                        <button class="settings-toggle-btn" data-theme-val="dark" onclick="setTheme('dark')">Dark</button>
+                        <button class="settings-toggle-btn" data-theme-val="auto" onclick="setTheme('auto')">Auto</button>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <label class="settings-label">Calendar Column Width</label>
+                    <div style="display:flex;align-items:center;gap:12px">
+                        <input type="range" id="settingColWidth" min="24" max="60" value="38" oninput="updateCalendarSize()">
+                        <span id="settingColWidthVal" style="font-size:13px;color:var(--text-secondary);min-width:36px">38px</span>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <label class="settings-label">Calendar Row Height</label>
+                    <div style="display:flex;align-items:center;gap:12px">
+                        <input type="range" id="settingRowHeight" min="20" max="50" value="34" oninput="updateCalendarSize()">
+                        <span id="settingRowHeightVal" style="font-size:13px;color:var(--text-secondary);min-width:36px">34px</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="toast-container" id="toastContainer"></div>
 
     <datalist id="countriesList"></datalist>
