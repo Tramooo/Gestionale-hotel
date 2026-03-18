@@ -2245,6 +2245,257 @@ function initSettingsModal() {
     updateThemeButtons();
 }
 
+// ---- CSV Import (Scidoo) ----
+
+let csvParsedRows = [];
+let csvHeaders = [];
+
+const CSV_FIELDS = [
+    { key: 'groupName', label: 'Group Name', required: true },
+    { key: 'checkin', label: 'Check-in Date', required: true },
+    { key: 'checkout', label: 'Check-out Date', required: true },
+    { key: 'roomCount', label: 'Room Count', required: false },
+    { key: 'status', label: 'Status', required: false },
+    { key: 'price', label: 'Price', required: false },
+    { key: 'notes', label: 'Notes', required: false },
+    { key: 'guestCount', label: 'Guest Count', required: false }
+];
+
+// Common Scidoo column name auto-mapping
+const SCIDOO_MAP = {
+    groupName: ['nome gruppo', 'group name', 'gruppo', 'nome', 'name', 'cliente', 'customer', 'ospite', 'guest', 'cognome', 'intestatario', 'prenotante', 'denominazione'],
+    checkin: ['check-in', 'checkin', 'check in', 'data arrivo', 'arrivo', 'arrival', 'data_arrivo', 'dal', 'from', 'data inizio', 'ingresso'],
+    checkout: ['check-out', 'checkout', 'check out', 'data partenza', 'partenza', 'departure', 'data_partenza', 'al', 'to', 'data fine', 'uscita'],
+    roomCount: ['camere', 'rooms', 'room count', 'n. camere', 'num camere', 'numero camere', 'n camere', 'qty'],
+    status: ['stato', 'status', 'state'],
+    price: ['prezzo', 'price', 'totale', 'total', 'importo', 'amount', 'tariffa', 'rate'],
+    notes: ['note', 'notes', 'commenti', 'comments', 'annotazioni', 'osservazioni'],
+    guestCount: ['ospiti', 'guests', 'guest count', 'pax', 'persone', 'n. ospiti', 'num ospiti', 'adulti']
+};
+
+function parseCsv(text) {
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) return { headers: [], rows: [] };
+
+    // Detect delimiter
+    const firstLine = lines[0];
+    const semicolons = (firstLine.match(/;/g) || []).length;
+    const commas = (firstLine.match(/,/g) || []).length;
+    const tabs = (firstLine.match(/\t/g) || []).length;
+    let delim = ',';
+    if (semicolons > commas && semicolons > tabs) delim = ';';
+    else if (tabs > commas && tabs > semicolons) delim = '\t';
+
+    function splitRow(line) {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+            const ch = line[i];
+            if (ch === '"') {
+                if (inQuotes && line[i + 1] === '"') { current += '"'; i++; }
+                else inQuotes = !inQuotes;
+            } else if (ch === delim && !inQuotes) {
+                result.push(current.trim());
+                current = '';
+            } else {
+                current += ch;
+            }
+        }
+        result.push(current.trim());
+        return result;
+    }
+
+    const headers = splitRow(lines[0]);
+    const rows = [];
+    for (let i = 1; i < lines.length; i++) {
+        const vals = splitRow(lines[i]);
+        if (vals.every(v => !v)) continue; // skip empty rows
+        const row = {};
+        headers.forEach((h, j) => { row[h] = vals[j] || ''; });
+        rows.push(row);
+    }
+    return { headers, rows };
+}
+
+function handleCsvFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    document.getElementById('csvFileName').textContent = file.name;
+
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+        const { headers, rows } = parseCsv(ev.target.result);
+        if (headers.length === 0) {
+            showToast('Could not parse CSV file', 'error');
+            return;
+        }
+        csvHeaders = headers;
+        csvParsedRows = rows;
+        buildCsvMappingUI();
+        closeModal('settingsModal');
+        openModal('csvImportModal');
+    };
+    reader.readAsText(file);
+}
+
+function autoMapColumn(fieldKey) {
+    const candidates = SCIDOO_MAP[fieldKey] || [];
+    for (const candidate of candidates) {
+        const match = csvHeaders.find(h => h.toLowerCase().trim() === candidate);
+        if (match) return match;
+    }
+    // Partial match
+    for (const candidate of candidates) {
+        const match = csvHeaders.find(h => h.toLowerCase().trim().includes(candidate));
+        if (match) return match;
+    }
+    return '';
+}
+
+function buildCsvMappingUI() {
+    const grid = document.getElementById('csvMappingGrid');
+    const options = csvHeaders.map(h => `<option value="${escapeHtml(h)}">${escapeHtml(h)}</option>`).join('');
+
+    grid.innerHTML = CSV_FIELDS.map(f => {
+        const autoVal = autoMapColumn(f.key);
+        return `
+            <label>${f.label}${f.required ? ' *' : ''}</label>
+            <select id="csvMap_${f.key}" onchange="updateCsvPreview()">
+                <option value="">— skip —</option>
+                ${options}
+            </select>`;
+    }).join('');
+
+    // Set auto-mapped values
+    CSV_FIELDS.forEach(f => {
+        const mapped = autoMapColumn(f.key);
+        if (mapped) document.getElementById('csvMap_' + f.key).value = mapped;
+    });
+
+    updateCsvPreview();
+}
+
+function getCsvMapping() {
+    const mapping = {};
+    CSV_FIELDS.forEach(f => {
+        const sel = document.getElementById('csvMap_' + f.key);
+        if (sel && sel.value) mapping[f.key] = sel.value;
+    });
+    return mapping;
+}
+
+function parseImportDate(raw) {
+    if (!raw) return null;
+    raw = raw.trim();
+    // Try ISO: YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.substring(0, 10);
+    // Try DD/MM/YYYY or DD-MM-YYYY
+    let m = raw.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
+    if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+    // Try MM/DD/YYYY (if first number > 12, assume DD/MM)
+    m = raw.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
+    if (m) {
+        if (parseInt(m[1]) > 12) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+        return `${m[3]}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
+    }
+    // Fallback: try native Date parse
+    const d = new Date(raw);
+    if (!isNaN(d.getTime())) return formatDate(d);
+    return null;
+}
+
+function mapCsvRow(row, mapping) {
+    const get = (key) => mapping[key] ? (row[mapping[key]] || '') : '';
+    const checkin = parseImportDate(get('checkin'));
+    const checkout = parseImportDate(get('checkout'));
+    if (!checkin || !checkout) return null;
+
+    const groupName = get('groupName') || 'Imported';
+    const roomCount = parseInt(get('roomCount')) || 1;
+    const price = parseFloat(get('price')) || 0;
+    const notes = get('notes');
+    const guestCount = parseInt(get('guestCount')) || 0;
+
+    let status = (get('status') || 'confirmed').toLowerCase().trim();
+    // Normalize Italian status terms
+    if (['confermata', 'confermato', 'confirmed'].includes(status)) status = 'confirmed';
+    else if (['in attesa', 'pending', 'opzione', 'tentativo'].includes(status)) status = 'pending';
+    else if (['cancellata', 'cancellato', 'cancelled', 'canceled', 'annullata'].includes(status)) status = 'cancelled';
+    else if (['checked-in', 'check-in', 'in casa', 'in house'].includes(status)) status = 'checked-in';
+    else status = 'confirmed';
+
+    return { groupName, checkin, checkout, roomCount, roomIds: [], status, price, notes, guestCount };
+}
+
+function updateCsvPreview() {
+    const mapping = getCsvMapping();
+    const preview = csvParsedRows.slice(0, 10).map(r => mapCsvRow(r, mapping)).filter(Boolean);
+
+    document.getElementById('csvPreviewCount').textContent = `(${csvParsedRows.length} rows found, showing first ${Math.min(10, preview.length)})`;
+
+    if (preview.length === 0) {
+        document.getElementById('csvPreviewTable').innerHTML = '<p style="padding:12px;color:var(--text-secondary);font-size:13px">No valid rows. Check your column mapping.</p>';
+        return;
+    }
+
+    let html = '<table><thead><tr><th>Group</th><th>Check-in</th><th>Check-out</th><th>Rooms</th><th>Status</th><th>Price</th></tr></thead><tbody>';
+    preview.forEach(r => {
+        html += `<tr>
+            <td>${escapeHtml(r.groupName)}</td>
+            <td>${r.checkin}</td>
+            <td>${r.checkout}</td>
+            <td>${r.roomCount}</td>
+            <td>${r.status}</td>
+            <td>${r.price ? '€' + r.price.toLocaleString() : '—'}</td>
+        </tr>`;
+    });
+    html += '</tbody></table>';
+    document.getElementById('csvPreviewTable').innerHTML = html;
+}
+
+async function executeCsvImport() {
+    const mapping = getCsvMapping();
+    if (!mapping.groupName || !mapping.checkin || !mapping.checkout) {
+        showToast('Group Name, Check-in and Check-out mappings are required', 'error');
+        return;
+    }
+
+    const toImport = csvParsedRows.map(r => mapCsvRow(r, mapping)).filter(Boolean);
+    if (toImport.length === 0) {
+        showToast('No valid rows to import', 'error');
+        return;
+    }
+
+    if (!confirm(`Import ${toImport.length} reservations?`)) return;
+
+    let success = 0;
+    let errors = 0;
+
+    for (const data of toImport) {
+        const newRes = { id: generateId(), ...data, createdAt: new Date().toISOString() };
+        try {
+            await apiPost(API.reservations, newRes);
+            reservations.push(newRes);
+            success++;
+        } catch (err) {
+            console.error('Import error:', err);
+            errors++;
+        }
+    }
+
+    closeModal('csvImportModal');
+    showToast(`Imported ${success} reservations${errors ? ', ' + errors + ' failed' : ''}`);
+    renderDashboard();
+    refreshCalendar();
+
+    // Reset file input
+    document.getElementById('csvFileInput').value = '';
+    document.getElementById('csvFileName').textContent = '';
+    csvParsedRows = [];
+    csvHeaders = [];
+}
+
 // ---- Bar tooltip (body-appended to avoid overflow clipping) ----
 
 let barTipEl = null;

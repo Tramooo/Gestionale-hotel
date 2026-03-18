@@ -260,6 +260,44 @@ body {
     accent-color: var(--accent);
 }
 
+.csv-mapping-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 16px;
+}
+.csv-mapping-grid label {
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+}
+.csv-mapping-grid select {
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 12px;
+}
+#csvPreviewTable table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+#csvPreviewTable th,
+#csvPreviewTable td {
+    padding: 6px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+#csvPreviewTable th {
+    position: sticky;
+    top: 0;
+    background: var(--bg-secondary);
+    font-weight: 600;
+}
+
 .sidebar-profile {
     display: flex;
     align-items: center;

@@ -642,6 +642,41 @@
                         <span id="settingRowHeightVal" style="font-size:13px;color:var(--text-secondary);min-width:36px">34px</span>
                     </div>
                 </div>
+
+                <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
+
+                <div class="settings-section">
+                    <label class="settings-label">Import Reservations from Scidoo</label>
+                    <p style="font-size:12px;color:var(--text-secondary);margin:0 0 10px">Upload a CSV exported from Scidoo. You'll map columns before importing.</p>
+                    <input type="file" id="csvFileInput" accept=".csv,.txt" style="display:none" onchange="handleCsvFile(event)">
+                    <button class="btn btn-secondary" onclick="document.getElementById('csvFileInput').click()">Choose CSV File</button>
+                    <span id="csvFileName" style="font-size:12px;color:var(--text-secondary);margin-left:8px"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CSV Import Modal -->
+    <div class="modal-overlay" id="csvImportModal">
+        <div class="modal" style="max-width:720px">
+            <div class="modal-header">
+                <h2>Import Reservations</h2>
+                <button class="modal-close" onclick="closeModal('csvImportModal')">&times;</button>
+            </div>
+            <div class="modal-body" style="padding:20px">
+                <div class="settings-section">
+                    <label class="settings-label">Map CSV Columns</label>
+                    <p style="font-size:12px;color:var(--text-secondary);margin:0 0 12px">Match each GroupStay field to a column from your CSV. Leave empty to skip.</p>
+                    <div class="csv-mapping-grid" id="csvMappingGrid"></div>
+                </div>
+                <div class="settings-section">
+                    <label class="settings-label">Preview <span id="csvPreviewCount" style="font-weight:400;color:var(--text-secondary)"></span></label>
+                    <div id="csvPreviewTable" style="overflow-x:auto;max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:8px"></div>
+                </div>
+                <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+                    <button class="btn btn-secondary" onclick="closeModal('csvImportModal')">Cancel</button>
+                    <button class="btn btn-primary" onclick="executeCsvImport()">Import All</button>
+                </div>
             </div>
         </div>
     </div>
