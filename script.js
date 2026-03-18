@@ -1897,7 +1897,8 @@ function buildBoardHTML() {
                 const nights = Math.max(1, b.endIdx - b.startIdx);
                 const resGuests = guests.filter(g => g.reservationId === b.res.id).length;
                 const statusLabel = b.res.status.charAt(0).toUpperCase() + b.res.status.slice(1);
-                grid += `<div class="${cls}" style="left:${left}px;width:${width}px;z-index:${2 + bi}" onclick="openReservationDetail('${b.res.id}')"><span class="bar-label">${label}</span><div class="bar-tooltip"><strong>${label}</strong><div class="bar-tooltip-row">${formatDateDisplay(b.res.checkin)} &rarr; ${formatDateDisplay(b.res.checkout)}</div><div class="bar-tooltip-row">${nights} night${nights > 1 ? 's' : ''} &middot; ${b.res.roomCount} room${b.res.roomCount !== 1 ? 's' : ''} &middot; ${resGuests} guest${resGuests !== 1 ? 's' : ''}</div><div class="bar-tooltip-row">${statusLabel}${b.res.price ? ' &middot; &euro;' + Number(b.res.price).toLocaleString() : ''}</div></div></div>`;
+                const tipData = `${label}||${formatDateDisplay(b.res.checkin)} → ${formatDateDisplay(b.res.checkout)}||${nights} night${nights > 1 ? 's' : ''} · ${b.res.roomCount} room${b.res.roomCount !== 1 ? 's' : ''} · ${resGuests} guest${resGuests !== 1 ? 's' : ''}||${statusLabel}${b.res.price ? ' · €' + Number(b.res.price).toLocaleString() : ''}`;
+                grid += `<div class="${cls}" style="left:${left}px;width:${width}px;z-index:${2 + bi}" onclick="openReservationDetail('${b.res.id}')" data-tip="${tipData}" onmouseenter="showBarTooltip(event)" onmouseleave="hideBarTooltip()"><span class="bar-label">${label}</span></div>`;
             });
             grid += '</div>';
         });
@@ -2219,6 +2220,46 @@ function initSettingsModal() {
     if (rowH) { rowH.value = savedRH; document.getElementById('settingRowHeightVal').textContent = savedRH + 'px'; }
 
     updateThemeButtons();
+}
+
+// ---- Bar tooltip (body-appended to avoid overflow clipping) ----
+
+let barTipEl = null;
+
+function showBarTooltip(e) {
+    const bar = e.currentTarget;
+    const raw = bar.getAttribute('data-tip');
+    if (!raw) return;
+
+    if (!barTipEl) {
+        barTipEl = document.createElement('div');
+        barTipEl.className = 'bar-tooltip';
+        document.body.appendChild(barTipEl);
+    }
+
+    const lines = raw.split('||');
+    barTipEl.innerHTML = `<strong>${lines[0]}</strong>` +
+        lines.slice(1).map(l => `<div class="bar-tooltip-row">${l}</div>`).join('');
+    barTipEl.style.display = 'block';
+
+    const rect = bar.getBoundingClientRect();
+    let tipLeft = rect.left + rect.width / 2;
+    let tipTop = rect.top - 8;
+
+    barTipEl.style.left = tipLeft + 'px';
+    barTipEl.style.top = tipTop + 'px';
+    barTipEl.style.transform = 'translate(-50%, -100%)';
+
+    // Keep within viewport
+    requestAnimationFrame(() => {
+        const tr = barTipEl.getBoundingClientRect();
+        if (tr.left < 8) barTipEl.style.left = (8 + tr.width / 2) + 'px';
+        if (tr.right > window.innerWidth - 8) barTipEl.style.left = (window.innerWidth - 8 - tr.width / 2) + 'px';
+    });
+}
+
+function hideBarTooltip() {
+    if (barTipEl) barTipEl.style.display = 'none';
 }
 
 // Apply saved theme immediately
