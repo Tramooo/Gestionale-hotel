@@ -1897,7 +1897,8 @@ function buildBoardHTML() {
                 const nights = Math.max(1, b.endIdx - b.startIdx);
                 const resGuests = guests.filter(g => g.reservationId === b.res.id).length;
                 const statusLabel = b.res.status.charAt(0).toUpperCase() + b.res.status.slice(1);
-                const tipData = `${label}||${formatDateDisplay(b.res.checkin)} → ${formatDateDisplay(b.res.checkout)}||${nights} night${nights > 1 ? 's' : ''} · ${b.res.roomCount} room${b.res.roomCount !== 1 ? 's' : ''} · ${resGuests} guest${resGuests !== 1 ? 's' : ''}||${statusLabel}${b.res.price ? ' · €' + Number(b.res.price).toLocaleString() : ''}`;
+                const expirationInfo = b.res.status === 'pending' && b.res.expiration ? ` · Expires ${formatDateDisplay(b.res.expiration)}` : '';
+                const tipData = `${label}||${formatDateDisplay(b.res.checkin)} → ${formatDateDisplay(b.res.checkout)}||${nights} night${nights > 1 ? 's' : ''} · ${b.res.roomCount} room${b.res.roomCount !== 1 ? 's' : ''} · ${resGuests} guest${resGuests !== 1 ? 's' : ''}||${statusLabel}${expirationInfo}${b.res.price ? ' · €' + Number(b.res.price).toLocaleString() : ''}`;
                 grid += `<div class="${cls}" style="left:${left}px;width:${width}px;z-index:${2 + bi}" onclick="openReservationDetail('${b.res.id}')" data-tip="${tipData}" onmouseenter="showBarTooltip(event)" onmouseleave="hideBarTooltip()"><span class="bar-label">${label}</span></div>`;
             });
             grid += '</div>';
