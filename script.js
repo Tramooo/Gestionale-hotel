@@ -48,10 +48,29 @@ async function loadAllData() {
             apiGet(API.rooms),
             apiGet(API.guests)
         ]);
+        computeRoomStatuses();
     } catch (err) {
         console.error('Failed to load data from database:', err);
         showToast('Failed to connect to database', 'error');
     }
+}
+
+function computeRoomStatuses() {
+    const today = formatDate(new Date());
+    // Build set of room IDs occupied today by active reservations
+    const occupiedIds = new Set();
+    reservations.forEach(r => {
+        if (r.status !== 'confirmed' && r.status !== 'checked-in') return;
+        if (r.checkin > today || r.checkout <= today) return;
+        const rIds = r.roomIds && r.roomIds.length > 0
+            ? r.roomIds
+            : guests.filter(g => g.reservationId === r.id && g.roomId).map(g => g.roomId);
+        rIds.forEach(id => occupiedIds.add(id));
+    });
+    rooms.forEach(rm => {
+        if (rm.status === 'maintenance') return; // keep maintenance as-is
+        rm.status = occupiedIds.has(rm.id) ? 'occupied' : 'available';
+    });
 }
 
 function generateId() {
