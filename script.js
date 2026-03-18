@@ -212,6 +212,7 @@ function showToast(message, type = 'success') {
 // =============================================
 
 function renderDashboard() {
+    computeRoomStatuses();
     // Stats
     const activeGroups = reservations.filter(r => r.status === 'confirmed' || r.status === 'checked-in');
     const totalGuests = activeGroups.reduce((sum, r) => sum + (r.guestCount || 0), 0);
@@ -1333,6 +1334,7 @@ async function saveAllAssignments() {
 // =============================================
 
 function renderRooms() {
+    computeRoomStatuses();
     const search = (document.getElementById('searchRooms')?.value || '').toLowerCase();
     let filtered = rooms;
 
@@ -1736,6 +1738,7 @@ function getPlannerRoomBookings(sortedRooms) {
 }
 
 function renderCalendar() {
+    computeRoomStatuses();
     const board = document.getElementById('plannerBoard');
     const anchor = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), calendarDate.getDate());
     plannerStartDate = new Date(anchor);
