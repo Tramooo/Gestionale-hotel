@@ -1894,7 +1894,10 @@ function buildBoardHTML() {
                 const width = (b.endIdx - b.startIdx) * DW + (hasNext ? ARROW : 0);
                 const label = escapeHtml(b.res.groupName);
                 const cls = `planner-res-bar ${b.res.status}${hasPrev ? ' bar-has-prev' : ''}`;
-                grid += `<div class="${cls}" style="left:${left}px;width:${width}px;z-index:${2 + bi}" onclick="openReservationDetail('${b.res.id}')" title="${label} (${formatDateDisplay(b.res.checkin)} - ${formatDateDisplay(b.res.checkout)})"><span class="bar-label">${label}</span></div>`;
+                const nights = Math.max(1, b.endIdx - b.startIdx);
+                const resGuests = guests.filter(g => g.reservationId === b.res.id).length;
+                const statusLabel = b.res.status.charAt(0).toUpperCase() + b.res.status.slice(1);
+                grid += `<div class="${cls}" style="left:${left}px;width:${width}px;z-index:${2 + bi}" onclick="openReservationDetail('${b.res.id}')"><span class="bar-label">${label}</span><div class="bar-tooltip"><strong>${label}</strong><div class="bar-tooltip-row">${formatDateDisplay(b.res.checkin)} &rarr; ${formatDateDisplay(b.res.checkout)}</div><div class="bar-tooltip-row">${nights} night${nights > 1 ? 's' : ''} &middot; ${b.res.roomCount} room${b.res.roomCount !== 1 ? 's' : ''} &middot; ${resGuests} guest${resGuests !== 1 ? 's' : ''}</div><div class="bar-tooltip-row">${statusLabel}${b.res.price ? ' &middot; &euro;' + Number(b.res.price).toLocaleString() : ''}</div></div></div>`;
             });
             grid += '</div>';
         });
