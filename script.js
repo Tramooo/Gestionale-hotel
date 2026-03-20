@@ -690,20 +690,17 @@ function openReservationDetail(id) {
 
     document.getElementById('detailGroupName').textContent = r.groupName;
 
-    const resGuests = guests.filter(g => g.reservationId === id);
     const nights = nightsBetween(r.checkin, r.checkout);
     const statusLabel = r.status.replace('-', ' ');
 
     const body = document.getElementById('reservationDetailBody');
     body.innerHTML = `
-        <div class="detail-header">
-            <span class="status-badge ${r.status}">${statusLabel}</span>
-            <div class="detail-actions">
-                <button class="btn btn-secondary btn-sm" onclick="openEditReservation('${r.id}')">Edit</button>
-                <button class="btn btn-secondary btn-sm" onclick="openAssignRooms('${r.id}')">Assign Rooms</button>
-                <button class="btn btn-secondary btn-sm" onclick="openRoomAssignment('${r.id}')">Room Planner</button>
-                <button class="btn btn-danger btn-sm" onclick="deleteReservation('${r.id}')">Delete</button>
-            </div>
+        <div class="detail-actions" style="margin-bottom:20px">
+            <button class="btn btn-secondary btn-sm" onclick="openEditReservation('${r.id}')">Edit</button>
+            <button class="btn btn-secondary btn-sm" onclick="openRoomAssignment('${r.id}')">Room Planner</button>
+            <button class="btn btn-secondary btn-sm" onclick="openGuestsList('${r.id}')">Manage Guests</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteReservation('${r.id}')">Delete</button>
+            <span class="status-badge ${r.status}" style="margin-left:auto">${statusLabel}</span>
         </div>
 
         <div class="detail-grid">
@@ -729,17 +726,28 @@ function openReservationDetail(id) {
             </div>` : ''}
         </div>
 
-        ${r.notes ? `<div class="detail-item" style="margin-bottom:16px"><span class="label">Notes</span><span class="value">${escapeHtml(r.notes)}</span></div>` : ''}
-
-        <div class="detail-section">
-            <div style="display:flex;align-items:center;justify-content:space-between">
-                <span style="color:var(--text-secondary);font-size:14px">Guests: <strong style="color:var(--text-primary)">${resGuests.length}</strong></span>
-                <button class="btn btn-sm btn-secondary" onclick="openGuestsList('${r.id}')">Manage Guests</button>
-            </div>
+        <div class="detail-item" style="margin-top:8px">
+            <span class="label">Notes</span>
+            <textarea id="detailNotesField" class="form-control" rows="3" placeholder="Add notes..." style="margin-top:4px;resize:vertical">${escapeHtml(r.notes || '')}</textarea>
+            <button class="btn btn-sm btn-primary" style="margin-top:8px;align-self:flex-start" onclick="saveDetailNotes('${r.id}')">Save Notes</button>
         </div>
     `;
 
     openModal('reservationDetailModal');
+}
+
+async function saveDetailNotes(id) {
+    const r = reservations.find(x => x.id === id);
+    if (!r) return;
+    const notes = document.getElementById('detailNotesField').value.trim();
+    r.notes = notes;
+    try {
+        await apiPut(API.reservations, { ...r });
+        showToast('Notes saved');
+    } catch (err) {
+        console.error(err);
+        showToast('Failed to save notes', 'error');
+    }
 }
 
 // ---- Guests List Modal ----
