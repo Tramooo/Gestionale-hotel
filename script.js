@@ -2052,7 +2052,7 @@ function calendarToday() {
 // DRAG-TO-SELECT ON GRID
 // =============================================
 
-let dragState = null; // { startDayIdx, currentDayIdx, overlay }
+let dragState = null; // { startDayIdx, currentDayIdx, overlay, rowTop, rowHeight }
 
 function initGridDrag() {
     if (!plannerGridEl) return;
@@ -2082,13 +2082,22 @@ function onGridDragStart(e) {
     const dayIdx = getDayIdxFromEvent(e);
     if (dayIdx < 0 || dayIdx >= plannerTotalDays) return;
 
+    // Find which room row was clicked
+    const gridInner = plannerGridEl.querySelector('.p-grid-inner');
+    const rowEl = (e.touches ? document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY) : e.target).closest('.p-grid-room-row');
+    let rowTop = 0;
+    let rowHeight = gridInner.offsetHeight;
+    if (rowEl) {
+        rowTop = rowEl.offsetTop;
+        rowHeight = rowEl.offsetHeight;
+    }
+
     // Create selection overlay
     const overlay = document.createElement('div');
     overlay.className = 'grid-drag-overlay';
-    const gridInner = plannerGridEl.querySelector('.p-grid-inner');
     gridInner.appendChild(overlay);
 
-    dragState = { startDayIdx: dayIdx, currentDayIdx: dayIdx, overlay };
+    dragState = { startDayIdx: dayIdx, currentDayIdx: dayIdx, overlay, rowTop, rowHeight };
     updateDragOverlay();
 
     document.addEventListener('mousemove', onGridDragMove);
@@ -2118,9 +2127,9 @@ function updateDragOverlay() {
 
     const ov = dragState.overlay;
     ov.style.left = left + 'px';
-    ov.style.top = '0';
+    ov.style.top = dragState.rowTop + 'px';
     ov.style.width = width + 'px';
-    ov.style.height = '100%';
+    ov.style.height = dragState.rowHeight + 'px';
 
     // Show date label
     const startDate = dayIndexToDate(startIdx);
