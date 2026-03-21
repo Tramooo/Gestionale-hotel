@@ -225,7 +225,7 @@ function renderDashboard() {
         })
         .reduce((sum, r) => sum + (r.price || 0), 0);
     const yearRevenue = reservations
-        .filter(r => new Date(r.checkin).getFullYear() === now.getFullYear())
+        .filter(r => (r.status === 'confirmed' || r.status === 'checked-in') && new Date(r.checkin).getFullYear() === now.getFullYear())
         .reduce((sum, r) => sum + (r.price || 0), 0);
 
     document.getElementById('stat-active-groups').textContent = activeGroups.length;
