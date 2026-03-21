@@ -51,7 +51,7 @@ async function loadAllData() {
         computeRoomStatuses();
     } catch (err) {
         console.error('Failed to load data from database:', err);
-        showToast('Failed to connect to database', 'error');
+        showToast(t('toast.dbError'), 'error');
     }
 }
 
@@ -88,6 +88,370 @@ let calendarDate = new Date();
 let currentAssignmentReservationId = null;
 let assignmentData = []; // current working copy of room assignments
 
+// ---- i18n ----
+
+let currentLang = localStorage.getItem('gs_lang') || 'it';
+
+const TRANSLATIONS = {
+    // Navigation & Layout
+    'nav.dashboard': { en: 'Dashboard', it: 'Dashboard' },
+    'nav.rooms': { en: 'Rooms', it: 'Camere' },
+    'nav.calendar': { en: 'Calendar', it: 'Calendario' },
+    'nav.settings': { en: 'Settings', it: 'Impostazioni' },
+    'nav.receptionManager': { en: 'Reception Manager', it: 'Responsabile Reception' },
+    'nav.admin': { en: 'Admin', it: 'Amministratore' },
+
+    // Dashboard
+    'dash.title': { en: 'Dashboard', it: 'Dashboard' },
+    'dash.subtitle': { en: 'Overview of your hotel operations', it: 'Panoramica delle operazioni dell\'hotel' },
+    'dash.newGroup': { en: 'New Group', it: 'Nuovo Gruppo' },
+    'dash.activeGroups': { en: 'Active Groups', it: 'Gruppi Attivi' },
+    'dash.totalGuests': { en: 'Total Guests', it: 'Ospiti Totali' },
+    'dash.roomsOccupied': { en: 'Rooms Occupied', it: 'Camere Occupate' },
+    'dash.thisMonth': { en: 'This Month', it: 'Questo Mese' },
+    'dash.thisYear': { en: 'This Year', it: 'Quest\'Anno' },
+    'dash.upcomingCheckins': { en: 'Upcoming Check-ins', it: 'Check-in in Arrivo' },
+    'dash.viewAll': { en: 'View All', it: 'Vedi Tutti' },
+    'dash.noUpcoming': { en: 'No upcoming check-ins', it: 'Nessun check-in in arrivo' },
+    'dash.todayActivity': { en: 'Today\'s Activity', it: 'Attività di Oggi' },
+    'dash.noActivity': { en: 'No activity today', it: 'Nessuna attività oggi' },
+    'dash.roomOccupancy': { en: 'Room Occupancy', it: 'Occupazione Camere' },
+    'dash.occupied': { en: 'Occupied', it: 'Occupate' },
+    'dash.available': { en: 'Available', it: 'Disponibili' },
+    'dash.maintenance': { en: 'Maintenance', it: 'Manutenzione' },
+    'dash.checkingIn': { en: 'checking in', it: 'in arrivo' },
+    'dash.checkingOut': { en: 'checking out', it: 'in partenza' },
+    'dash.guests': { en: 'guests', it: 'ospiti' },
+
+    // Rooms page
+    'rooms.title': { en: 'Rooms', it: 'Camere' },
+    'rooms.subtitle': { en: 'Manage hotel rooms and availability', it: 'Gestisci le camere e la disponibilità' },
+    'rooms.addRoom': { en: 'Add Room', it: 'Aggiungi Camera' },
+    'rooms.searchRooms': { en: 'Search rooms...', it: 'Cerca camere...' },
+    'rooms.all': { en: 'All', it: 'Tutte' },
+    'rooms.available': { en: 'Available', it: 'Disponibili' },
+    'rooms.occupied': { en: 'Occupied', it: 'Occupate' },
+    'rooms.maintenance': { en: 'Maintenance', it: 'Manutenzione' },
+    'rooms.noRooms': { en: 'No rooms found', it: 'Nessuna camera trovata' },
+    'rooms.pax': { en: 'pax', it: 'posti' },
+    'rooms.floor': { en: 'Floor', it: 'Piano' },
+    'rooms.room': { en: 'Room', it: 'Camera' },
+    'rooms.type': { en: 'Type', it: 'Tipo' },
+    'rooms.capacity': { en: 'Capacity', it: 'Capacità' },
+    'rooms.roomNumber': { en: 'Room Number', it: 'Numero Camera' },
+
+    // Room types
+    'roomType.single': { en: 'Single', it: 'Singola' },
+    'roomType.double': { en: 'Double', it: 'Doppia' },
+    'roomType.twin': { en: 'Twin', it: 'Twin' },
+    'roomType.triple': { en: 'Triple', it: 'Tripla' },
+    'roomType.quad': { en: 'Quad', it: 'Quadrupla' },
+    'roomType.suite': { en: 'Suite', it: 'Suite' },
+    'roomType.family': { en: 'Family', it: 'Familiare' },
+
+    // Calendar / Planner
+    'cal.title': { en: 'Calendar', it: 'Calendario' },
+    'cal.today': { en: 'Today', it: 'Oggi' },
+    'cal.newBooking': { en: 'New Booking', it: 'Nuova Prenotazione' },
+    'cal.confirmed': { en: 'Confirmed', it: 'Confermata' },
+    'cal.pending': { en: 'Pending', it: 'In Attesa' },
+    'cal.room': { en: 'Room', it: 'Camera' },
+    'cal.available': { en: 'Available', it: 'Disponibili' },
+    'cal.occupied': { en: 'Occupied', it: 'Occupate' },
+    'cal.nights': { en: 'night', it: 'notte' },
+    'cal.nightsPlural': { en: 'nights', it: 'notti' },
+    'cal.roomSingular': { en: 'room', it: 'camera' },
+    'cal.roomPlural': { en: 'rooms', it: 'camere' },
+    'cal.guestSingular': { en: 'guest', it: 'ospite' },
+    'cal.guestPlural': { en: 'guests', it: 'ospiti' },
+    'cal.expires': { en: 'Expires', it: 'Scade il' },
+
+    // Days & Months
+    'days.short': { en: ['Su','Mo','Tu','We','Th','Fr','Sa'], it: ['Do','Lu','Ma','Me','Gi','Ve','Sa'] },
+    'days.datepicker': { en: ['Mo','Tu','We','Th','Fr','Sa','Su'], it: ['Lu','Ma','Me','Gi','Ve','Sa','Do'] },
+    'months.full': { en: ['January','February','March','April','May','June','July','August','September','October','November','December'], it: ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'] },
+    'months.short': { en: ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'], it: ['GEN','FEB','MAR','APR','MAG','GIU','LUG','AGO','SET','OTT','NOV','DIC'] },
+
+    // Reservations
+    'res.newGroupReservation': { en: 'New Group Reservation', it: 'Nuova Prenotazione Gruppo' },
+    'res.editReservation': { en: 'Edit Reservation', it: 'Modifica Prenotazione' },
+    'res.groupName': { en: 'Group Name', it: 'Nome Gruppo' },
+    'res.groupNamePlaceholder': { en: 'e.g. Smith Family Reunion', it: 'es. Famiglia Rossi' },
+    'res.checkin': { en: 'Check-in', it: 'Check-in' },
+    'res.checkout': { en: 'Check-out', it: 'Check-out' },
+    'res.status': { en: 'Status', it: 'Stato' },
+    'res.pending': { en: 'Pending', it: 'In Attesa' },
+    'res.confirmed': { en: 'Confirmed', it: 'Confermata' },
+    'res.checkedIn': { en: 'Checked-in', it: 'Registrato' },
+    'res.cancelled': { en: 'Cancelled', it: 'Cancellata' },
+    'res.expirationDate': { en: 'Expiration Date', it: 'Data Scadenza' },
+    'res.totalPrice': { en: 'Total Price', it: 'Prezzo Totale' },
+    'res.notes': { en: 'Notes', it: 'Note' },
+    'res.notesPlaceholder': { en: 'Special requests, dietary needs, etc.', it: 'Richieste speciali, esigenze alimentari, ecc.' },
+    'res.rooms': { en: 'Rooms', it: 'Camere' },
+    'res.selectAll': { en: 'Select All', it: 'Seleziona Tutte' },
+    'res.roomsSelected': { en: 'rooms selected', it: 'camere selezionate' },
+    'res.roomSelected': { en: 'room selected', it: 'camera selezionata' },
+    'res.selectDate': { en: 'Select date...', it: 'Seleziona data...' },
+    'res.saveReservation': { en: 'Save Reservation', it: 'Salva Prenotazione' },
+    'res.noReservations': { en: 'No reservations found', it: 'Nessuna prenotazione trovata' },
+    'res.noRoomsYet': { en: 'No rooms yet.<br>Add rooms first.', it: 'Nessuna camera.<br>Aggiungi prima le camere.' },
+    'res.nights': { en: 'Nights', it: 'Notti' },
+    'res.guests': { en: 'Guests', it: 'Ospiti' },
+
+    // Reservation Detail
+    'detail.groupDetails': { en: 'Group Details', it: 'Dettagli Gruppo' },
+    'detail.edit': { en: 'Edit', it: 'Modifica' },
+    'detail.roomPlanner': { en: 'Room Planner', it: 'Assegnazione Camere' },
+    'detail.manageGuests': { en: 'Manage Guests', it: 'Gestisci Ospiti' },
+    'detail.delete': { en: 'Delete', it: 'Elimina' },
+    'detail.expires': { en: 'Expires', it: 'Scadenza' },
+    'detail.addNotes': { en: 'Add notes about this reservation...', it: 'Aggiungi note su questa prenotazione...' },
+    'detail.saveNotes': { en: 'Save Notes', it: 'Salva Note' },
+    'detail.schedine': { en: 'Schedine Alloggiati', it: 'Schedine Alloggiati' },
+    'detail.schedineDesc': { en: 'Send guest registration forms to the Italian police (Alloggiati Web).', it: 'Invia le schedine alla Polizia di Stato (Alloggiati Web).' },
+    'detail.previewRecords': { en: 'Preview Records', it: 'Anteprima' },
+    'detail.test': { en: 'Test', it: 'Test' },
+    'detail.sendToPolice': { en: 'Send to Police', it: 'Invia alla Polizia' },
+
+    // Guest list modal
+    'guestList.title': { en: 'Guests', it: 'Ospiti' },
+    'guestList.importFromFile': { en: 'Import from File', it: 'Importa da File' },
+    'guestList.addGuest': { en: 'Add Guest', it: 'Aggiungi Ospite' },
+    'guestList.noGuests': { en: 'No guests added yet', it: 'Nessun ospite aggiunto' },
+    'guestList.noRoomAssigned': { en: 'No room assigned', it: 'Nessuna camera assegnata' },
+    'guestList.edit': { en: 'Edit', it: 'Modifica' },
+    'guestList.remove': { en: 'Remove', it: 'Rimuovi' },
+
+    // Guest form
+    'guest.addToGroup': { en: 'Add Guest to Group', it: 'Aggiungi Ospite al Gruppo' },
+    'guest.personalInfo': { en: 'Personal Info', it: 'Dati Personali' },
+    'guest.lastName': { en: 'Last Name (Cognome)', it: 'Cognome' },
+    'guest.firstName': { en: 'First Name (Nome)', it: 'Nome' },
+    'guest.sex': { en: 'Sex (Sesso)', it: 'Sesso' },
+    'guest.select': { en: 'Select...', it: 'Seleziona...' },
+    'guest.dateOfBirth': { en: 'Date of Birth', it: 'Data di Nascita' },
+    'guest.citizenship': { en: 'Citizenship', it: 'Cittadinanza' },
+    'guest.searchCountry': { en: 'Search country...', it: 'Cerca nazione...' },
+    'guest.guestType': { en: 'Guest Type (Tipo Alloggiato)', it: 'Tipo Alloggiato' },
+    'guest.birthPlace': { en: 'Birth Place (Luogo di Nascita)', it: 'Luogo di Nascita' },
+    'guest.country': { en: 'Country', it: 'Nazione' },
+    'guest.comune': { en: 'Comune', it: 'Comune' },
+    'guest.searchComune': { en: 'Search comune...', it: 'Cerca comune...' },
+    'guest.province': { en: 'Province (Sigla)', it: 'Provincia (Sigla)' },
+    'guest.provincePlaceholder': { en: 'e.g. RM, MI', it: 'es. RM, MI' },
+    'guest.document': { en: 'Document (Documento)', it: 'Documento' },
+    'guest.docType': { en: 'Document Type (Codice)', it: 'Tipo Documento (Codice)' },
+    'guest.docNumber': { en: 'Document Number', it: 'Numero Documento' },
+    'guest.issuedPlace': { en: 'Issued Place', it: 'Luogo Rilascio' },
+    'guest.searchPlace': { en: 'Search place...', it: 'Cerca luogo...' },
+    'guest.other': { en: 'Other', it: 'Altro' },
+    'guest.email': { en: 'Email', it: 'Email' },
+    'guest.phone': { en: 'Phone', it: 'Telefono' },
+    'guest.assignedRoom': { en: 'Assigned Room', it: 'Camera Assegnata' },
+    'guest.unassigned': { en: 'Unassigned', it: 'Non assegnata' },
+    'guest.notesPlaceholder': { en: 'Allergies, preferences...', it: 'Allergie, preferenze...' },
+    'guest.saveGuest': { en: 'Save Guest', it: 'Salva Ospite' },
+
+    // Guests page
+    'guests.title': { en: 'Guests', it: 'Ospiti' },
+    'guests.subtitle': { en: 'All guests across groups', it: 'Tutti gli ospiti dei gruppi' },
+    'guests.searchGuests': { en: 'Search guests...', it: 'Cerca ospiti...' },
+    'guests.guest': { en: 'Guest', it: 'Ospite' },
+    'guests.group': { en: 'Group', it: 'Gruppo' },
+    'guests.room': { en: 'Room', it: 'Camera' },
+    'guests.checkin': { en: 'Check-in', it: 'Check-in' },
+    'guests.checkout': { en: 'Check-out', it: 'Check-out' },
+    'guests.status': { en: 'Status', it: 'Stato' },
+    'guests.noGuests': { en: 'No guests found', it: 'Nessun ospite trovato' },
+    'guests.unknown': { en: 'unknown', it: 'sconosciuto' },
+
+    // Room assignment / planner
+    'assign.title': { en: 'Assign Rooms to Group', it: 'Assegna Camere al Gruppo' },
+    'assign.selectRooms': { en: 'Select rooms for', it: 'Seleziona le camere per' },
+    'assign.needed': { en: 'needed', it: 'necessarie' },
+    'assign.done': { en: 'Done', it: 'Fatto' },
+    'assign.roomPlanner': { en: 'Room Planner', it: 'Assegnazione Camere' },
+    'assign.usage': { en: 'Usage', it: 'Utilizzo' },
+    'assign.group': { en: 'Group', it: 'Gruppo' },
+    'assign.occ': { en: 'Occ.', it: 'Occ.' },
+    'assign.notes': { en: 'Notes', it: 'Note' },
+    'assign.removeColumn': { en: 'Remove column', it: 'Rimuovi colonna' },
+    'assign.addColumn': { en: 'Add column', it: 'Aggiungi colonna' },
+    'assign.roomsAssigned': { en: 'Rooms assigned', it: 'Camere assegnate' },
+    'assign.columns': { en: 'Columns', it: 'Colonne' },
+    'assign.column': { en: 'Column', it: 'Colonna' },
+    'assign.save': { en: 'Save', it: 'Salva' },
+
+    // Settings
+    'settings.title': { en: 'Settings', it: 'Impostazioni' },
+    'settings.theme': { en: 'Theme', it: 'Tema' },
+    'settings.light': { en: 'Light', it: 'Chiaro' },
+    'settings.dark': { en: 'Dark', it: 'Scuro' },
+    'settings.auto': { en: 'Auto', it: 'Auto' },
+    'settings.language': { en: 'Language', it: 'Lingua' },
+    'settings.calColumnWidth': { en: 'Calendar Column Width', it: 'Larghezza Colonna Calendario' },
+    'settings.calRowHeight': { en: 'Calendar Row Height', it: 'Altezza Riga Calendario' },
+    'settings.importScidoo': { en: 'Import Reservations from Scidoo', it: 'Importa Prenotazioni da Scidoo' },
+    'settings.importScidooDesc': { en: 'Upload a CSV exported from Scidoo. You\'ll map columns before importing.', it: 'Carica un CSV esportato da Scidoo. Mapperai le colonne prima dell\'importazione.' },
+    'settings.chooseCsv': { en: 'Choose CSV File', it: 'Scegli File CSV' },
+
+    // CSV Import
+    'csv.importReservations': { en: 'Import Reservations', it: 'Importa Prenotazioni' },
+    'csv.mapColumns': { en: 'Map CSV Columns', it: 'Mappa Colonne CSV' },
+    'csv.mapDesc': { en: 'Match each GroupStay field to a column from your CSV. Leave empty to skip.', it: 'Associa ogni campo a una colonna del CSV. Lascia vuoto per saltare.' },
+    'csv.preview': { en: 'Preview', it: 'Anteprima' },
+    'csv.importAll': { en: 'Import All', it: 'Importa Tutto' },
+    'csv.skip': { en: '— skip —', it: '— salta —' },
+    'csv.noValidRows': { en: 'No valid rows. Check your column mapping.', it: 'Nessuna riga valida. Controlla la mappatura delle colonne.' },
+    'csv.groupName': { en: 'Group Name', it: 'Nome Gruppo' },
+    'csv.checkinDate': { en: 'Check-in Date', it: 'Data Check-in' },
+    'csv.checkoutDate': { en: 'Check-out Date', it: 'Data Check-out' },
+    'csv.roomCount': { en: 'Room Count', it: 'Numero Camere' },
+    'csv.status': { en: 'Status', it: 'Stato' },
+    'csv.price': { en: 'Price', it: 'Prezzo' },
+    'csv.notes': { en: 'Notes', it: 'Note' },
+    'csv.guestCount': { en: 'Guest Count', it: 'Numero Ospiti' },
+
+    // File import
+    'file.importGuests': { en: 'Import Guests from File', it: 'Importa Ospiti da File' },
+    'file.dropHere': { en: 'Drop file here or', it: 'Trascina il file qui o' },
+    'file.browse': { en: 'browse', it: 'sfoglia' },
+    'file.supports': { en: 'Supports PDF, Word (.docx), Excel (.xlsx)', it: 'Supporta PDF, Word (.docx), Excel (.xlsx)' },
+    'file.extracting': { en: 'Extracting and parsing guest data...', it: 'Estrazione e analisi dei dati degli ospiti...' },
+    'file.extractedText': { en: 'Extracted Text', it: 'Testo Estratto' },
+    'file.preview': { en: 'Preview', it: 'Anteprima' },
+    'file.importAll': { en: 'Import All', it: 'Importa Tutto' },
+
+    // Guest import fields
+    'field.lastName': { en: 'Last Name', it: 'Cognome' },
+    'field.firstName': { en: 'First Name', it: 'Nome' },
+    'field.sex': { en: 'Sex', it: 'Sesso' },
+    'field.birthDate': { en: 'Date of Birth', it: 'Data di Nascita' },
+    'field.birthCity': { en: 'Birth City', it: 'Città di Nascita' },
+    'field.birthProvince': { en: 'Birth Province', it: 'Provincia di Nascita' },
+    'field.birthCountry': { en: 'Birth Country', it: 'Nazione di Nascita' },
+    'field.citizenship': { en: 'Citizenship', it: 'Cittadinanza' },
+    'field.docType': { en: 'Document Type', it: 'Tipo Documento' },
+    'field.docNumber': { en: 'Document Number', it: 'Numero Documento' },
+    'field.docIssuedPlace': { en: 'Doc Issued Place', it: 'Luogo Rilascio Doc.' },
+    'field.email': { en: 'Email', it: 'Email' },
+    'field.phone': { en: 'Phone', it: 'Telefono' },
+    'field.guestType': { en: 'Guest Type', it: 'Tipo Alloggiato' },
+
+    // Common
+    'common.cancel': { en: 'Cancel', it: 'Annulla' },
+    'common.save': { en: 'Save', it: 'Salva' },
+    'common.delete': { en: 'Delete', it: 'Elimina' },
+    'common.edit': { en: 'Edit', it: 'Modifica' },
+    'common.close': { en: 'Close', it: 'Chiudi' },
+
+    // Toast messages
+    'toast.dbError': { en: 'Failed to connect to database', it: 'Connessione al database fallita' },
+    'toast.checkoutAfterCheckin': { en: 'Check-out must be after check-in', it: 'Il check-out deve essere successivo al check-in' },
+    'toast.selectRoom': { en: 'Please select at least one room', it: 'Seleziona almeno una camera' },
+    'toast.resUpdated': { en: 'Reservation updated', it: 'Prenotazione aggiornata' },
+    'toast.resCreated': { en: 'Group reservation created', it: 'Prenotazione gruppo creata' },
+    'toast.resSaveFail': { en: 'Failed to save reservation', it: 'Salvataggio prenotazione fallito' },
+    'toast.resDeleted': { en: 'Reservation deleted', it: 'Prenotazione eliminata' },
+    'toast.resDeleteFail': { en: 'Failed to delete reservation', it: 'Eliminazione prenotazione fallita' },
+    'toast.notesSaved': { en: 'Notes saved', it: 'Note salvate' },
+    'toast.notesSaveFail': { en: 'Failed to save notes', it: 'Salvataggio note fallito' },
+    'toast.assignSaved': { en: 'Room assignments saved', it: 'Assegnazioni camere salvate' },
+    'toast.assignSaveFail': { en: 'Failed to save assignments', it: 'Salvataggio assegnazioni fallito' },
+    'toast.assignRoomFail': { en: 'Failed to save room assignment', it: 'Salvataggio assegnazione camera fallito' },
+    'toast.roomUpdated': { en: 'Room updated', it: 'Camera aggiornata' },
+    'toast.roomExists': { en: 'Room number already exists', it: 'Numero camera già esistente' },
+    'toast.roomAdded': { en: 'Room added', it: 'Camera aggiunta' },
+    'toast.roomSaveFail': { en: 'Failed to save room', it: 'Salvataggio camera fallito' },
+    'toast.roomDeleted': { en: 'Room deleted', it: 'Camera eliminata' },
+    'toast.roomDeleteFail': { en: 'Failed to delete room', it: 'Eliminazione camera fallita' },
+    'toast.guestUpdated': { en: 'Guest updated', it: 'Ospite aggiornato' },
+    'toast.guestAdded': { en: 'Guest added to group', it: 'Ospite aggiunto al gruppo' },
+    'toast.guestSaveFail': { en: 'Failed to save guest', it: 'Salvataggio ospite fallito' },
+    'toast.guestRemoved': { en: 'Guest removed', it: 'Ospite rimosso' },
+    'toast.guestRemoveFail': { en: 'Failed to delete guest', it: 'Eliminazione ospite fallita' },
+    'toast.csvParseFail': { en: 'Could not parse CSV file', it: 'Impossibile leggere il file CSV' },
+    'toast.csvMappingRequired': { en: 'Group Name, Check-in and Check-out mappings are required', it: 'Nome Gruppo, Check-in e Check-out sono obbligatori' },
+    'toast.noValidRows': { en: 'No valid rows to import', it: 'Nessuna riga valida da importare' },
+    'toast.unsupportedFile': { en: 'Unsupported file type. Use PDF, DOCX, or XLSX.', it: 'Tipo file non supportato. Usa PDF, DOCX o XLSX.' },
+    'toast.fileFail': { en: 'Failed to process file', it: 'Elaborazione file fallita' },
+    'toast.noDataSpreadsheet': { en: 'No data found in spreadsheet', it: 'Nessun dato trovato nel foglio di calcolo' },
+    'toast.noGuestsSpreadsheet': { en: 'Could not detect guest data in spreadsheet. Check that it contains names.', it: 'Dati ospiti non rilevati nel foglio. Verifica che contenga dei nomi.' },
+    'toast.pdfNotLoaded': { en: 'PDF library not loaded yet. Please try again.', it: 'Libreria PDF non ancora caricata. Riprova.' },
+    'toast.pdfNoText': { en: 'Could not extract text from PDF. It may be a scanned image.', it: 'Impossibile estrarre il testo dal PDF. Potrebbe essere un\'immagine scansionata.' },
+    'toast.docxNotLoaded': { en: 'Word library not loaded yet. Please try again.', it: 'Libreria Word non ancora caricata. Riprova.' },
+    'toast.docxNoText': { en: 'Could not extract text from document.', it: 'Impossibile estrarre il testo dal documento.' },
+    'toast.noGuestsDetected': { en: 'Could not detect any guest data. Check the extracted text.', it: 'Nessun dato ospite rilevato. Controlla il testo estratto.' },
+    'toast.noValidGuests': { en: 'No valid guests to import', it: 'Nessun ospite valido da importare' },
+    'toast.schedineOk': { en: 'All schedine sent successfully!', it: 'Tutte le schedine inviate con successo!' },
+
+    // Confirm messages
+    'confirm.deleteReservation': { en: 'Delete this group reservation and all associated guests?', it: 'Eliminare questa prenotazione gruppo e tutti gli ospiti associati?' },
+    'confirm.sendSchedule': { en: 'Send schedine to the police? Make sure you tested first.', it: 'Inviare le schedine alla Polizia? Assicurati di aver fatto prima il test.' },
+    'confirm.removeColumn': { en: 'Remove column', it: 'Rimuovere la colonna' },
+    'confirm.removeColumnData': { en: 'Data in this column will be lost on save.', it: 'I dati di questa colonna verranno persi al salvataggio.' },
+    'confirm.deleteRoom': { en: 'Delete this room?', it: 'Eliminare questa camera?' },
+    'confirm.removeGuest': { en: 'Remove this guest?', it: 'Rimuovere questo ospite?' },
+    'confirm.importReservations': { en: 'Import {n} reservations?', it: 'Importare {n} prenotazioni?' },
+    'confirm.importGuests': { en: 'Import {n} guest(s) into this reservation?', it: 'Importare {n} ospite/i in questa prenotazione?' },
+
+    // Guest preview table
+    'preview.guestsFound': { en: 'guest(s) found', it: 'ospite/i trovato/i' },
+    'preview.noGuestsDetected': { en: 'No guests detected. Try a different file or check the extracted text above.', it: 'Nessun ospite rilevato. Prova un file diverso o controlla il testo estratto sopra.' },
+    'preview.showingFirst': { en: 'Showing first 20 of', it: 'Primi 20 di' },
+    'preview.docNo': { en: 'Doc No.', it: 'N. Doc.' },
+    'preview.birthDate': { en: 'Birth Date', it: 'Data Nascita' },
+};
+
+function t(key, replacements) {
+    const entry = TRANSLATIONS[key];
+    if (!entry) return key;
+    let text = entry[currentLang] || entry['en'] || key;
+    if (replacements) {
+        for (const [k, v] of Object.entries(replacements)) {
+            text = text.replace(`{${k}}`, v);
+        }
+    }
+    return text;
+}
+
+function setLanguage(lang) {
+    currentLang = lang;
+    localStorage.setItem('gs_lang', lang);
+    applyTranslations();
+    // Re-render current page
+    const activePage = document.querySelector('.page.active');
+    if (activePage) {
+        const pageId = activePage.id.replace('page-', '');
+        navigateTo(pageId);
+    }
+}
+
+function applyTranslations() {
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        el.textContent = t(key);
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        el.placeholder = t(key);
+    });
+    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+        const key = el.getAttribute('data-i18n-title');
+        el.title = t(key);
+    });
+    document.querySelectorAll('[data-i18n-html]').forEach(el => {
+        const key = el.getAttribute('data-i18n-html');
+        el.innerHTML = t(key);
+    });
+    // Update language toggle buttons
+    document.querySelectorAll('[data-lang-val]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.langVal === currentLang);
+    });
+    document.documentElement.setAttribute('lang', currentLang);
+}
+
 // ---- HELPERS ----
 
 function formatDate(date) {
@@ -100,7 +464,8 @@ function formatDate(date) {
 function formatDateDisplay(dateStr) {
     if (!dateStr) return '';
     const d = new Date(dateStr + 'T00:00:00');
-    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    const locale = currentLang === 'it' ? 'it-IT' : 'en-GB';
+    return d.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function addDays(date, days) {
@@ -257,14 +622,14 @@ function renderDashboard() {
 
     const checkinEl = document.getElementById('upcoming-checkins');
     if (upcoming.length === 0) {
-        checkinEl.innerHTML = '<div class="empty-state small"><p>No upcoming check-ins</p></div>';
+        checkinEl.innerHTML = `<div class="empty-state small"><p>${t('dash.noUpcoming')}</p></div>`;
     } else {
         checkinEl.innerHTML = upcoming.map(r => `
             <div class="checkin-item" onclick="openReservationDetail('${r.id}')">
                 <div class="checkin-dot" style="background: ${r.status === 'confirmed' ? 'var(--green)' : 'var(--orange)'}"></div>
                 <div class="checkin-info">
                     <div class="checkin-name">${escapeHtml(r.groupName)}</div>
-                    <div class="checkin-detail">${r.guestCount} guests &middot; ${r.roomCount} rooms</div>
+                    <div class="checkin-detail">${r.guestCount} ${t('dash.guests')} &middot; ${r.roomCount} ${t('res.rooms')}</div>
                 </div>
                 <div class="checkin-date">${formatDateDisplay(r.checkin)}</div>
             </div>
@@ -284,8 +649,8 @@ function renderDashboard() {
             <div class="activity-item">
                 <div class="activity-icon checkin">&#8593;</div>
                 <div>
-                    <div class="activity-text"><strong>${escapeHtml(r.groupName)}</strong> checking in</div>
-                    <div class="activity-time">${r.guestCount} guests</div>
+                    <div class="activity-text"><strong>${escapeHtml(r.groupName)}</strong> ${t('dash.checkingIn')}</div>
+                    <div class="activity-time">${r.guestCount} ${t('dash.guests')}</div>
                 </div>
             </div>
         `);
@@ -296,15 +661,15 @@ function renderDashboard() {
             <div class="activity-item">
                 <div class="activity-icon checkout">&#8595;</div>
                 <div>
-                    <div class="activity-text"><strong>${escapeHtml(r.groupName)}</strong> checking out</div>
-                    <div class="activity-time">${r.guestCount} guests</div>
+                    <div class="activity-text"><strong>${escapeHtml(r.groupName)}</strong> ${t('dash.checkingOut')}</div>
+                    <div class="activity-time">${r.guestCount} ${t('dash.guests')}</div>
                 </div>
             </div>
         `);
     });
 
     if (activities.length === 0) {
-        activityEl.innerHTML = '<div class="empty-state small"><p>No activity today</p></div>';
+        activityEl.innerHTML = `<div class="empty-state small"><p>${t('dash.noActivity')}</p></div>`;
     } else {
         activityEl.innerHTML = activities.join('');
     }
@@ -337,7 +702,7 @@ function renderReservations() {
     if (filtered.length === 0) {
         list.innerHTML = `
             <div class="empty-state">
-                <p>No reservations found</p>
+                <p>${t('res.noReservations')}</p>
             </div>
         `;
         return;
@@ -356,15 +721,15 @@ function renderReservations() {
                 <div class="res-meta">
                     <div class="res-meta-item">
                         <span class="res-meta-value">${r.guestCount}</span>
-                        <span class="res-meta-label">Guests</span>
+                        <span class="res-meta-label">${t('res.guests')}</span>
                     </div>
                     <div class="res-meta-item">
                         <span class="res-meta-value">${r.roomCount}</span>
-                        <span class="res-meta-label">Rooms</span>
+                        <span class="res-meta-label">${t('res.rooms')}</span>
                     </div>
                     <div class="res-meta-item">
                         <span class="res-meta-value">${nights}</span>
-                        <span class="res-meta-label">Nights</span>
+                        <span class="res-meta-label">${t('res.nights')}</span>
                     </div>
                 </div>
                 <div class="res-dates">${formatDateDisplay(r.checkin)} &rarr; ${formatDateDisplay(r.checkout)}</div>
@@ -399,7 +764,7 @@ function populateRoomChecklist(selectedRoomIds) {
             currentFloor = r.floor;
             const floorRooms = sortedRooms.filter(rm => rm.floor === r.floor);
             const allChecked = floorRooms.every(rm => selected.has(rm.id));
-            html += `<label class="room-check-floor-header"><input type="checkbox" data-floor="${r.floor}" ${allChecked ? 'checked' : ''} onchange="toggleFloorCheckboxes(this)"> Floor ${r.floor}</label>`;
+            html += `<label class="room-check-floor-header"><input type="checkbox" data-floor="${r.floor}" ${allChecked ? 'checked' : ''} onchange="toggleFloorCheckboxes(this)"> ${t('rooms.floor')} ${r.floor}</label>`;
         }
         const checked = selected.has(r.id);
         html += `
@@ -407,13 +772,13 @@ function populateRoomChecklist(selectedRoomIds) {
                 <input type="checkbox" value="${r.id}" ${checked ? 'checked' : ''} onchange="onRoomCheckChange(this)">
                 <div class="room-check-info">
                     <span class="room-check-number">${r.number}</span>
-                    <span class="room-check-type">${r.type} &middot; ${r.capacity} pax</span>
+                    <span class="room-check-type">${r.type} &middot; ${r.capacity} ${t('rooms.pax')}</span>
                 </div>
             </label>`;
     });
 
     if (sortedRooms.length === 0) {
-        html = '<div style="padding:20px;text-align:center;color:var(--text-tertiary);font-size:13px">No rooms yet.<br>Add rooms first.</div>';
+        html = `<div style="padding:20px;text-align:center;color:var(--text-tertiary);font-size:13px">${t('res.noRoomsYet')}</div>`;
     }
 
     checklist.innerHTML = html;
@@ -478,7 +843,7 @@ function updateFloorAndSelectAll() {
 function updateRoomCount() {
     const count = document.querySelectorAll('#resRoomChecklist .room-check-item input[type="checkbox"]:checked').length;
     const el = document.getElementById('resRoomCount');
-    if (el) el.textContent = `${count} room${count !== 1 ? 's' : ''} selected`;
+    if (el) el.textContent = `${count} ${count !== 1 ? t('res.roomsSelected') : t('res.roomSelected')}`;
 }
 
 function getSelectedRoomIds() {
@@ -526,7 +891,7 @@ function datePickerNav(btn, dir) {
 }
 
 function renderDatePicker(wrapper) {
-    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const monthNames = t('months.full');
     const vd = wrapper._viewDate;
     const y = vd.getFullYear();
     const m = vd.getMonth();
@@ -570,7 +935,7 @@ function selectDatePickerDay(btn, dateStr) {
 
 function setDatePickerDisplay(wrapper, dateStr) {
     const display = wrapper.querySelector('.mini-cal-display');
-    if (!dateStr) { display.textContent = 'Select date...'; return; }
+    if (!dateStr) { display.textContent = t('res.selectDate'); return; }
     const d = new Date(dateStr + 'T00:00:00');
     const mn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     display.textContent = `${d.getDate()} ${mn[d.getMonth()]} ${d.getFullYear()}`;
@@ -583,7 +948,7 @@ function setDateFieldValue(targetId, dateStr) {
 }
 
 function openNewReservationModal() {
-    document.getElementById('reservationModalTitle').textContent = 'New Group Reservation';
+    document.getElementById('reservationModalTitle').textContent = t('res.newGroupReservation');
     document.getElementById('reservationForm').reset();
     document.getElementById('resId').value = '';
     setDateFieldValue('resCheckin', formatDate(new Date()));
@@ -598,7 +963,7 @@ function openEditReservation(id) {
     const r = reservations.find(x => x.id === id);
     if (!r) return;
 
-    document.getElementById('reservationModalTitle').textContent = 'Edit Reservation';
+    document.getElementById('reservationModalTitle').textContent = t('res.editReservation');
     document.getElementById('resId').value = r.id;
     document.getElementById('resGroupName').value = r.groupName;
     setDateFieldValue('resCheckin', r.checkin);
@@ -635,12 +1000,12 @@ async function saveReservation(e) {
     };
 
     if (new Date(data.checkout) <= new Date(data.checkin)) {
-        showToast('Check-out must be after check-in', 'error');
+        showToast(t('toast.checkoutAfterCheckin'), 'error');
         return;
     }
 
     if (selectedRooms.length === 0) {
-        showToast('Please select at least one room', 'error');
+        showToast(t('toast.selectRoom'), 'error');
         return;
     }
 
@@ -651,16 +1016,16 @@ async function saveReservation(e) {
                 reservations[idx] = { ...reservations[idx], ...data };
             }
             await apiPut(API.reservations, { ...data, id });
-            showToast('Reservation updated');
+            showToast(t('toast.resUpdated'));
         } else {
             const newRes = { id: generateId(), ...data, createdAt: new Date().toISOString() };
             reservations.push(newRes);
             await apiPost(API.reservations, newRes);
-            showToast('Group reservation created');
+            showToast(t('toast.resCreated'));
         }
     } catch (err) {
         console.error(err);
-        showToast('Failed to save reservation', 'error');
+        showToast(t('toast.resSaveFail'), 'error');
         return;
     }
 
@@ -670,18 +1035,18 @@ async function saveReservation(e) {
 }
 
 async function deleteReservation(id) {
-    if (!confirm('Delete this group reservation and all associated guests?')) return;
+    if (!confirm(t('confirm.deleteReservation'))) return;
     reservations = reservations.filter(r => r.id !== id);
     guests = guests.filter(g => g.reservationId !== id);
     try {
         await apiDelete(API.reservations, id);
     } catch (err) {
         console.error(err);
-        showToast('Failed to delete reservation', 'error');
+        showToast(t('toast.resDeleteFail'), 'error');
         return;
     }
     closeModal('reservationDetailModal');
-    showToast('Reservation deleted');
+    showToast(t('toast.resDeleted'));
     renderDashboard();
     refreshCalendar();
 }
@@ -705,55 +1070,55 @@ function openReservationDetail(id) {
         <div class="detail-toolbar">
             <button class="btn btn-secondary btn-sm" onclick="openEditReservation('${r.id}')">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                Edit
+                ${t('detail.edit')}
             </button>
             <button class="btn btn-secondary btn-sm" onclick="openRoomAssignment('${r.id}')">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-                Room Planner
+                ${t('detail.roomPlanner')}
             </button>
             <button class="btn btn-secondary btn-sm" onclick="openGuestsList('${r.id}')">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                Manage Guests
+                ${t('detail.manageGuests')}
             </button>
             <button class="btn btn-ghost btn-sm detail-delete-btn" onclick="deleteReservation('${r.id}')">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                Delete
+                ${t('detail.delete')}
             </button>
         </div>
 
         <div class="detail-info-card">
             <div class="detail-info-grid">
                 <div class="detail-info-item">
-                    <span class="detail-info-label">Check-in</span>
+                    <span class="detail-info-label">${t('res.checkin')}</span>
                     <span class="detail-info-value">${formatDateDisplay(r.checkin)}</span>
                 </div>
                 <div class="detail-info-item">
-                    <span class="detail-info-label">Check-out</span>
+                    <span class="detail-info-label">${t('res.checkout')}</span>
                     <span class="detail-info-value">${formatDateDisplay(r.checkout)}</span>
                 </div>
                 <div class="detail-info-item">
-                    <span class="detail-info-label">Rooms</span>
+                    <span class="detail-info-label">${t('res.rooms')}</span>
                     <span class="detail-info-value">${r.roomCount}</span>
                 </div>
                 <div class="detail-info-item">
-                    <span class="detail-info-label">Nights</span>
+                    <span class="detail-info-label">${t('res.nights')}</span>
                     <span class="detail-info-value">${nights}</span>
                 </div>
                 <div class="detail-info-item detail-info-price">
-                    <span class="detail-info-label">Total Price</span>
+                    <span class="detail-info-label">${t('res.totalPrice')}</span>
                     <span class="detail-info-value">&euro;${(r.price || 0).toLocaleString()}</span>
                 </div>
                 ${r.status === 'pending' && r.expiration ? `<div class="detail-info-item">
-                    <span class="detail-info-label">Expires</span>
+                    <span class="detail-info-label">${t('detail.expires')}</span>
                     <span class="detail-info-value">${formatDateDisplay(r.expiration)}</span>
                 </div>` : ''}
             </div>
         </div>
 
         <div class="detail-notes-section">
-            <span class="detail-info-label">Notes</span>
-            <textarea id="detailNotesField" class="form-control" rows="4" placeholder="Add notes about this reservation...">${escapeHtml(r.notes || '')}</textarea>
-            <button class="btn btn-sm btn-primary" onclick="saveDetailNotes('${r.id}')">Save Notes</button>
+            <span class="detail-info-label">${t('res.notes')}</span>
+            <textarea id="detailNotesField" class="form-control" rows="4" placeholder="${t('detail.addNotes')}">${escapeHtml(r.notes || '')}</textarea>
+            <button class="btn btn-sm btn-primary" onclick="saveDetailNotes('${r.id}')">${t('detail.saveNotes')}</button>
         </div>
     `;
 
@@ -767,10 +1132,10 @@ async function saveDetailNotes(id) {
     r.notes = notes;
     try {
         await apiPut(API.reservations, { ...r });
-        showToast('Notes saved');
+        showToast(t('toast.notesSaved'));
     } catch (err) {
         console.error(err);
-        showToast('Failed to save notes', 'error');
+        showToast(t('toast.notesSaveFail'), 'error');
     }
 }
 
@@ -786,14 +1151,14 @@ function openGuestsList(reservationId) {
     const body = document.getElementById('guestsListBody');
     body.innerHTML = `
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-            <span style="color:var(--text-secondary)">${resGuests.length} guest(s)</span>
+            <span style="color:var(--text-secondary)">${resGuests.length} ${resGuests.length !== 1 ? t('cal.guestPlural') : t('cal.guestSingular')}</span>
             <div style="display:flex;gap:8px">
-                <button class="btn btn-sm btn-secondary" onclick="openFileImportModal('${reservationId}')">Import from File</button>
-                <button class="btn btn-sm btn-primary" onclick="openAddGuestModal('${reservationId}')">Add Guest</button>
+                <button class="btn btn-sm btn-secondary" onclick="openFileImportModal('${reservationId}')">${t('guestList.importFromFile')}</button>
+                <button class="btn btn-sm btn-primary" onclick="openAddGuestModal('${reservationId}')">${t('guestList.addGuest')}</button>
             </div>
         </div>
         <div class="detail-guests-list">
-            ${resGuests.length === 0 ? '<div class="empty-state small"><p>No guests added yet</p></div>' :
+            ${resGuests.length === 0 ? `<div class="empty-state small"><p>${t('guestList.noGuests')}</p></div>` :
             resGuests.map(g => {
                 const room = g.roomId ? rooms.find(rm => rm.id === g.roomId) : null;
                 return `
@@ -801,25 +1166,25 @@ function openGuestsList(reservationId) {
                         <div class="guest-avatar">${getInitials(g.firstName + ' ' + g.lastName)}</div>
                         <div class="guest-info">
                             <strong>${escapeHtml(g.firstName + ' ' + g.lastName)}</strong><br>
-                            <span>${room ? 'Room ' + room.number : 'No room assigned'}${g.docNumber ? ' &middot; ' + g.docType + ': ' + g.docNumber : ''}</span>
+                            <span>${room ? t('rooms.room') + ' ' + room.number : t('guestList.noRoomAssigned')}${g.docNumber ? ' &middot; ' + g.docType + ': ' + g.docNumber : ''}</span>
                         </div>
-                        <button class="btn btn-ghost btn-sm" onclick="openEditGuestModal('${g.id}')">Edit</button>
-                        <button class="btn btn-ghost btn-sm" onclick="deleteGuest('${g.id}', '${reservationId}')">Remove</button>
+                        <button class="btn btn-ghost btn-sm" onclick="openEditGuestModal('${g.id}')">${t('guestList.edit')}</button>
+                        <button class="btn btn-ghost btn-sm" onclick="deleteGuest('${g.id}', '${reservationId}')">${t('guestList.remove')}</button>
                     </div>
                 `;
             }).join('')}
         </div>
 
         <div class="detail-section" style="margin-top:24px">
-            <h3>Schedine Alloggiati</h3>
+            <h3>${t('detail.schedine')}</h3>
             <div id="alloggiatiPanel">
                 <p style="color:var(--text-secondary);margin-bottom:12px">
-                    Send guest registration forms to the Italian police (Alloggiati Web).
+                    ${t('detail.schedineDesc')}
                 </p>
                 <div style="display:flex;gap:8px;flex-wrap:wrap">
-                    <button class="btn btn-sm btn-secondary" onclick="alloggiatiPreview('${reservationId}')">Preview Records</button>
-                    <button class="btn btn-sm btn-secondary" onclick="alloggiatiTest('${reservationId}')">Test</button>
-                    <button class="btn btn-sm btn-primary" onclick="alloggiatiSend('${reservationId}')">Send to Police</button>
+                    <button class="btn btn-sm btn-secondary" onclick="alloggiatiPreview('${reservationId}')">${t('detail.previewRecords')}</button>
+                    <button class="btn btn-sm btn-secondary" onclick="alloggiatiTest('${reservationId}')">${t('detail.test')}</button>
+                    <button class="btn btn-sm btn-primary" onclick="alloggiatiSend('${reservationId}')">${t('detail.sendToPolice')}</button>
                 </div>
                 <div id="alloggiatiResults" style="margin-top:12px"></div>
             </div>
@@ -1021,7 +1386,7 @@ async function alloggiatiTest(reservationId) {
 }
 
 async function alloggiatiSend(reservationId) {
-    if (!confirm('Send schedine to the police? Make sure you tested first.')) return;
+    if (!confirm(t('confirm.sendSchedule'))) return;
     const container = document.getElementById('alloggiatiResults');
     container.innerHTML = '<p>Sending to Alloggiati Web...</p>';
     try {
@@ -1029,7 +1394,7 @@ async function alloggiatiSend(reservationId) {
         const data = await apiPost(API.alloggiati + '?action=send', { reservationId, token });
         renderAlloggiatiResults(container, data, 'send');
         if (data.success && data.validCount === data.totalCount) {
-            showToast('All schedine sent successfully!');
+            showToast(t('toast.schedineOk'));
         } else {
             showToast(`${data.validCount}/${data.totalCount} schedine accepted`, 'error');
         }
@@ -1052,7 +1417,7 @@ function openAssignRooms(reservationId) {
     const body = document.getElementById('assignRoomsBody');
     body.innerHTML = `
         <p style="margin-bottom:16px;color:var(--text-secondary);font-size:14px">
-            Select rooms for <strong>${escapeHtml(r.groupName)}</strong> (${r.roomCount} needed)
+            ${t('assign.selectRooms')} <strong>${escapeHtml(r.groupName)}</strong> (${r.roomCount} ${t('assign.needed')})
         </p>
         <div id="assignRoomsList">
             ${availableRooms.map(rm => {
@@ -1060,8 +1425,8 @@ function openAssignRooms(reservationId) {
                 return `
                     <div class="assign-room-item">
                         <div class="assign-room-info">
-                            <span class="assign-room-number">Room ${rm.number}</span>
-                            <span class="assign-room-type">${rm.type} &middot; ${rm.capacity} pax &middot; &euro;${rm.price}/night</span>
+                            <span class="assign-room-number">${t('rooms.room')} ${rm.number}</span>
+                            <span class="assign-room-type">${rm.type} &middot; ${rm.capacity} ${t('rooms.pax')} &middot; &euro;${rm.price}/night</span>
                         </div>
                         <button class="assign-room-check ${isSelected ? 'selected' : ''}"
                                 onclick="toggleRoomAssignment(this, '${rm.id}', '${reservationId}')"
@@ -1073,7 +1438,7 @@ function openAssignRooms(reservationId) {
             }).join('')}
         </div>
         <div class="modal-actions">
-            <button class="btn btn-ghost" onclick="closeModal('assignRoomsModal')">Done</button>
+            <button class="btn btn-ghost" onclick="closeModal('assignRoomsModal')">${t('assign.done')}</button>
         </div>
     `;
 
@@ -1113,7 +1478,7 @@ async function toggleRoomAssignment(btn, roomId, reservationId) {
         }
     } catch (err) {
         console.error(err);
-        showToast('Failed to save room assignment', 'error');
+        showToast(t('toast.assignRoomFail'), 'error');
     }
 }
 
@@ -1121,12 +1486,14 @@ async function toggleRoomAssignment(btn, roomId, reservationId) {
 // ROOM ASSIGNMENT SPREADSHEET (Dynamic Columns)
 // =============================================
 
-const DEFAULT_PLANNER_COLUMNS = [
-    { id: 'usage', name: 'Usage' },
-    { id: 'group', name: 'Group' },
-    { id: 'occ', name: 'Occ.' },
-    { id: 'notes', name: 'Notes' }
-];
+function getDefaultPlannerColumns() {
+    return [
+        { id: 'usage', name: t('assign.usage') },
+        { id: 'group', name: t('assign.group') },
+        { id: 'occ', name: t('assign.occ') },
+        { id: 'notes', name: t('assign.notes') }
+    ];
+}
 
 let plannerColumns = [];
 
@@ -1135,16 +1502,16 @@ async function openRoomAssignment(reservationId) {
     const r = reservations.find(x => x.id === reservationId);
     if (!r) return;
 
-    document.getElementById('assignmentModalTitle').textContent = 'Room Planner — ' + r.groupName;
+    document.getElementById('assignmentModalTitle').textContent = t('assign.roomPlanner') + ' — ' + r.groupName;
 
     // Load column config
     try {
         const config = await apiGet(API.plannerConfig + '?reservation_id=' + reservationId);
         plannerColumns = (config && config.columns && config.columns.length > 0)
             ? config.columns
-            : DEFAULT_PLANNER_COLUMNS.map(c => ({ ...c }));
+            : getDefaultPlannerColumns().map(c => ({ ...c }));
     } catch {
-        plannerColumns = DEFAULT_PLANNER_COLUMNS.map(c => ({ ...c }));
+        plannerColumns = getDefaultPlannerColumns().map(c => ({ ...c }));
     }
 
     // Load existing assignments
@@ -1185,19 +1552,19 @@ function renderAssignmentSpreadsheet() {
         <table class="assignment-table">
             <thead>
                 <tr>
-                    <th class="col-room">Room</th>
-                    <th class="col-type">Type</th>
+                    <th class="col-room">${t('rooms.room')}</th>
+                    <th class="col-type">${t('rooms.type')}</th>
                     ${plannerColumns.map((col, i) => `
                         <th class="col-dynamic">
                             <div class="col-header-wrap">
                                 <input type="text" class="col-header-input" value="${escapeHtml(col.name)}"
                                     data-col-idx="${i}" onchange="renamePlannerColumn(this)" onkeydown="if(event.key==='Enter')this.blur()">
-                                <button class="col-remove-btn" onclick="removePlannerColumn(${i})" title="Remove column">&times;</button>
+                                <button class="col-remove-btn" onclick="removePlannerColumn(${i})" title="${t('assign.removeColumn')}">&times;</button>
                             </div>
                         </th>
                     `).join('')}
                     <th class="col-add">
-                        <button class="col-add-btn" onclick="addPlannerColumn()" title="Add column">+</button>
+                        <button class="col-add-btn" onclick="addPlannerColumn()" title="${t('assign.addColumn')}">+</button>
                     </th>
                 </tr>
             </thead>
@@ -1205,7 +1572,7 @@ function renderAssignmentSpreadsheet() {
     `;
 
     for (const [floor, floorRooms] of Object.entries(floors)) {
-        html += `<tr class="floor-header-row"><td colspan="${totalCols}">Floor ${floor}</td></tr>`;
+        html += `<tr class="floor-header-row"><td colspan="${totalCols}">${t('rooms.floor')} ${floor}</td></tr>`;
 
         for (const rm of floorRooms) {
             const a = assignMap[rm.id] || {};
@@ -1242,8 +1609,8 @@ function getAssignmentStatsHTML() {
         if (Object.values(vals).some(v => v !== '' && v !== 0 && v != null)) filled++;
     });
     return `
-        <span>Rooms assigned: <strong>${filled}</strong> / ${rooms.length}</span>
-        <span>Columns: <strong>${plannerColumns.length}</strong></span>
+        <span>${t('assign.roomsAssigned')}: <strong>${filled}</strong> / ${rooms.length}</span>
+        <span>${t('assign.columns')}: <strong>${plannerColumns.length}</strong></span>
     `;
 }
 
@@ -1280,14 +1647,14 @@ function onAssignmentChange(el) {
 
 function addPlannerColumn() {
     const id = 'col_' + Date.now().toString(36);
-    const name = 'Column ' + (plannerColumns.length + 1);
+    const name = t('assign.column') + ' ' + (plannerColumns.length + 1);
     plannerColumns.push({ id, name });
     renderAssignmentSpreadsheet();
 }
 
 function removePlannerColumn(idx) {
     const col = plannerColumns[idx];
-    if (!confirm(`Remove column "${col.name}"? Data in this column will be lost on save.`)) return;
+    if (!confirm(`${t('confirm.removeColumn')} "${col.name}"? ${t('confirm.removeColumnData')}`)) return;
 
     plannerColumns.splice(idx, 1);
 
@@ -1354,13 +1721,13 @@ async function saveAllAssignments() {
             a._dirty = false;
         }
 
-        showToast('Room assignments saved');
+        showToast(t('toast.assignSaved'));
     } catch (err) {
         console.error(err);
-        showToast('Failed to save assignments', 'error');
+        showToast(t('toast.assignSaveFail'), 'error');
     }
 
-    btn.textContent = 'Save';
+    btn.textContent = t('assign.save');
     btn.disabled = false;
 }
 
@@ -1389,7 +1756,7 @@ function renderRooms() {
     const grid = document.getElementById('roomsGrid');
 
     if (filtered.length === 0) {
-        grid.innerHTML = '<div class="empty-state"><p>No rooms found</p></div>';
+        grid.innerHTML = `<div class="empty-state"><p>${t('rooms.noRooms')}</p></div>`;
         return;
     }
 
@@ -1400,7 +1767,7 @@ function renderRooms() {
                 <span class="room-status-dot ${r.status}"></span>${r.type}
             </div>
             <div class="room-details">
-                <span class="room-capacity">${r.capacity} pax &middot; Floor ${r.floor}</span>
+                <span class="room-capacity">${r.capacity} ${t('rooms.pax')} &middot; ${t('rooms.floor')} ${r.floor}</span>
             </div>
         </div>
     `).join('');
@@ -1418,7 +1785,7 @@ function filterRooms() {
 }
 
 function openNewRoomModal() {
-    document.getElementById('roomModalTitle').textContent = 'Add Room';
+    document.getElementById('roomModalTitle').textContent = t('rooms.addRoom');
     document.getElementById('roomForm').reset();
     document.getElementById('roomId').value = '';
     document.getElementById('deleteRoomBtn').style.display = 'none';
@@ -1429,7 +1796,7 @@ function openEditRoom(id) {
     const r = rooms.find(x => x.id === id);
     if (!r) return;
 
-    document.getElementById('roomModalTitle').textContent = 'Edit Room';
+    document.getElementById('roomModalTitle').textContent = t('common.edit') + ' ' + t('rooms.room');
     document.getElementById('roomId').value = r.id;
     document.getElementById('roomNumber').value = r.number;
     document.getElementById('roomFloor').value = r.floor;
@@ -1457,20 +1824,20 @@ async function saveRoom(e) {
             const idx = rooms.findIndex(r => r.id === id);
             if (idx !== -1) rooms[idx] = { ...rooms[idx], ...data };
             await apiPut(API.rooms, { ...data, id });
-            showToast('Room updated');
+            showToast(t('toast.roomUpdated'));
         } else {
             if (rooms.some(r => r.number === data.number)) {
-                showToast('Room number already exists', 'error');
+                showToast(t('toast.roomExists'), 'error');
                 return;
             }
             const newRoom = { id: generateId(), ...data };
             rooms.push(newRoom);
             await apiPost(API.rooms, newRoom);
-            showToast('Room added');
+            showToast(t('toast.roomAdded'));
         }
     } catch (err) {
         console.error(err);
-        showToast('Failed to save room', 'error');
+        showToast(t('toast.roomSaveFail'), 'error');
         return;
     }
 
@@ -1483,18 +1850,18 @@ async function saveRoom(e) {
 async function deleteRoom() {
     const id = document.getElementById('roomId').value;
     if (!id) return;
-    if (!confirm('Delete this room?')) return;
+    if (!confirm(t('confirm.deleteRoom'))) return;
     rooms = rooms.filter(r => r.id !== id);
     guests = guests.filter(g => g.roomId !== id);
     try {
         await apiDelete(API.rooms, id);
     } catch (err) {
         console.error(err);
-        showToast('Failed to delete room', 'error');
+        showToast(t('toast.roomDeleteFail'), 'error');
         return;
     }
     closeModal('roomModal');
-    showToast('Room deleted');
+    showToast(t('toast.roomDeleted'));
     renderRooms();
     renderDashboard();
     refreshCalendar();
@@ -1523,12 +1890,12 @@ function renderGuests() {
     const tbody = document.getElementById('guestsTableBody');
 
     if (allGuests.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="empty-state small">No guests found</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="7" class="empty-state small">${t('guests.noGuests')}</td></tr>`;
         return;
     }
 
     tbody.innerHTML = allGuests.map(g => {
-        const statusLabel = g.reservation ? g.reservation.status.replace('-', ' ') : 'unknown';
+        const statusLabel = g.reservation ? g.reservation.status.replace('-', ' ') : t('guests.unknown');
         return `
             <tr>
                 <td>
@@ -1543,7 +1910,7 @@ function renderGuests() {
                 <td>${g.reservation ? formatDateDisplay(g.reservation.checkout) : '—'}</td>
                 <td><span class="status-badge ${g.reservation?.status || ''}">${statusLabel}</span></td>
                 <td>
-                    <button class="btn btn-ghost btn-sm" onclick="deleteGuest('${g.id}', '${g.reservationId}')">Remove</button>
+                    <button class="btn btn-ghost btn-sm" onclick="deleteGuest('${g.id}', '${g.reservationId}')">${t('guestList.remove')}</button>
                 </td>
             </tr>
         `;
@@ -1568,9 +1935,9 @@ function openAddGuestModal(reservationId) {
 
     // Populate room dropdown
     const select = document.getElementById('guestRoom');
-    select.innerHTML = '<option value="">Unassigned</option>';
+    select.innerHTML = `<option value="">${t('guest.unassigned')}</option>`;
     rooms.filter(r => r.status === 'available' || r.status === 'occupied').forEach(r => {
-        select.innerHTML += `<option value="${r.id}">Room ${r.number} (${r.type})</option>`;
+        select.innerHTML += `<option value="${r.id}">${t('rooms.room')} ${r.number} (${r.type})</option>`;
     });
 
     closeModal('guestsListModal');
@@ -1624,9 +1991,9 @@ function openEditGuestModal(guestId) {
 
     // Populate room dropdown
     const select = document.getElementById('guestRoom');
-    select.innerHTML = '<option value="">Unassigned</option>';
+    select.innerHTML = `<option value="">${t('guest.unassigned')}</option>`;
     rooms.filter(r => r.status === 'available' || r.status === 'occupied').forEach(r => {
-        select.innerHTML += `<option value="${r.id}" ${r.id === g.roomId ? 'selected' : ''}>Room ${r.number} (${r.type})</option>`;
+        select.innerHTML += `<option value="${r.id}" ${r.id === g.roomId ? 'selected' : ''}>${t('rooms.room')} ${r.number} (${r.type})</option>`;
     });
 
     closeModal('guestsListModal');
@@ -1662,16 +2029,16 @@ async function saveGuest(e) {
             const idx = guests.findIndex(g => g.id === id);
             if (idx !== -1) guests[idx] = { ...guests[idx], ...data };
             await apiPut(API.guests, { ...data, id });
-            showToast('Guest updated');
+            showToast(t('toast.guestUpdated'));
         } else {
             const newGuest = { id: generateId(), ...data };
             guests.push(newGuest);
             await apiPost(API.guests, newGuest);
-            showToast('Guest added to group');
+            showToast(t('toast.guestAdded'));
         }
     } catch (err) {
         console.error('Save guest error:', err);
-        showToast('Failed to save guest: ' + err.message, 'error');
+        showToast(t('toast.guestSaveFail') + ': ' + err.message, 'error');
         return;
     }
 
@@ -1684,16 +2051,16 @@ async function saveGuest(e) {
 }
 
 async function deleteGuest(guestId, reservationId) {
-    if (!confirm('Remove this guest?')) return;
+    if (!confirm(t('confirm.removeGuest'))) return;
     guests = guests.filter(g => g.id !== guestId);
     try {
         await apiDelete(API.guests, guestId);
     } catch (err) {
         console.error(err);
-        showToast('Failed to delete guest', 'error');
+        showToast(t('toast.guestRemoveFail'), 'error');
         return;
     }
-    showToast('Guest removed');
+    showToast(t('toast.guestRemoved'));
 
     // Refresh guests list and reservation detail
     openGuestsList(reservationId);
@@ -1823,8 +2190,8 @@ function refreshCalendar() {
 function buildBoardHTML() {
     const DW = PLANNER_DAY_WIDTH;
     const today = formatDate(new Date());
-    const dayAbbr = ['Su','Mo','Tu','We','Th','Fr','Sa'];
-    const monthFull = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const dayAbbr = t('days.short');
+    const monthFull = t('months.full');
 
     const sortedRooms = getPlannerSortedRooms();
     const floors = getPlannerFloors(sortedRooms);
@@ -1851,9 +2218,9 @@ function buildBoardHTML() {
     // === 1. CORNER (top-left, fixed) ===
     let corner = '<div class="p-corner">';
     corner += '<div class="p-corner-cell months">&nbsp;</div>';
-    corner += '<div class="p-corner-cell days">Room</div>';
-    corner += '<div class="p-corner-cell stats">Available</div>';
-    corner += '<div class="p-corner-cell stats">Occupied</div>';
+    corner += `<div class="p-corner-cell days">${t('cal.room')}</div>`;
+    corner += `<div class="p-corner-cell stats">${t('cal.available')}</div>`;
+    corner += `<div class="p-corner-cell stats">${t('cal.occupied')}</div>`;
     corner += '</div>';
 
     // === 2. HEADER (top-right, h-scroll synced) ===
@@ -1899,7 +2266,7 @@ function buildBoardHTML() {
     let roomsPanel = '<div class="p-rooms-panel"><div class="p-rooms-inner">';
     floorKeys.forEach(floor => {
         const RH = PLANNER_ROW_HEIGHT;
-        roomsPanel += `<div class="p-floor-left">Floor ${floor}</div>`;
+        roomsPanel += `<div class="p-floor-left">${t('rooms.floor')} ${floor}</div>`;
         floors[floor].forEach(room => {
             roomsPanel += `<div class="p-room-left" style="height:${RH}px" onclick="openEditRoom('${room.id}')">
                 <span class="planner-room-status ${room.status}"></span>
@@ -1954,8 +2321,8 @@ function buildBoardHTML() {
                 const nights = Math.max(1, b.endIdx - b.startIdx);
                 const resGuests = guests.filter(g => g.reservationId === b.res.id).length;
                 const statusLabel = b.res.status.charAt(0).toUpperCase() + b.res.status.slice(1);
-                const expirationInfo = b.res.status === 'pending' && b.res.expiration ? ` · Expires ${formatDateDisplay(b.res.expiration)}` : '';
-                const tipData = `${label}||${formatDateDisplay(b.res.checkin)} → ${formatDateDisplay(b.res.checkout)}||${nights} night${nights > 1 ? 's' : ''} · ${b.res.roomCount} room${b.res.roomCount !== 1 ? 's' : ''} · ${resGuests} guest${resGuests !== 1 ? 's' : ''}||${statusLabel}${expirationInfo}${b.res.price ? ' · €' + Number(b.res.price).toLocaleString() : ''}`;
+                const expirationInfo = b.res.status === 'pending' && b.res.expiration ? ` · ${t('cal.expires')} ${formatDateDisplay(b.res.expiration)}` : '';
+                const tipData = `${label}||${formatDateDisplay(b.res.checkin)} → ${formatDateDisplay(b.res.checkout)}||${nights} ${nights > 1 ? t('cal.nightsPlural') : t('cal.nights')} · ${b.res.roomCount} ${b.res.roomCount !== 1 ? t('cal.roomPlural') : t('cal.roomSingular')} · ${resGuests} ${resGuests !== 1 ? t('cal.guestPlural') : t('cal.guestSingular')}||${statusLabel}${expirationInfo}${b.res.price ? ' · €' + Number(b.res.price).toLocaleString() : ''}`;
                 grid += `<div class="${cls}" style="left:${left}px;width:${width}px;z-index:${2 + bi}" onclick="openReservationDetail('${b.res.id}')" data-tip="${tipData}" onmouseenter="showBarTooltip(event)" onmouseleave="hideBarTooltip()"><span class="bar-label">${label}</span></div>`;
             });
             grid += '</div>';
@@ -2040,7 +2407,7 @@ function updateMonthBarFromScroll() {
 
 function renderPlannerMonthBar() {
     const bar = document.getElementById('plannerMonthBar');
-    const mn = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+    const mn = t('months.short');
     const now = new Date();
     let html = '';
     for (let off = -12; off <= 12; off++) {
@@ -2190,7 +2557,7 @@ function onGridDragEnd() {
     const checkoutDate = dayIndexToDate(endIdx + 1);
 
     // Open new reservation modal with dates pre-filled
-    document.getElementById('reservationModalTitle').textContent = 'New Group Reservation';
+    document.getElementById('reservationModalTitle').textContent = t('res.newGroupReservation');
     document.getElementById('reservationForm').reset();
     document.getElementById('resId').value = '';
     setDateFieldValue('resCheckin', formatDate(checkinDate));
@@ -2294,16 +2661,18 @@ function initSettingsModal() {
 let csvParsedRows = [];
 let csvHeaders = [];
 
-const CSV_FIELDS = [
-    { key: 'groupName', label: 'Group Name', required: true },
-    { key: 'checkin', label: 'Check-in Date', required: true },
-    { key: 'checkout', label: 'Check-out Date', required: true },
-    { key: 'roomCount', label: 'Room Count', required: false },
-    { key: 'status', label: 'Status', required: false },
-    { key: 'price', label: 'Price', required: false },
-    { key: 'notes', label: 'Notes', required: false },
-    { key: 'guestCount', label: 'Guest Count', required: false }
-];
+function getCsvFields() {
+    return [
+        { key: 'groupName', label: t('csv.groupName'), required: true },
+        { key: 'checkin', label: t('csv.checkinDate'), required: true },
+        { key: 'checkout', label: t('csv.checkoutDate'), required: true },
+        { key: 'roomCount', label: t('csv.roomCount'), required: false },
+        { key: 'status', label: t('csv.status'), required: false },
+        { key: 'price', label: t('csv.price'), required: false },
+        { key: 'notes', label: t('csv.notes'), required: false },
+        { key: 'guestCount', label: t('csv.guestCount'), required: false }
+    ];
+}
 
 // Common Scidoo column name auto-mapping
 const SCIDOO_MAP = {
@@ -2371,7 +2740,7 @@ function handleCsvFile(e) {
     reader.onload = function(ev) {
         const { headers, rows } = parseCsv(ev.target.result);
         if (headers.length === 0) {
-            showToast('Could not parse CSV file', 'error');
+            showToast(t('toast.csvParseFail'), 'error');
             return;
         }
         csvHeaders = headers;
@@ -2401,18 +2770,18 @@ function buildCsvMappingUI() {
     const grid = document.getElementById('csvMappingGrid');
     const options = csvHeaders.map(h => `<option value="${escapeHtml(h)}">${escapeHtml(h)}</option>`).join('');
 
-    grid.innerHTML = CSV_FIELDS.map(f => {
+    grid.innerHTML = getCsvFields().map(f => {
         const autoVal = autoMapColumn(f.key);
         return `
             <label>${f.label}${f.required ? ' *' : ''}</label>
             <select id="csvMap_${f.key}" onchange="updateCsvPreview()">
-                <option value="">— skip —</option>
+                <option value="">${t('csv.skip')}</option>
                 ${options}
             </select>`;
     }).join('');
 
     // Set auto-mapped values
-    CSV_FIELDS.forEach(f => {
+    getCsvFields().forEach(f => {
         const mapped = autoMapColumn(f.key);
         if (mapped) document.getElementById('csvMap_' + f.key).value = mapped;
     });
@@ -2422,7 +2791,7 @@ function buildCsvMappingUI() {
 
 function getCsvMapping() {
     const mapping = {};
-    CSV_FIELDS.forEach(f => {
+    getCsvFields().forEach(f => {
         const sel = document.getElementById('csvMap_' + f.key);
         if (sel && sel.value) mapping[f.key] = sel.value;
     });
@@ -2479,11 +2848,11 @@ function updateCsvPreview() {
     document.getElementById('csvPreviewCount').textContent = `(${csvParsedRows.length} rows found, showing first ${Math.min(10, preview.length)})`;
 
     if (preview.length === 0) {
-        document.getElementById('csvPreviewTable').innerHTML = '<p style="padding:12px;color:var(--text-secondary);font-size:13px">No valid rows. Check your column mapping.</p>';
+        document.getElementById('csvPreviewTable').innerHTML = `<p style="padding:12px;color:var(--text-secondary);font-size:13px">${t('csv.noValidRows')}</p>`;
         return;
     }
 
-    let html = '<table><thead><tr><th>Group</th><th>Check-in</th><th>Check-out</th><th>Rooms</th><th>Status</th><th>Price</th></tr></thead><tbody>';
+    let html = `<table><thead><tr><th>${t('csv.groupName')}</th><th>${t('res.checkin')}</th><th>${t('res.checkout')}</th><th>${t('res.rooms')}</th><th>${t('res.status')}</th><th>${t('csv.price')}</th></tr></thead><tbody>`;
     preview.forEach(r => {
         html += `<tr>
             <td>${escapeHtml(r.groupName)}</td>
@@ -2501,17 +2870,17 @@ function updateCsvPreview() {
 async function executeCsvImport() {
     const mapping = getCsvMapping();
     if (!mapping.groupName || !mapping.checkin || !mapping.checkout) {
-        showToast('Group Name, Check-in and Check-out mappings are required', 'error');
+        showToast(t('toast.csvMappingRequired'), 'error');
         return;
     }
 
     const toImport = csvParsedRows.map(r => mapCsvRow(r, mapping)).filter(Boolean);
     if (toImport.length === 0) {
-        showToast('No valid rows to import', 'error');
+        showToast(t('toast.noValidRows'), 'error');
         return;
     }
 
-    if (!confirm(`Import ${toImport.length} reservations?`)) return;
+    if (!confirm(t('confirm.importReservations', { n: toImport.length }))) return;
 
     let success = 0;
     let errors = 0;
@@ -2542,22 +2911,24 @@ async function executeCsvImport() {
 
 // ---- Smart Guest File Import ----
 
-const GUEST_IMPORT_FIELDS = [
-    { key: 'lastName',       label: 'Last Name',       required: true },
-    { key: 'firstName',      label: 'First Name',      required: true },
-    { key: 'sex',            label: 'Sex' },
-    { key: 'birthDate',      label: 'Date of Birth' },
-    { key: 'birthComune',    label: 'Birth City' },
-    { key: 'birthProvince',  label: 'Birth Province' },
-    { key: 'birthCountry',   label: 'Birth Country' },
-    { key: 'citizenship',    label: 'Citizenship' },
-    { key: 'docType',        label: 'Document Type' },
-    { key: 'docNumber',      label: 'Document Number' },
-    { key: 'docIssuedPlace', label: 'Doc Issued Place' },
-    { key: 'email',          label: 'Email' },
-    { key: 'phone',          label: 'Phone' },
-    { key: 'guestType',      label: 'Guest Type' },
-];
+function getGuestImportFields() {
+    return [
+        { key: 'lastName',       label: t('field.lastName'),       required: true },
+        { key: 'firstName',      label: t('field.firstName'),      required: true },
+        { key: 'sex',            label: t('field.sex') },
+        { key: 'birthDate',      label: t('field.birthDate') },
+        { key: 'birthComune',    label: t('field.birthCity') },
+        { key: 'birthProvince',  label: t('field.birthProvince') },
+        { key: 'birthCountry',   label: t('field.birthCountry') },
+        { key: 'citizenship',    label: t('field.citizenship') },
+        { key: 'docType',        label: t('field.docType') },
+        { key: 'docNumber',      label: t('field.docNumber') },
+        { key: 'docIssuedPlace', label: t('field.docIssuedPlace') },
+        { key: 'email',          label: t('field.email') },
+        { key: 'phone',          label: t('field.phone') },
+        { key: 'guestType',      label: t('field.guestType') },
+    ];
+}
 
 const GUEST_COL_ALIASES = {
     lastName:       ['cognome', 'last name', 'surname', 'family name', 'last_name'],
@@ -2617,7 +2988,7 @@ function handleGuestFileImport(e) {
 async function processGuestFile(file) {
     const ext = file.name.split('.').pop().toLowerCase();
     if (!['pdf', 'docx', 'xlsx', 'xls'].includes(ext)) {
-        showToast('Unsupported file type. Use PDF, DOCX, or XLSX.', 'error');
+        showToast(t('toast.unsupportedFile'), 'error');
         return;
     }
 
@@ -2642,7 +3013,7 @@ async function processGuestFile(file) {
         }
     } catch (err) {
         console.error('File import error:', err);
-        showToast('Failed to process file: ' + err.message, 'error');
+        showToast(t('toast.fileFail') + ': ' + err.message, 'error');
     } finally {
         document.getElementById('fileImportLoading').style.display = 'none';
     }
@@ -2657,12 +3028,12 @@ async function processXlsxFile(file) {
 
     // First try with headers (default behavior)
     let json = XLSX.utils.sheet_to_json(ws, { defval: '' });
-    if (json.length === 0) { showToast('No data found in spreadsheet', 'error'); return; }
+    if (json.length === 0) { showToast(t('toast.noDataSpreadsheet'), 'error'); return; }
 
     // Check if the first row actually contains recognizable headers
     const headers = Object.keys(json[0]);
     let hasRecognizedHeaders = false;
-    for (const field of GUEST_IMPORT_FIELDS) {
+    for (const field of getGuestImportFields()) {
         const aliases = GUEST_COL_ALIASES[field.key] || [];
         for (const alias of aliases) {
             if (headers.some(h => h.toLowerCase().trim() === alias || h.toLowerCase().trim().includes(alias))) {
@@ -2676,7 +3047,7 @@ async function processXlsxFile(file) {
     // If no headers recognized, re-read with generic column names so the first row becomes data
     if (!hasRecognizedHeaders) {
         const rawRows = XLSX.utils.sheet_to_json(ws, { defval: '', header: 1 });
-        if (rawRows.length === 0) { showToast('No data found in spreadsheet', 'error'); return; }
+        if (rawRows.length === 0) { showToast(t('toast.noDataSpreadsheet'), 'error'); return; }
         const numCols = Math.max(...rawRows.map(r => r.length));
         const genHeaders = [];
         for (let i = 0; i < numCols; i++) genHeaders.push(`Column ${i + 1}`);
@@ -2692,7 +3063,7 @@ async function processXlsxFile(file) {
     guestFileParsedRows = json;
     const contentDetected = autoDetectColumnsByContent();
     const mapping = {};
-    GUEST_IMPORT_FIELDS.forEach(f => {
+    getGuestImportFields().forEach(f => {
         const mapped = autoMapGuestColumn(f.key) || contentDetected[f.key] || '';
         if (mapped) mapping[f.key] = mapped;
     });
@@ -2702,7 +3073,7 @@ async function processXlsxFile(file) {
     guestFileParsedRows = json.map(r => mapXlsxGuestRow(r, mapping)).filter(Boolean);
 
     if (guestFileParsedRows.length === 0) {
-        showToast('Could not detect guest data in spreadsheet. Check that it contains names.', 'error');
+        showToast(t('toast.noGuestsSpreadsheet'), 'error');
         return;
     }
 
@@ -2903,7 +3274,7 @@ function mapXlsxGuestRow(row, mapping) {
 
 async function processPdfFile(file) {
     if (!window.pdfjsLib) {
-        showToast('PDF library not loaded yet. Please try again.', 'error');
+        showToast(t('toast.pdfNotLoaded'), 'error');
         return;
     }
     const buf = await file.arrayBuffer();
@@ -2916,7 +3287,7 @@ async function processPdfFile(file) {
         fullText += pageText + '\n';
     }
     if (fullText.trim().length < 5) {
-        showToast('Could not extract text from PDF. It may be a scanned image.', 'error');
+        showToast(t('toast.pdfNoText'), 'error');
         return;
     }
     processExtractedText(fullText);
@@ -2926,13 +3297,13 @@ async function processPdfFile(file) {
 
 async function processDocxFile(file) {
     if (!window.mammoth) {
-        showToast('Word library not loaded yet. Please try again.', 'error');
+        showToast(t('toast.docxNotLoaded'), 'error');
         return;
     }
     const buf = await file.arrayBuffer();
     const result = await mammoth.extractRawText({ arrayBuffer: buf });
     if (result.value.trim().length < 5) {
-        showToast('Could not extract text from document.', 'error');
+        showToast(t('toast.docxNoText'), 'error');
         return;
     }
     processExtractedText(result.value);
@@ -2951,7 +3322,7 @@ function processExtractedText(text) {
     guestFileParsedRows = parseGuestText(text);
 
     if (guestFileParsedRows.length === 0) {
-        showToast('Could not detect any guest data. Check the extracted text.', 'error');
+        showToast(t('toast.noGuestsDetected'), 'error');
     }
 
     document.getElementById('fileImportPreviewSection').style.display = 'block';
@@ -3016,7 +3387,7 @@ function tryParseAsTable(text) {
 
     // Try to auto-map using first row as headers
     const mapping = {};
-    for (const field of GUEST_IMPORT_FIELDS) {
+    for (const field of getGuestImportFields()) {
         const aliases = GUEST_COL_ALIASES[field.key] || [];
         for (const alias of aliases) {
             const idx = firstCols.findIndex(h => h.toLowerCase().includes(alias));
@@ -3231,22 +3602,22 @@ function renderGuestFilePreview() {
 
 function renderGuestFilePreviewTable(rows) {
     const count = rows.length;
-    document.getElementById('guestFilePreviewCount').textContent = `${count} guest(s) found`;
+    document.getElementById('guestFilePreviewCount').textContent = `${count} ${t('preview.guestsFound')}`;
 
     if (count === 0) {
-        document.getElementById('guestFilePreviewTable').innerHTML = '<p style="padding:16px;color:var(--text-secondary);font-size:13px">No guests detected. Try a different file or check the extracted text above.</p>';
+        document.getElementById('guestFilePreviewTable').innerHTML = `<p style="padding:16px;color:var(--text-secondary);font-size:13px">${t('preview.noGuestsDetected')}</p>`;
         return;
     }
 
     const showCols = [
-        { key: 'lastName', label: 'Last Name' },
-        { key: 'firstName', label: 'First Name' },
-        { key: 'sex', label: 'Sex' },
-        { key: 'birthDate', label: 'Birth Date' },
-        { key: 'docType', label: 'Doc Type' },
-        { key: 'docNumber', label: 'Doc No.' },
-        { key: 'email', label: 'Email' },
-        { key: 'phone', label: 'Phone' },
+        { key: 'lastName', label: t('field.lastName') },
+        { key: 'firstName', label: t('field.firstName') },
+        { key: 'sex', label: t('field.sex') },
+        { key: 'birthDate', label: t('preview.birthDate') },
+        { key: 'docType', label: t('field.docType') },
+        { key: 'docNumber', label: t('preview.docNo') },
+        { key: 'email', label: t('field.email') },
+        { key: 'phone', label: t('field.phone') },
     ];
 
     const preview = rows.slice(0, 20);
@@ -3263,7 +3634,7 @@ function renderGuestFilePreviewTable(rows) {
         html += '</tr>';
     });
     html += '</tbody></table>';
-    if (count > 20) html += `<p style="padding:8px 12px;font-size:12px;color:var(--text-secondary)">Showing first 20 of ${count}</p>`;
+    if (count > 20) html += `<p style="padding:8px 12px;font-size:12px;color:var(--text-secondary)">${t('preview.showingFirst')} ${count}</p>`;
     document.getElementById('guestFilePreviewTable').innerHTML = html;
 }
 
@@ -3274,11 +3645,11 @@ async function executeGuestFileImport() {
     toImport = guestFileParsedRows.filter(g => g.firstName || g.lastName);
 
     if (toImport.length === 0) {
-        showToast('No valid guests to import', 'error');
+        showToast(t('toast.noValidGuests'), 'error');
         return;
     }
 
-    if (!confirm(`Import ${toImport.length} guest(s) into this reservation?`)) return;
+    if (!confirm(t('confirm.importGuests', { n: toImport.length }))) return;
 
     let success = 0, errors = 0;
 
@@ -3356,6 +3727,12 @@ applyTheme(getTheme());
 
 (async function init() {
     initSettingsModal();
+    applyTranslations();
+    // Set up language toggle buttons
+    document.querySelectorAll('[data-lang-val]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.langVal === currentLang);
+        btn.addEventListener('click', () => setLanguage(btn.dataset.langVal));
+    });
     await loadAllData();
     renderDashboard();
     renderCalendar();
