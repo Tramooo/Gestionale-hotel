@@ -695,41 +695,59 @@ function openReservationDetail(id) {
 
     const body = document.getElementById('reservationDetailBody');
     body.innerHTML = `
-        <div class="detail-actions" style="margin-bottom:20px">
-            <button class="btn btn-secondary btn-sm" onclick="openEditReservation('${r.id}')">Edit</button>
-            <button class="btn btn-secondary btn-sm" onclick="openRoomAssignment('${r.id}')">Room Planner</button>
-            <button class="btn btn-secondary btn-sm" onclick="openGuestsList('${r.id}')">Manage Guests</button>
-            <button class="btn btn-danger btn-sm" onclick="deleteReservation('${r.id}')">Delete</button>
-            <span class="status-badge ${r.status}" style="margin-left:auto">${statusLabel}</span>
+        <div class="detail-toolbar">
+            <button class="btn btn-secondary btn-sm" onclick="openEditReservation('${r.id}')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Edit
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="openRoomAssignment('${r.id}')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                Room Planner
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="openGuestsList('${r.id}')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                Manage Guests
+            </button>
+            <button class="btn btn-ghost btn-sm detail-delete-btn" onclick="deleteReservation('${r.id}')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                Delete
+            </button>
         </div>
 
-        <div class="detail-grid">
-            <div class="detail-item">
-                <span class="label">Check-in</span>
-                <span class="value">${formatDateDisplay(r.checkin)}</span>
+        <div class="detail-info-card">
+            <span class="status-badge ${r.status}">${statusLabel}</span>
+            <div class="detail-info-grid">
+                <div class="detail-info-item">
+                    <span class="detail-info-label">Check-in</span>
+                    <span class="detail-info-value">${formatDateDisplay(r.checkin)}</span>
+                </div>
+                <div class="detail-info-item">
+                    <span class="detail-info-label">Check-out</span>
+                    <span class="detail-info-value">${formatDateDisplay(r.checkout)}</span>
+                </div>
+                <div class="detail-info-item">
+                    <span class="detail-info-label">Rooms</span>
+                    <span class="detail-info-value">${r.roomCount}</span>
+                </div>
+                <div class="detail-info-item">
+                    <span class="detail-info-label">Nights</span>
+                    <span class="detail-info-value">${nights}</span>
+                </div>
+                <div class="detail-info-item detail-info-price">
+                    <span class="detail-info-label">Total Price</span>
+                    <span class="detail-info-value">&euro;${(r.price || 0).toLocaleString()}</span>
+                </div>
+                ${r.status === 'pending' && r.expiration ? `<div class="detail-info-item">
+                    <span class="detail-info-label">Expires</span>
+                    <span class="detail-info-value">${formatDateDisplay(r.expiration)}</span>
+                </div>` : ''}
             </div>
-            <div class="detail-item">
-                <span class="label">Check-out</span>
-                <span class="value">${formatDateDisplay(r.checkout)}</span>
-            </div>
-            <div class="detail-item">
-                <span class="label">Rooms / Nights</span>
-                <span class="value">${r.roomCount} rooms &middot; ${nights} nights</span>
-            </div>
-            <div class="detail-item">
-                <span class="label">Total Price</span>
-                <span class="value">&euro;${(r.price || 0).toLocaleString()}</span>
-            </div>
-            ${r.status === 'pending' && r.expiration ? `<div class="detail-item">
-                <span class="label">Expires</span>
-                <span class="value">${formatDateDisplay(r.expiration)}</span>
-            </div>` : ''}
         </div>
 
-        <div class="detail-item" style="margin-top:8px">
-            <span class="label">Notes</span>
-            <textarea id="detailNotesField" class="form-control" rows="3" placeholder="Add notes..." style="margin-top:4px;resize:vertical">${escapeHtml(r.notes || '')}</textarea>
-            <button class="btn btn-sm btn-primary" style="margin-top:8px;align-self:flex-start" onclick="saveDetailNotes('${r.id}')">Save Notes</button>
+        <div class="detail-notes-section">
+            <span class="detail-info-label">Notes</span>
+            <textarea id="detailNotesField" class="form-control" rows="4" placeholder="Add notes about this reservation...">${escapeHtml(r.notes || '')}</textarea>
+            <button class="btn btn-sm btn-primary" onclick="saveDetailNotes('${r.id}')">Save Notes</button>
         </div>
     `;
 
