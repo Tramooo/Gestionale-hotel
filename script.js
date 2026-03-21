@@ -689,9 +689,12 @@ function openReservationDetail(id) {
     if (!r) return;
 
     document.getElementById('detailGroupName').textContent = r.groupName;
+    const statusLabel = r.status.replace('-', ' ');
+    const badge = document.getElementById('detailStatusBadge');
+    badge.textContent = statusLabel;
+    badge.className = 'status-badge ' + r.status;
 
     const nights = nightsBetween(r.checkin, r.checkout);
-    const statusLabel = r.status.replace('-', ' ');
 
     const body = document.getElementById('reservationDetailBody');
     body.innerHTML = `
@@ -715,7 +718,6 @@ function openReservationDetail(id) {
         </div>
 
         <div class="detail-info-card">
-            <span class="status-badge ${r.status}">${statusLabel}</span>
             <div class="detail-info-grid">
                 <div class="detail-info-item">
                     <span class="detail-info-label">Check-in</span>

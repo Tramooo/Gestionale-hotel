@@ -2175,9 +2175,6 @@ select.cell-input option {
     margin-bottom: 20px;
 }
 
-.detail-info-card .status-badge {
-    margin-bottom: 16px;
-}
 
 .detail-info-grid {
     display: grid;
@@ -2210,15 +2207,38 @@ select.cell-input option {
 }
 
 .detail-notes-section {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    padding: 16px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
 }
 
 .detail-notes-section textarea {
     resize: vertical;
-    min-height: 80px;
-    border-radius: var(--radius);
+    min-height: 90px;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    font-size: 14px;
+    line-height: 1.6;
+    font-family: inherit;
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.detail-notes-section textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.12);
+}
+
+.detail-notes-section textarea::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.6;
 }
 
 .detail-notes-section .btn {
