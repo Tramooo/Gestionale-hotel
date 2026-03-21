@@ -115,6 +115,15 @@
                         <span class="stat-label">This Month</span>
                     </div>
                 </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: var(--success-light, #d4edda); color: var(--success, #28a745);">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-year-revenue">&euro;0</span>
+                        <span class="stat-label">This Year</span>
+                    </div>
+                </div>
             </div>
 
             <div class="dashboard-grid">
@@ -707,12 +716,6 @@
                 <div id="fileImportLoading" style="display:none;text-align:center;padding:24px">
                     <div class="spinner"></div>
                     <p style="color:var(--text-secondary);margin-top:8px;font-size:13px">Extracting and parsing guest data...</p>
-                </div>
-
-                <!-- XLSX column mapping -->
-                <div id="xlsxMappingSection" style="display:none;margin-top:20px">
-                    <p style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-secondary);margin-bottom:10px">Column Mapping</p>
-                    <div class="csv-mapping-grid" id="guestFileMappingGrid"></div>
                 </div>
 
                 <!-- Extracted text preview (PDF/DOCX) -->

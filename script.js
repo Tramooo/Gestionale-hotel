@@ -217,18 +217,22 @@ function renderDashboard() {
     const activeGroups = reservations.filter(r => r.status === 'confirmed' || r.status === 'checked-in');
     const totalGuests = activeGroups.reduce((sum, r) => sum + (r.guestCount || 0), 0);
     const occupiedRooms = rooms.filter(r => r.status === 'occupied').length;
+    const now = new Date();
     const monthRevenue = reservations
         .filter(r => {
             const d = new Date(r.checkin);
-            const now = new Date();
             return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
         })
+        .reduce((sum, r) => sum + (r.price || 0), 0);
+    const yearRevenue = reservations
+        .filter(r => new Date(r.checkin).getFullYear() === now.getFullYear())
         .reduce((sum, r) => sum + (r.price || 0), 0);
 
     document.getElementById('stat-active-groups').textContent = activeGroups.length;
     document.getElementById('stat-total-guests').textContent = totalGuests;
     document.getElementById('stat-rooms-occupied').textContent = occupiedRooms + '/' + rooms.length;
     document.getElementById('stat-revenue').textContent = '\u20AC' + monthRevenue.toLocaleString();
+    document.getElementById('stat-year-revenue').textContent = '\u20AC' + yearRevenue.toLocaleString();
 
     // Occupancy ring
     const totalRooms = rooms.length;
@@ -2586,7 +2590,6 @@ function openFileImportModal(reservationId) {
     const nameEl = document.getElementById('guestFileName');
     nameEl.style.display = 'none';
     nameEl.textContent = '';
-    document.getElementById('xlsxMappingSection').style.display = 'none';
     document.getElementById('textParseSection').style.display = 'none';
     document.getElementById('fileImportPreviewSection').style.display = 'none';
     document.getElementById('fileImportActions').style.display = 'none';
@@ -2625,7 +2628,6 @@ async function processGuestFile(file) {
 
     // Show loading
     document.getElementById('fileImportLoading').style.display = 'block';
-    document.getElementById('xlsxMappingSection').style.display = 'none';
     document.getElementById('textParseSection').style.display = 'none';
     document.getElementById('fileImportPreviewSection').style.display = 'none';
     document.getElementById('fileImportActions').style.display = 'none';
@@ -2685,14 +2687,28 @@ async function processXlsxFile(file) {
         });
     }
 
-    guestFileMode = 'xlsx';
+    // Auto-detect column mapping (header aliases first, then content-based)
     guestFileXlsxHeaders = Object.keys(json[0]);
     guestFileParsedRows = json;
+    const contentDetected = autoDetectColumnsByContent();
+    const mapping = {};
+    GUEST_IMPORT_FIELDS.forEach(f => {
+        const mapped = autoMapGuestColumn(f.key) || contentDetected[f.key] || '';
+        if (mapped) mapping[f.key] = mapped;
+    });
 
-    buildGuestFileMappingUI();
-    document.getElementById('xlsxMappingSection').style.display = 'block';
+    // Map all rows using auto-detected mapping and store as guest objects
+    guestFileMode = 'text'; // treat as pre-mapped (no manual mapping needed)
+    guestFileParsedRows = json.map(r => mapXlsxGuestRow(r, mapping)).filter(Boolean);
+
+    if (guestFileParsedRows.length === 0) {
+        showToast('Could not detect guest data in spreadsheet. Check that it contains names.', 'error');
+        return;
+    }
+
     document.getElementById('fileImportPreviewSection').style.display = 'block';
     document.getElementById('fileImportActions').style.display = 'flex';
+    renderGuestFilePreviewTable(guestFileParsedRows);
 }
 
 function autoMapGuestColumn(fieldKey) {
@@ -2857,37 +2873,6 @@ function autoDetectColumnsByContent() {
     return result;
 }
 
-function buildGuestFileMappingUI() {
-    const grid = document.getElementById('guestFileMappingGrid');
-    const options = guestFileXlsxHeaders.map(h => `<option value="${escapeHtml(h)}">${escapeHtml(h)}</option>`).join('');
-
-    grid.innerHTML = GUEST_IMPORT_FIELDS.map(f => `
-        <label>${f.label}${f.required ? ' *' : ''}</label>
-        <select id="gfMap_${f.key}" onchange="updateGuestFilePreview()">
-            <option value="">— skip —</option>
-            ${options}
-        </select>
-    `).join('');
-
-    // First try header-based mapping, then fall back to content-based detection
-    const contentDetected = autoDetectColumnsByContent();
-
-    GUEST_IMPORT_FIELDS.forEach(f => {
-        const mapped = autoMapGuestColumn(f.key) || contentDetected[f.key] || '';
-        if (mapped) document.getElementById('gfMap_' + f.key).value = mapped;
-    });
-
-    updateGuestFilePreview();
-}
-
-function getGuestFileMapping() {
-    const mapping = {};
-    GUEST_IMPORT_FIELDS.forEach(f => {
-        const sel = document.getElementById('gfMap_' + f.key);
-        if (sel && sel.value) mapping[f.key] = sel.value;
-    });
-    return mapping;
-}
 
 function mapXlsxGuestRow(row, mapping) {
     const get = key => mapping[key] ? (String(row[mapping[key]] || '')).trim() : '';
@@ -3238,14 +3223,6 @@ function normalizeGuestType(val) {
 
 // ---- Preview & Import ----
 
-function updateGuestFilePreview() {
-    if (guestFileMode === 'xlsx') {
-        const mapping = getGuestFileMapping();
-        const mapped = guestFileParsedRows.map(r => mapXlsxGuestRow(r, mapping)).filter(Boolean);
-        renderGuestFilePreviewTable(mapped);
-    }
-}
-
 function renderGuestFilePreview() {
     if (guestFileMode === 'text') {
         renderGuestFilePreviewTable(guestFileParsedRows);
@@ -3294,16 +3271,7 @@ async function executeGuestFileImport() {
     const reservationId = document.getElementById('fileImportReservationId').value;
     let toImport;
 
-    if (guestFileMode === 'xlsx') {
-        const mapping = getGuestFileMapping();
-        if (!mapping.firstName && !mapping.lastName) {
-            showToast('Please map at least First Name or Last Name', 'error');
-            return;
-        }
-        toImport = guestFileParsedRows.map(r => mapXlsxGuestRow(r, mapping)).filter(Boolean);
-    } else {
-        toImport = guestFileParsedRows.filter(g => g.firstName || g.lastName);
-    }
+    toImport = guestFileParsedRows.filter(g => g.firstName || g.lastName);
 
     if (toImport.length === 0) {
         showToast('No valid guests to import', 'error');
