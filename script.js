@@ -2652,8 +2652,38 @@ async function processXlsxFile(file) {
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(buf, { type: 'array' });
     const ws = wb.Sheets[wb.SheetNames[0]];
-    const json = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+    // First try with headers (default behavior)
+    let json = XLSX.utils.sheet_to_json(ws, { defval: '' });
     if (json.length === 0) { showToast('No data found in spreadsheet', 'error'); return; }
+
+    // Check if the first row actually contains recognizable headers
+    const headers = Object.keys(json[0]);
+    let hasRecognizedHeaders = false;
+    for (const field of GUEST_IMPORT_FIELDS) {
+        const aliases = GUEST_COL_ALIASES[field.key] || [];
+        for (const alias of aliases) {
+            if (headers.some(h => h.toLowerCase().trim() === alias || h.toLowerCase().trim().includes(alias))) {
+                hasRecognizedHeaders = true;
+                break;
+            }
+        }
+        if (hasRecognizedHeaders) break;
+    }
+
+    // If no headers recognized, re-read with generic column names so the first row becomes data
+    if (!hasRecognizedHeaders) {
+        const rawRows = XLSX.utils.sheet_to_json(ws, { defval: '', header: 1 });
+        if (rawRows.length === 0) { showToast('No data found in spreadsheet', 'error'); return; }
+        const numCols = Math.max(...rawRows.map(r => r.length));
+        const genHeaders = [];
+        for (let i = 0; i < numCols; i++) genHeaders.push(`Column ${i + 1}`);
+        json = rawRows.map(row => {
+            const obj = {};
+            genHeaders.forEach((h, i) => obj[h] = row[i] !== undefined ? row[i] : '');
+            return obj;
+        });
+    }
 
     guestFileMode = 'xlsx';
     guestFileXlsxHeaders = Object.keys(json[0]);
@@ -2678,6 +2708,155 @@ function autoMapGuestColumn(fieldKey) {
     return '';
 }
 
+// Content-based column detection: analyze actual cell values to determine field type
+function autoDetectColumnsByContent() {
+    if (guestFileParsedRows.length === 0) return {};
+
+    const sampleSize = Math.min(guestFileParsedRows.length, 30);
+    const samples = guestFileParsedRows.slice(0, sampleSize);
+    const headers = guestFileXlsxHeaders;
+
+    // Collect non-empty values per column
+    const colValues = {};
+    for (const h of headers) {
+        colValues[h] = samples.map(r => String(r[h] || '').trim()).filter(Boolean);
+    }
+
+    // Score each column for each field type
+    const detectors = {
+        sex: vals => {
+            const sexVals = ['m', 'f', 'male', 'female', 'maschile', 'femminile', 'maschio', 'femmina', '1', '2'];
+            const matches = vals.filter(v => sexVals.includes(v.toLowerCase()));
+            return matches.length / Math.max(vals.length, 1);
+        },
+        birthDate: vals => {
+            const datePattern = /^(\d{1,2}[\/.\\-]\d{1,2}[\/.\\-]\d{2,4}|\d{4}[\/.\\-]\d{1,2}[\/.\\-]\d{1,2})$/;
+            const matches = vals.filter(v => datePattern.test(v));
+            return matches.length / Math.max(vals.length, 1);
+        },
+        email: vals => {
+            const matches = vals.filter(v => /^[\w.+-]+@[\w.-]+\.\w{2,}$/.test(v));
+            return matches.length / Math.max(vals.length, 1);
+        },
+        phone: vals => {
+            const matches = vals.filter(v => /^\+?[\d\s\-().]{7,}$/.test(v) && (v.replace(/\D/g, '').length >= 7));
+            return matches.length / Math.max(vals.length, 1);
+        },
+        birthProvince: vals => {
+            // Exactly 2 uppercase letters
+            const matches = vals.filter(v => /^[A-Za-z]{2}$/.test(v));
+            return vals.length > 0 && matches.length === vals.length ? 0.85 : matches.length / Math.max(vals.length, 1) * 0.7;
+        },
+        docType: vals => {
+            const docCodes = ['ident', 'pasor', 'paten', 'pnauz', 'pordf', 'carta identita', "carta d'identita",
+                "carta d'identità", 'passaporto', 'passport', 'patente', 'identity card', 'id card', 'ci', 'driving license'];
+            const matches = vals.filter(v => docCodes.includes(v.toLowerCase()) || /^[A-Z]{5}$/.test(v));
+            return matches.length / Math.max(vals.length, 1);
+        },
+        docNumber: vals => {
+            // Mix of letters and digits, typical document number patterns
+            const matches = vals.filter(v => /^[A-Za-z]{0,2}\d{5,}$/.test(v) || /^[A-Z]{2}\d+[A-Z]*$/i.test(v));
+            return matches.length / Math.max(vals.length, 1);
+        },
+        guestType: vals => {
+            const types = ['16', '17', '18', '19', '20', 'ospite singolo', 'capogruppo', 'capofamiglia',
+                'membro gruppo', 'membro famiglia', 'single guest', 'group leader', 'family head'];
+            const matches = vals.filter(v => types.includes(v.toLowerCase()));
+            return matches.length / Math.max(vals.length, 1);
+        },
+        citizenship: vals => {
+            // Country names or ISO codes (3 letters), heuristic: most values are the same (nationality tends to repeat)
+            const unique = new Set(vals.map(v => v.toLowerCase()));
+            const isCountryLike = vals.every(v => /^[A-Za-zÀ-ÿ\s'-]{2,}$/.test(v) && v.length <= 30);
+            return isCountryLike && unique.size <= Math.ceil(vals.length * 0.5) ? 0.4 : 0;
+        },
+    };
+
+    // Name detection: columns where values look like proper names (capitalized words, no numbers/special chars)
+    function looksLikeName(vals) {
+        const namePattern = /^[A-ZÀ-ÿ][a-zà-ÿ']+(?:\s+[A-ZÀ-ÿ][a-zà-ÿ']+)*$/;
+        const upperNamePattern = /^[A-ZÀ-ÿ'\s]+$/; // ALL CAPS names
+        const matches = vals.filter(v => namePattern.test(v) || (upperNamePattern.test(v) && v.length >= 2 && v.length <= 40));
+        return matches.length / Math.max(vals.length, 1);
+    }
+
+    // Score every column for every field
+    const scores = {}; // { fieldKey: { header: score, ... } }
+    const assigned = new Set(); // headers already assigned
+
+    // First pass: detect clear-signal fields (email, phone, sex, dates, docType, etc.)
+    for (const [field, detector] of Object.entries(detectors)) {
+        scores[field] = {};
+        for (const h of headers) {
+            scores[field][h] = detector(colValues[h]);
+        }
+    }
+
+    // Assign fields by confidence, highest first
+    const result = {};
+    const fieldOrder = ['email', 'phone', 'sex', 'docType', 'guestType', 'birthDate', 'birthProvince', 'docNumber', 'citizenship'];
+
+    for (const field of fieldOrder) {
+        let bestHeader = '';
+        let bestScore = 0.5; // minimum threshold
+        for (const h of headers) {
+            if (assigned.has(h)) continue;
+            const s = scores[field]?.[h] || 0;
+            if (s > bestScore) { bestScore = s; bestHeader = h; }
+        }
+        if (bestHeader) {
+            result[field] = bestHeader;
+            assigned.add(bestHeader);
+        }
+    }
+
+    // Name columns: find columns that look like person names
+    const nameCandidates = [];
+    for (const h of headers) {
+        if (assigned.has(h)) continue;
+        const score = looksLikeName(colValues[h]);
+        if (score >= 0.5) nameCandidates.push({ header: h, score });
+    }
+    nameCandidates.sort((a, b) => b.score - a.score);
+
+    // Heuristic for lastName vs firstName: typically last name comes first in Italian documents,
+    // or the header with shorter average values is the last name
+    if (nameCandidates.length >= 2 && !result.lastName && !result.firstName) {
+        const c1 = nameCandidates[0].header;
+        const c2 = nameCandidates[1].header;
+        const idx1 = headers.indexOf(c1);
+        const idx2 = headers.indexOf(c2);
+        // In Italian convention: cognome (lastName) before nome (firstName)
+        if (idx1 < idx2) {
+            result.lastName = c1; result.firstName = c2;
+        } else {
+            result.lastName = c2; result.firstName = c1;
+        }
+        assigned.add(c1); assigned.add(c2);
+    } else if (nameCandidates.length === 1) {
+        if (!result.lastName) { result.lastName = nameCandidates[0].header; assigned.add(nameCandidates[0].header); }
+        else if (!result.firstName) { result.firstName = nameCandidates[0].header; assigned.add(nameCandidates[0].header); }
+    }
+
+    // Remaining location-like columns (birthComune, birthCountry, docIssuedPlace)
+    const locationFields = ['birthComune', 'birthCountry', 'docIssuedPlace'].filter(f => !result[f]);
+    const locationCandidates = [];
+    for (const h of headers) {
+        if (assigned.has(h)) continue;
+        const vals = colValues[h];
+        const isTextLike = vals.every(v => /^[A-Za-zÀ-ÿ\s'-]{2,}$/.test(v));
+        if (isTextLike && vals.length > 0) locationCandidates.push(h);
+    }
+
+    // Assign location columns by position (birthComune typically comes before birthCountry)
+    for (let i = 0; i < Math.min(locationFields.length, locationCandidates.length); i++) {
+        result[locationFields[i]] = locationCandidates[i];
+        assigned.add(locationCandidates[i]);
+    }
+
+    return result;
+}
+
 function buildGuestFileMappingUI() {
     const grid = document.getElementById('guestFileMappingGrid');
     const options = guestFileXlsxHeaders.map(h => `<option value="${escapeHtml(h)}">${escapeHtml(h)}</option>`).join('');
@@ -2690,8 +2869,11 @@ function buildGuestFileMappingUI() {
         </select>
     `).join('');
 
+    // First try header-based mapping, then fall back to content-based detection
+    const contentDetected = autoDetectColumnsByContent();
+
     GUEST_IMPORT_FIELDS.forEach(f => {
-        const mapped = autoMapGuestColumn(f.key);
+        const mapped = autoMapGuestColumn(f.key) || contentDetected[f.key] || '';
         if (mapped) document.getElementById('gfMap_' + f.key).value = mapped;
     });
 
@@ -2837,30 +3019,90 @@ function tryParseAsTable(text) {
     const lines = text.split(/\r?\n/).filter(l => l.trim());
     if (lines.length < 2) return [];
 
-    // Check if first line looks like a header (has tab or multi-space separators)
-    const headerLine = lines[0];
+    // Detect delimiter
     let delimiter = null;
-    if ((headerLine.match(/\t/g) || []).length >= 2) delimiter = '\t';
-    else if ((headerLine.match(/\s{2,}/g) || []).length >= 2) delimiter = /\s{2,}/;
+    const firstLine = lines[0];
+    if ((firstLine.match(/\t/g) || []).length >= 2) delimiter = '\t';
+    else if ((firstLine.match(/\s{2,}/g) || []).length >= 2) delimiter = /\s{2,}/;
     if (!delimiter) return [];
 
-    const headers = headerLine.split(delimiter).map(h => h.trim()).filter(Boolean);
-    if (headers.length < 2) return [];
+    const firstCols = firstLine.split(delimiter).map(h => h.trim()).filter(Boolean);
+    if (firstCols.length < 2) return [];
 
-    // Try to auto-map headers
+    // Try to auto-map using first row as headers
     const mapping = {};
     for (const field of GUEST_IMPORT_FIELDS) {
         const aliases = GUEST_COL_ALIASES[field.key] || [];
         for (const alias of aliases) {
-            const idx = headers.findIndex(h => h.toLowerCase().includes(alias));
+            const idx = firstCols.findIndex(h => h.toLowerCase().includes(alias));
             if (idx !== -1) { mapping[field.key] = idx; break; }
+        }
+    }
+
+    let dataStartIdx = 1;
+    const headersMapped = !!(mapping.firstName || mapping.lastName);
+
+    // If headers didn't match, try content-based detection (first row is data, not headers)
+    if (!headersMapped) {
+        dataStartIdx = 0; // first row is data too
+        const sampleRows = lines.slice(0, Math.min(lines.length, 20)).map(l => l.split(delimiter).map(c => c.trim()));
+        const numCols = Math.max(...sampleRows.map(r => r.length));
+
+        // Collect values per column index
+        const colVals = [];
+        for (let c = 0; c < numCols; c++) {
+            colVals[c] = sampleRows.map(r => r[c] || '').filter(Boolean);
+        }
+
+        const assigned = new Set();
+
+        // Detect specific fields by content
+        const colDetectors = {
+            sex: vals => { const sexVals = ['m', 'f', 'male', 'female', 'maschile', 'femminile', 'maschio', 'femmina', '1', '2']; return vals.filter(v => sexVals.includes(v.toLowerCase())).length / Math.max(vals.length, 1); },
+            birthDate: vals => { return vals.filter(v => /^(\d{1,2}[\/.\\-]\d{1,2}[\/.\\-]\d{2,4}|\d{4}[\/.\\-]\d{1,2}[\/.\\-]\d{1,2})$/.test(v)).length / Math.max(vals.length, 1); },
+            email: vals => vals.filter(v => /^[\w.+-]+@[\w.-]+\.\w{2,}$/.test(v)).length / Math.max(vals.length, 1),
+            phone: vals => vals.filter(v => /^\+?[\d\s\-().]{7,}$/.test(v) && v.replace(/\D/g, '').length >= 7).length / Math.max(vals.length, 1),
+            birthProvince: vals => vals.length > 0 && vals.filter(v => /^[A-Za-z]{2}$/.test(v)).length === vals.length ? 0.85 : 0,
+            docType: vals => { const codes = ['ident', 'pasor', 'paten', 'pnauz', 'pordf', 'passaporto', 'passport', 'patente', 'carta identita', "carta d'identita"]; return vals.filter(v => codes.includes(v.toLowerCase()) || /^[A-Z]{5}$/.test(v)).length / Math.max(vals.length, 1); },
+            guestType: vals => { const types = ['16', '17', '18', '19', '20', 'ospite singolo', 'capogruppo', 'capofamiglia']; return vals.filter(v => types.includes(v.toLowerCase())).length / Math.max(vals.length, 1); },
+        };
+
+        const fieldOrder = ['email', 'phone', 'sex', 'docType', 'guestType', 'birthDate', 'birthProvince'];
+        for (const field of fieldOrder) {
+            let bestIdx = -1, bestScore = 0.5;
+            for (let c = 0; c < numCols; c++) {
+                if (assigned.has(c)) continue;
+                const s = colDetectors[field]?.(colVals[c]) || 0;
+                if (s > bestScore) { bestScore = s; bestIdx = c; }
+            }
+            if (bestIdx >= 0) { mapping[field] = bestIdx; assigned.add(bestIdx); }
+        }
+
+        // Detect name columns
+        const nameLike = v => /^[A-ZÀ-ÿ][a-zà-ÿ']+(?:\s+[A-ZÀ-ÿ][a-zà-ÿ']+)*$/.test(v) || /^[A-ZÀ-ÿ'\s]{2,}$/.test(v);
+        const nameCandidates = [];
+        for (let c = 0; c < numCols; c++) {
+            if (assigned.has(c)) continue;
+            const score = colVals[c].filter(nameLike).length / Math.max(colVals[c].length, 1);
+            if (score >= 0.5) nameCandidates.push({ idx: c, score });
+        }
+        nameCandidates.sort((a, b) => b.score - a.score);
+        if (nameCandidates.length >= 2) {
+            const [a, b] = nameCandidates[0].idx < nameCandidates[1].idx
+                ? [nameCandidates[0], nameCandidates[1]]
+                : [nameCandidates[1], nameCandidates[0]];
+            mapping.lastName = a.idx; mapping.firstName = b.idx;
+            assigned.add(a.idx); assigned.add(b.idx);
+        } else if (nameCandidates.length === 1) {
+            mapping.lastName = nameCandidates[0].idx;
+            assigned.add(nameCandidates[0].idx);
         }
     }
 
     if (!mapping.firstName && !mapping.lastName) return [];
 
     const results = [];
-    for (let i = 1; i < lines.length; i++) {
+    for (let i = dataStartIdx; i < lines.length; i++) {
         const cols = lines[i].split(delimiter).map(c => c.trim());
         const get = key => mapping[key] !== undefined ? (cols[mapping[key]] || '') : '';
         const firstName = get('firstName');
