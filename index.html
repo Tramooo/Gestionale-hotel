@@ -684,12 +684,71 @@
         </div>
     </div>
 
+    <!-- Guest File Import Modal -->
+    <div class="modal-overlay" id="fileImportModal">
+        <div class="modal" style="max-width:820px;max-height:92vh;display:flex;flex-direction:column">
+            <div class="modal-header">
+                <h2>Import Guests from File</h2>
+                <button class="modal-close" onclick="closeModal('fileImportModal')">&times;</button>
+            </div>
+            <div class="modal-body" style="padding:24px;overflow-y:auto;flex:1">
+                <input type="hidden" id="fileImportReservationId">
+
+                <!-- File picker -->
+                <div class="file-import-drop" id="fileImportDrop">
+                    <input type="file" id="guestFileInput" accept=".pdf,.docx,.xlsx,.xls" style="display:none" onchange="handleGuestFileImport(event)">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-secondary);margin-bottom:8px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <p style="margin:0;font-weight:500;color:var(--text-primary)">Drop file here or <a href="#" onclick="event.preventDefault();document.getElementById('guestFileInput').click()" style="color:var(--accent)">browse</a></p>
+                    <p style="margin:4px 0 0;font-size:12px;color:var(--text-secondary)">Supports PDF, Word (.docx), Excel (.xlsx)</p>
+                    <span id="guestFileName" style="font-size:12px;color:var(--accent);margin-top:6px;display:none"></span>
+                </div>
+
+                <!-- Loading spinner -->
+                <div id="fileImportLoading" style="display:none;text-align:center;padding:24px">
+                    <div class="spinner"></div>
+                    <p style="color:var(--text-secondary);margin-top:8px;font-size:13px">Extracting and parsing guest data...</p>
+                </div>
+
+                <!-- XLSX column mapping -->
+                <div id="xlsxMappingSection" style="display:none;margin-top:20px">
+                    <p style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-secondary);margin-bottom:10px">Column Mapping</p>
+                    <div class="csv-mapping-grid" id="guestFileMappingGrid"></div>
+                </div>
+
+                <!-- Extracted text preview (PDF/DOCX) -->
+                <div id="textParseSection" style="display:none;margin-top:20px">
+                    <p style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-secondary);margin-bottom:8px">Extracted Text</p>
+                    <pre id="extractedTextPreview" style="background:var(--bg-primary);border:1px solid var(--border-light);border-radius:var(--radius-md);padding:12px;font-size:11px;max-height:120px;overflow-y:auto;white-space:pre-wrap;word-break:break-word;color:var(--text-secondary);margin-bottom:16px"></pre>
+                </div>
+
+                <!-- Preview table -->
+                <div id="fileImportPreviewSection" style="display:none;margin-top:20px">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                        <p style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-secondary);margin:0">Preview</p>
+                        <span id="guestFilePreviewCount" style="font-size:12px;color:var(--text-secondary)"></span>
+                    </div>
+                    <div id="guestFilePreviewTable" style="overflow-x:auto;max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px"></div>
+                </div>
+
+                <!-- Actions -->
+                <div id="fileImportActions" style="display:none;margin-top:20px;gap:10px;justify-content:flex-end">
+                    <button class="btn btn-secondary" onclick="closeModal('fileImportModal')">Cancel</button>
+                    <button class="btn btn-primary" onclick="executeGuestFileImport()">Import All</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="toast-container" id="toastContainer"></div>
 
     <datalist id="countriesList"></datalist>
     <datalist id="comuniList"></datalist>
     <datalist id="luoghiList"></datalist>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.js"></script>
+    <script>if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.js';</script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

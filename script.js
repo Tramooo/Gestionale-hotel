@@ -783,7 +783,10 @@ function openGuestsList(reservationId) {
     body.innerHTML = `
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
             <span style="color:var(--text-secondary)">${resGuests.length} guest(s)</span>
-            <button class="btn btn-sm btn-primary" onclick="openAddGuestModal('${reservationId}')">Add Guest</button>
+            <div style="display:flex;gap:8px">
+                <button class="btn btn-sm btn-secondary" onclick="openFileImportModal('${reservationId}')">Import from File</button>
+                <button class="btn btn-sm btn-primary" onclick="openAddGuestModal('${reservationId}')">Add Guest</button>
+            </div>
         </div>
         <div class="detail-guests-list">
             ${resGuests.length === 0 ? '<div class="empty-state small"><p>No guests added yet</p></div>' :
@@ -2531,6 +2534,567 @@ async function executeCsvImport() {
     document.getElementById('csvFileName').textContent = '';
     csvParsedRows = [];
     csvHeaders = [];
+}
+
+// ---- Smart Guest File Import ----
+
+const GUEST_IMPORT_FIELDS = [
+    { key: 'lastName',       label: 'Last Name',       required: true },
+    { key: 'firstName',      label: 'First Name',      required: true },
+    { key: 'sex',            label: 'Sex' },
+    { key: 'birthDate',      label: 'Date of Birth' },
+    { key: 'birthComune',    label: 'Birth City' },
+    { key: 'birthProvince',  label: 'Birth Province' },
+    { key: 'birthCountry',   label: 'Birth Country' },
+    { key: 'citizenship',    label: 'Citizenship' },
+    { key: 'docType',        label: 'Document Type' },
+    { key: 'docNumber',      label: 'Document Number' },
+    { key: 'docIssuedPlace', label: 'Doc Issued Place' },
+    { key: 'email',          label: 'Email' },
+    { key: 'phone',          label: 'Phone' },
+    { key: 'guestType',      label: 'Guest Type' },
+];
+
+const GUEST_COL_ALIASES = {
+    lastName:       ['cognome', 'last name', 'surname', 'family name', 'last_name'],
+    firstName:      ['nome', 'first name', 'given name', 'first_name'],
+    sex:            ['sesso', 'sex', 'gender', 'genere'],
+    birthDate:      ['data nascita', 'data di nascita', 'birth date', 'date of birth', 'nato il', 'dob', 'data_nascita', 'birth_date'],
+    birthComune:    ['comune nascita', 'comune di nascita', 'birth city', 'birth place', 'luogo nascita', 'luogo di nascita', 'citta nascita'],
+    birthProvince:  ['provincia nascita', 'prov nascita', 'birth province', 'provincia', 'sigla', 'prov'],
+    birthCountry:   ['stato nascita', 'country of birth', 'birth country', 'nazione nascita', 'stato'],
+    citizenship:    ['cittadinanza', 'citizenship', 'nazionalita', 'nationality'],
+    docType:        ['tipo documento', 'document type', 'doc type', 'tipo doc', 'tipo_documento'],
+    docNumber:      ['numero documento', 'document number', 'doc number', 'n. documento', 'num documento', 'numero_documento'],
+    docIssuedPlace: ['luogo rilascio', 'issued place', 'rilasciato da', 'autorita', 'luogo_rilascio'],
+    email:          ['email', 'e-mail', 'mail', 'posta elettronica'],
+    phone:          ['telefono', 'phone', 'cellulare', 'mobile', 'tel'],
+    guestType:      ['tipo alloggiato', 'guest type', 'tipo ospite', 'tipo'],
+};
+
+let guestFileParsedRows = [];
+let guestFileXlsxHeaders = [];
+let guestFileMode = ''; // 'xlsx' or 'text'
+
+function openFileImportModal(reservationId) {
+    document.getElementById('fileImportReservationId').value = reservationId;
+    // Reset state
+    guestFileParsedRows = [];
+    guestFileXlsxHeaders = [];
+    guestFileMode = '';
+    document.getElementById('guestFileInput').value = '';
+    const nameEl = document.getElementById('guestFileName');
+    nameEl.style.display = 'none';
+    nameEl.textContent = '';
+    document.getElementById('xlsxMappingSection').style.display = 'none';
+    document.getElementById('textParseSection').style.display = 'none';
+    document.getElementById('fileImportPreviewSection').style.display = 'none';
+    document.getElementById('fileImportActions').style.display = 'none';
+    document.getElementById('fileImportLoading').style.display = 'none';
+    closeModal('guestsListModal');
+    openModal('fileImportModal');
+
+    // Setup drag & drop
+    const drop = document.getElementById('fileImportDrop');
+    drop.ondragover = e => { e.preventDefault(); drop.classList.add('dragover'); };
+    drop.ondragleave = () => drop.classList.remove('dragover');
+    drop.ondrop = e => {
+        e.preventDefault();
+        drop.classList.remove('dragover');
+        const file = e.dataTransfer.files[0];
+        if (file) processGuestFile(file);
+    };
+}
+
+function handleGuestFileImport(e) {
+    const file = e.target.files[0];
+    if (file) processGuestFile(file);
+}
+
+async function processGuestFile(file) {
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['pdf', 'docx', 'xlsx', 'xls'].includes(ext)) {
+        showToast('Unsupported file type. Use PDF, DOCX, or XLSX.', 'error');
+        return;
+    }
+
+    // Show file name
+    const nameEl = document.getElementById('guestFileName');
+    nameEl.textContent = file.name;
+    nameEl.style.display = 'inline';
+
+    // Show loading
+    document.getElementById('fileImportLoading').style.display = 'block';
+    document.getElementById('xlsxMappingSection').style.display = 'none';
+    document.getElementById('textParseSection').style.display = 'none';
+    document.getElementById('fileImportPreviewSection').style.display = 'none';
+    document.getElementById('fileImportActions').style.display = 'none';
+
+    try {
+        if (ext === 'xlsx' || ext === 'xls') {
+            await processXlsxFile(file);
+        } else if (ext === 'docx') {
+            await processDocxFile(file);
+        } else if (ext === 'pdf') {
+            await processPdfFile(file);
+        }
+    } catch (err) {
+        console.error('File import error:', err);
+        showToast('Failed to process file: ' + err.message, 'error');
+    } finally {
+        document.getElementById('fileImportLoading').style.display = 'none';
+    }
+}
+
+// ---- XLSX Path ----
+
+async function processXlsxFile(file) {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const json = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    if (json.length === 0) { showToast('No data found in spreadsheet', 'error'); return; }
+
+    guestFileMode = 'xlsx';
+    guestFileXlsxHeaders = Object.keys(json[0]);
+    guestFileParsedRows = json;
+
+    buildGuestFileMappingUI();
+    document.getElementById('xlsxMappingSection').style.display = 'block';
+    document.getElementById('fileImportPreviewSection').style.display = 'block';
+    document.getElementById('fileImportActions').style.display = 'flex';
+}
+
+function autoMapGuestColumn(fieldKey) {
+    const candidates = GUEST_COL_ALIASES[fieldKey] || [];
+    for (const c of candidates) {
+        const match = guestFileXlsxHeaders.find(h => h.toLowerCase().trim() === c);
+        if (match) return match;
+    }
+    for (const c of candidates) {
+        const match = guestFileXlsxHeaders.find(h => h.toLowerCase().trim().includes(c));
+        if (match) return match;
+    }
+    return '';
+}
+
+function buildGuestFileMappingUI() {
+    const grid = document.getElementById('guestFileMappingGrid');
+    const options = guestFileXlsxHeaders.map(h => `<option value="${escapeHtml(h)}">${escapeHtml(h)}</option>`).join('');
+
+    grid.innerHTML = GUEST_IMPORT_FIELDS.map(f => `
+        <label>${f.label}${f.required ? ' *' : ''}</label>
+        <select id="gfMap_${f.key}" onchange="updateGuestFilePreview()">
+            <option value="">— skip —</option>
+            ${options}
+        </select>
+    `).join('');
+
+    GUEST_IMPORT_FIELDS.forEach(f => {
+        const mapped = autoMapGuestColumn(f.key);
+        if (mapped) document.getElementById('gfMap_' + f.key).value = mapped;
+    });
+
+    updateGuestFilePreview();
+}
+
+function getGuestFileMapping() {
+    const mapping = {};
+    GUEST_IMPORT_FIELDS.forEach(f => {
+        const sel = document.getElementById('gfMap_' + f.key);
+        if (sel && sel.value) mapping[f.key] = sel.value;
+    });
+    return mapping;
+}
+
+function mapXlsxGuestRow(row, mapping) {
+    const get = key => mapping[key] ? (String(row[mapping[key]] || '')).trim() : '';
+    const firstName = get('firstName');
+    const lastName = get('lastName');
+    if (!firstName && !lastName) return null;
+
+    return {
+        firstName,
+        lastName,
+        sex: normalizeSex(get('sex')),
+        birthDate: parseImportDate(get('birthDate')) || '',
+        birthComune: get('birthComune'),
+        birthProvince: get('birthProvince').toUpperCase().substring(0, 2),
+        birthCountry: get('birthCountry'),
+        citizenship: get('citizenship'),
+        docType: normalizeDocType(get('docType')),
+        docNumber: get('docNumber'),
+        docIssuedPlace: get('docIssuedPlace'),
+        email: get('email'),
+        phone: get('phone'),
+        guestType: normalizeGuestType(get('guestType')),
+        notes: '',
+    };
+}
+
+// ---- PDF Path ----
+
+async function processPdfFile(file) {
+    if (!window.pdfjsLib) {
+        showToast('PDF library not loaded yet. Please try again.', 'error');
+        return;
+    }
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    let fullText = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const pageText = content.items.map(item => item.str).join(' ');
+        fullText += pageText + '\n';
+    }
+    if (fullText.trim().length < 5) {
+        showToast('Could not extract text from PDF. It may be a scanned image.', 'error');
+        return;
+    }
+    processExtractedText(fullText);
+}
+
+// ---- DOCX Path ----
+
+async function processDocxFile(file) {
+    if (!window.mammoth) {
+        showToast('Word library not loaded yet. Please try again.', 'error');
+        return;
+    }
+    const buf = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer: buf });
+    if (result.value.trim().length < 5) {
+        showToast('Could not extract text from document.', 'error');
+        return;
+    }
+    processExtractedText(result.value);
+}
+
+// ---- Smart Text Parser (PDF/DOCX) ----
+
+function processExtractedText(text) {
+    guestFileMode = 'text';
+
+    // Show the raw text
+    document.getElementById('extractedTextPreview').textContent = text;
+    document.getElementById('textParseSection').style.display = 'block';
+
+    // Parse into guest records
+    guestFileParsedRows = parseGuestText(text);
+
+    if (guestFileParsedRows.length === 0) {
+        showToast('Could not detect any guest data. Check the extracted text.', 'error');
+    }
+
+    document.getElementById('fileImportPreviewSection').style.display = 'block';
+    document.getElementById('fileImportActions').style.display = 'flex';
+    renderGuestFilePreview();
+}
+
+const KEY_VALUE_PATTERNS = {
+    lastName:       /(?:cognome|last\s*name|surname|family\s*name)\s*[:=\-–]\s*(.+)/i,
+    firstName:      /(?:nome(?!\s*gruppo)|first\s*name|given\s*name)\s*[:=\-–]\s*(.+)/i,
+    sex:            /(?:sesso|sex|gender|genere)\s*[:=\-–]\s*(.+)/i,
+    birthDate:      /(?:data\s*(?:di\s*)?nascita|birth\s*date|date\s*of\s*birth|nato\s*(?:il|a)|dob)\s*[:=\-–]\s*(.+)/i,
+    birthComune:    /(?:(?:comune|luogo|citta|citt[aà])\s*(?:di\s*)?nascita|birth\s*(?:city|place))\s*[:=\-–]\s*(.+)/i,
+    birthProvince:  /(?:provincia\s*(?:di\s*)?nascita|prov(?:incia)?(?:\s*nascita)?)\s*[:=\-–]\s*([A-Z]{2})/i,
+    birthCountry:   /(?:stato\s*(?:di\s*)?nascita|(?:birth|country\s*of)\s*(?:country|birth)|nazione\s*(?:di\s*)?nascita)\s*[:=\-–]\s*(.+)/i,
+    citizenship:    /(?:cittadinanza|citizenship|nazionalit[aà]|nationality)\s*[:=\-–]\s*(.+)/i,
+    docType:        /(?:tipo\s*(?:di\s*)?documento|document\s*type|doc(?:ument)?\s*type)\s*[:=\-–]\s*(.+)/i,
+    docNumber:      /(?:n(?:umero)?\.?\s*(?:di\s*)?documento|document\s*(?:number|no)|doc\s*n(?:umber)?)\s*[:=\-–]\s*(.+)/i,
+    docIssuedPlace: /(?:luogo\s*(?:di\s*)?rilascio|(?:issued|released)\s*(?:by|place|at)|rilasciato\s*(?:da|a))\s*[:=\-–]\s*(.+)/i,
+    email:          /(?:email|e-mail|mail|posta\s*elettronica)\s*[:=\-–]\s*(\S+)/i,
+    phone:          /(?:telefono|phone|cellulare|mobile|tel)\s*[:=\-–]\s*([\d\s\+\-\.()]+)/i,
+    guestType:      /(?:tipo\s*(?:di\s*)?(?:alloggiato|ospite)|guest\s*type)\s*[:=\-–]\s*(.+)/i,
+};
+
+function parseGuestText(text) {
+    // First try: detect if text looks like a table (tab or multi-space separated)
+    const tableGuests = tryParseAsTable(text);
+    if (tableGuests.length > 0) return tableGuests;
+
+    // Second try: key-value pairs, split into guest blocks
+    const blocks = splitIntoGuestBlocks(text);
+    const guests = [];
+
+    for (const block of blocks) {
+        const guest = parseGuestBlock(block);
+        if (guest.firstName || guest.lastName) {
+            guests.push(guest);
+        }
+    }
+
+    // If no key-value matches, try line-by-line name detection
+    if (guests.length === 0) {
+        return tryFallbackNameDetection(text);
+    }
+
+    return guests;
+}
+
+function tryParseAsTable(text) {
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) return [];
+
+    // Check if first line looks like a header (has tab or multi-space separators)
+    const headerLine = lines[0];
+    let delimiter = null;
+    if ((headerLine.match(/\t/g) || []).length >= 2) delimiter = '\t';
+    else if ((headerLine.match(/\s{2,}/g) || []).length >= 2) delimiter = /\s{2,}/;
+    if (!delimiter) return [];
+
+    const headers = headerLine.split(delimiter).map(h => h.trim()).filter(Boolean);
+    if (headers.length < 2) return [];
+
+    // Try to auto-map headers
+    const mapping = {};
+    for (const field of GUEST_IMPORT_FIELDS) {
+        const aliases = GUEST_COL_ALIASES[field.key] || [];
+        for (const alias of aliases) {
+            const idx = headers.findIndex(h => h.toLowerCase().includes(alias));
+            if (idx !== -1) { mapping[field.key] = idx; break; }
+        }
+    }
+
+    if (!mapping.firstName && !mapping.lastName) return [];
+
+    const results = [];
+    for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(delimiter).map(c => c.trim());
+        const get = key => mapping[key] !== undefined ? (cols[mapping[key]] || '') : '';
+        const firstName = get('firstName');
+        const lastName = get('lastName');
+        if (!firstName && !lastName) continue;
+        results.push({
+            firstName, lastName,
+            sex: normalizeSex(get('sex')),
+            birthDate: parseImportDate(get('birthDate')) || '',
+            birthComune: get('birthComune'),
+            birthProvince: get('birthProvince').toUpperCase().substring(0, 2),
+            birthCountry: get('birthCountry'),
+            citizenship: get('citizenship'),
+            docType: normalizeDocType(get('docType')),
+            docNumber: get('docNumber'),
+            docIssuedPlace: get('docIssuedPlace'),
+            email: get('email'),
+            phone: get('phone'),
+            guestType: normalizeGuestType(get('guestType')),
+            notes: '',
+        });
+    }
+    return results;
+}
+
+function splitIntoGuestBlocks(text) {
+    // Split on patterns like "Guest 1", "Ospite 2", "--- Guest ---", numbered lists, or repeated label patterns
+    const splitters = /(?:^|\n)\s*(?:(?:guest|ospite|alloggiato|persona)\s*(?:#|n[°.]?)?\s*\d+|(?:---+|===+)\s*|\d+\s*[.)]\s*(?:guest|ospite|nome|cognome))/gi;
+    const parts = text.split(splitters).filter(s => s.trim().length > 10);
+
+    if (parts.length > 1) return parts;
+
+    // Try splitting by repeated "Cognome:" or "Last Name:" patterns
+    const labelSplit = text.split(/(?=(?:cognome|last\s*name|surname)\s*[:=\-–])/gi).filter(s => s.trim().length > 5);
+    if (labelSplit.length > 1) return labelSplit;
+
+    // No clear boundaries — treat the whole text as one block
+    return [text];
+}
+
+function parseGuestBlock(block) {
+    const guest = {
+        firstName: '', lastName: '', sex: '', birthDate: '', birthComune: '',
+        birthProvince: '', birthCountry: '', citizenship: '', docType: '',
+        docNumber: '', docIssuedPlace: '', email: '', phone: '', guestType: '', notes: ''
+    };
+
+    const lines = block.split(/\r?\n/);
+
+    for (const line of lines) {
+        for (const [field, regex] of Object.entries(KEY_VALUE_PATTERNS)) {
+            if (guest[field]) continue; // already matched
+            const m = line.match(regex);
+            if (m) {
+                let val = m[1].trim().replace(/[;,]$/, '').trim();
+                guest[field] = val;
+            }
+        }
+    }
+
+    // Standalone pattern fallbacks
+    if (!guest.email) {
+        const em = block.match(/\b[\w.+-]+@[\w.-]+\.\w{2,}\b/);
+        if (em) guest.email = em[0];
+    }
+    if (!guest.phone) {
+        const ph = block.match(/(?<![@\w])(\+?\d[\d\s\-().]{7,}\d)(?!\w)/);
+        if (ph) guest.phone = ph[1].trim();
+    }
+
+    // Normalize
+    guest.sex = normalizeSex(guest.sex);
+    guest.birthDate = parseImportDate(guest.birthDate) || '';
+    guest.docType = normalizeDocType(guest.docType);
+    guest.guestType = normalizeGuestType(guest.guestType);
+    guest.birthProvince = guest.birthProvince.toUpperCase().substring(0, 2);
+
+    return guest;
+}
+
+function tryFallbackNameDetection(text) {
+    // Last resort: look for lines that look like full names (two+ capitalized words, no special chars)
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const namePattern = /^([A-ZÀÁÂÃÄÅÈÉÊËÌÍÎÏÒÓÔÕÖÙÚÛÜÑÇ][a-zàáâãäåèéêëìíîïòóôõöùúûüñç]+)\s+([A-ZÀÁÂÃÄÅÈÉÊËÌÍÎÏÒÓÔÕÖÙÚÛÜÑÇ][a-zàáâãäåèéêëìíîïòóôõöùúûüñç]+(?:\s+[A-ZÀÁÂÃÄÅÈÉÊËÌÍÎÏÒÓÔÕÖÙÚÛÜÑÇ][a-zàáâãäåèéêëìíîïòóôõöùúûüñç]+)?)$/;
+    const guests = [];
+    for (const line of lines) {
+        const m = line.match(namePattern);
+        if (m) {
+            guests.push({
+                firstName: m[1], lastName: m[2],
+                sex: '', birthDate: '', birthComune: '', birthProvince: '',
+                birthCountry: '', citizenship: '', docType: '', docNumber: '',
+                docIssuedPlace: '', email: '', phone: '', guestType: '', notes: ''
+            });
+        }
+    }
+    return guests;
+}
+
+// ---- Normalizers ----
+
+function normalizeSex(val) {
+    if (!val) return '';
+    const v = val.toLowerCase().trim();
+    if (['m', 'male', 'maschile', 'maschio', '1'].includes(v)) return '1';
+    if (['f', 'female', 'femminile', 'femmina', '2'].includes(v)) return '2';
+    return val;
+}
+
+function normalizeDocType(val) {
+    if (!val) return '';
+    const v = val.toLowerCase().trim();
+    if (['ident', 'carta identita', "carta d'identita", "carta d'identità", 'carta identità', 'identity card', 'id card', 'ci'].includes(v)) return 'IDENT';
+    if (['pasor', 'passaporto', 'passport'].includes(v)) return 'PASOR';
+    if (['paten', 'patente', 'driving license', "driver's license", 'patente guida'].includes(v)) return 'PATEN';
+    if (['pnauz', 'patente nautica'].includes(v)) return 'PNAUZ';
+    if (['pordf', "porto d'armi", 'porto armi'].includes(v)) return 'PORDF';
+    // If it's already a valid code, return as-is
+    if (['IDENT', 'PASOR', 'PATEN', 'PNAUZ', 'PORDF'].includes(val.trim().toUpperCase())) return val.trim().toUpperCase();
+    return val;
+}
+
+function normalizeGuestType(val) {
+    if (!val) return '16'; // default: Ospite Singolo
+    const v = val.toLowerCase().trim();
+    if (['16', 'ospite singolo', 'single guest', 'singolo'].includes(v)) return '16';
+    if (['17', 'capogruppo', 'group leader', 'capo gruppo'].includes(v)) return '17';
+    if (['18', 'membro gruppo', 'group member', 'membro'].includes(v)) return '18';
+    if (['19', 'capofamiglia', 'family head', 'capo famiglia'].includes(v)) return '19';
+    if (['20', 'membro famiglia', 'family member'].includes(v)) return '20';
+    return '16';
+}
+
+// ---- Preview & Import ----
+
+function updateGuestFilePreview() {
+    if (guestFileMode === 'xlsx') {
+        const mapping = getGuestFileMapping();
+        const mapped = guestFileParsedRows.map(r => mapXlsxGuestRow(r, mapping)).filter(Boolean);
+        renderGuestFilePreviewTable(mapped);
+    }
+}
+
+function renderGuestFilePreview() {
+    if (guestFileMode === 'text') {
+        renderGuestFilePreviewTable(guestFileParsedRows);
+    }
+}
+
+function renderGuestFilePreviewTable(rows) {
+    const count = rows.length;
+    document.getElementById('guestFilePreviewCount').textContent = `${count} guest(s) found`;
+
+    if (count === 0) {
+        document.getElementById('guestFilePreviewTable').innerHTML = '<p style="padding:16px;color:var(--text-secondary);font-size:13px">No guests detected. Try a different file or check the extracted text above.</p>';
+        return;
+    }
+
+    const showCols = [
+        { key: 'lastName', label: 'Last Name' },
+        { key: 'firstName', label: 'First Name' },
+        { key: 'sex', label: 'Sex' },
+        { key: 'birthDate', label: 'Birth Date' },
+        { key: 'docType', label: 'Doc Type' },
+        { key: 'docNumber', label: 'Doc No.' },
+        { key: 'email', label: 'Email' },
+        { key: 'phone', label: 'Phone' },
+    ];
+
+    const preview = rows.slice(0, 20);
+    let html = '<table><thead><tr>';
+    showCols.forEach(c => { html += `<th>${c.label}</th>`; });
+    html += '</tr></thead><tbody>';
+    preview.forEach(r => {
+        html += '<tr>';
+        showCols.forEach(c => {
+            const val = r[c.key] || '';
+            const missing = c.key === 'lastName' || c.key === 'firstName' ? !val : false;
+            html += `<td${missing ? ' style="color:var(--red);font-style:italic"' : ''}>${val ? escapeHtml(val) : (missing ? 'missing' : '—')}</td>`;
+        });
+        html += '</tr>';
+    });
+    html += '</tbody></table>';
+    if (count > 20) html += `<p style="padding:8px 12px;font-size:12px;color:var(--text-secondary)">Showing first 20 of ${count}</p>`;
+    document.getElementById('guestFilePreviewTable').innerHTML = html;
+}
+
+async function executeGuestFileImport() {
+    const reservationId = document.getElementById('fileImportReservationId').value;
+    let toImport;
+
+    if (guestFileMode === 'xlsx') {
+        const mapping = getGuestFileMapping();
+        if (!mapping.firstName && !mapping.lastName) {
+            showToast('Please map at least First Name or Last Name', 'error');
+            return;
+        }
+        toImport = guestFileParsedRows.map(r => mapXlsxGuestRow(r, mapping)).filter(Boolean);
+    } else {
+        toImport = guestFileParsedRows.filter(g => g.firstName || g.lastName);
+    }
+
+    if (toImport.length === 0) {
+        showToast('No valid guests to import', 'error');
+        return;
+    }
+
+    if (!confirm(`Import ${toImport.length} guest(s) into this reservation?`)) return;
+
+    let success = 0, errors = 0;
+
+    for (const data of toImport) {
+        const newGuest = {
+            id: generateId(),
+            reservationId,
+            ...data,
+            roomId: '',
+        };
+        try {
+            await apiPost(API.guests, newGuest);
+            guests.push(newGuest);
+            success++;
+        } catch (err) {
+            console.error('Guest import error:', err);
+            errors++;
+        }
+    }
+
+    closeModal('fileImportModal');
+    showToast(`Imported ${success} guest(s)${errors ? ', ' + errors + ' failed' : ''}`);
+
+    // Refresh guests list
+    openGuestsList(reservationId);
+    renderDashboard();
 }
 
 // ---- Bar tooltip (body-appended to avoid overflow clipping) ----

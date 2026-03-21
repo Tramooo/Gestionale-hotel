@@ -2245,6 +2245,62 @@ select.cell-input option {
     align-self: flex-end;
 }
 
+/* File Import */
+.file-import-drop {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 20px;
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--bg-primary);
+    cursor: pointer;
+    transition: border-color var(--transition), background var(--transition);
+}
+.file-import-drop:hover,
+.file-import-drop.dragover {
+    border-color: var(--accent);
+    background: rgba(0, 122, 255, 0.04);
+}
+.spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin: 0 auto;
+}
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+#guestFilePreviewTable table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+#guestFilePreviewTable th,
+#guestFilePreviewTable td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border-light);
+    text-align: left;
+    white-space: nowrap;
+}
+#guestFilePreviewTable th {
+    background: var(--bg-tertiary);
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    color: var(--text-secondary);
+    position: sticky;
+    top: 0;
+}
+#guestFilePreviewTable tr:hover td {
+    background: var(--bg-primary);
+}
+
 .detail-section {
     margin-top: 24px;
 }
