@@ -445,7 +445,7 @@ const TRANSLATIONS = {
     'emp.monthlySummary': { en: 'Monthly Summary', it: 'Riepilogo Mensile' },
     'emp.workDays': { en: 'Work Days', it: 'Giornate Lavorative' },
     'emp.totalHours': { en: 'Total Hours', it: 'Ore Totali' },
-    'emp.workingDaysInMonth': { en: 'Working Days in Month', it: 'Giorni Lavorativi nel Mese' },
+    'emp.daysInMonth': { en: 'Days in Month', it: 'Giorni nel Mese' },
     'emp.actions': { en: 'Actions', it: 'Azioni' },
     'toast.empSaved': { en: 'Employee saved', it: 'Dipendente salvato' },
     'toast.empSaveFail': { en: 'Failed to save employee', it: 'Salvataggio dipendente fallito' },
@@ -3783,15 +3783,8 @@ function empMonthNav(delta) {
     renderEmployees();
 }
 
-function getWorkingDaysInMonth(year, month) {
-    let count = 0;
-    const d = new Date(year, month, 1);
-    while (d.getMonth() === month) {
-        const dow = d.getDay();
-        if (dow !== 0 && dow !== 6) count++; // Mon-Fri
-        d.setDate(d.getDate() + 1);
-    }
-    return count;
+function getDaysInMonth(year, month) {
+    return new Date(year, month + 1, 0).getDate();
 }
 
 function getEmployeeMonthStats(empId, year, month) {
@@ -3802,13 +3795,12 @@ function getEmployeeMonthStats(empId, year, month) {
     return { daysWorked, totalHours, entries };
 }
 
-function calcEstimatedPay(emp, daysWorked, totalHours, workingDaysInMonth) {
+function calcEstimatedPay(emp, daysWorked, totalHours) {
     if (emp.payType === 'hourly') {
         return totalHours * emp.payRate;
     }
-    // monthly: proportional to days worked
-    if (workingDaysInMonth === 0) return 0;
-    return (emp.payRate / workingDaysInMonth) * daysWorked;
+    // monthly: daily rate = monthly pay / 30, then multiply by days worked
+    return (emp.payRate / 30) * daysWorked;
 }
 
 function renderEmployees() {
@@ -3817,8 +3809,6 @@ function renderEmployees() {
     const year = empViewMonth.getFullYear();
     const month = empViewMonth.getMonth();
     const monthNames = t('months.full');
-    const workingDays = getWorkingDaysInMonth(year, month);
-
     document.getElementById('empMonthLabel').textContent = `${monthNames[month]} ${year}`;
 
     let filtered = employees;
@@ -3835,7 +3825,7 @@ function renderEmployees() {
 
     grid.innerHTML = filtered.map(emp => {
         const stats = getEmployeeMonthStats(emp.id, year, month);
-        const estimated = calcEstimatedPay(emp, stats.daysWorked, stats.totalHours, workingDays);
+        const estimated = calcEstimatedPay(emp, stats.daysWorked, stats.totalHours);
         const initials = getInitials(emp.firstName + ' ' + emp.lastName);
 
         return `
@@ -3952,9 +3942,9 @@ function openEmployeeDetail(empId) {
     const year = empViewMonth.getFullYear();
     const month = empViewMonth.getMonth();
     const monthNames = t('months.full');
-    const workingDays = getWorkingDaysInMonth(year, month);
+    const daysInMonth = getDaysInMonth(year, month);
     const stats = getEmployeeMonthStats(empId, year, month);
-    const estimated = calcEstimatedPay(emp, stats.daysWorked, stats.totalHours, workingDays);
+    const estimated = calcEstimatedPay(emp, stats.daysWorked, stats.totalHours);
 
     document.getElementById('empDetailName').textContent = `${emp.lastName} ${emp.firstName}`;
 
@@ -4012,8 +4002,8 @@ function openEmployeeDetail(empId) {
                     <div class="label">${t('emp.totalHours')}</div>
                 </div>
                 <div class="emp-summary-card">
-                    <div class="value">${workingDays}</div>
-                    <div class="label">${t('emp.workingDaysInMonth')}</div>
+                    <div class="value">${daysInMonth}</div>
+                    <div class="label">${t('emp.daysInMonth')}</div>
                 </div>
                 <div class="emp-summary-card">
                     <div class="value" style="color:var(--green)">&euro;${estimated.toFixed(2)}</div>
