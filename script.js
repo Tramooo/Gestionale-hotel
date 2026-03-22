@@ -457,6 +457,18 @@ const TRANSLATIONS = {
     'toast.workDeleteFail': { en: 'Failed to delete work entry', it: 'Eliminazione giornata fallita' },
     'confirm.deleteEmployee': { en: 'Delete this employee and all their work records?', it: 'Eliminare questo dipendente e tutte le sue presenze?' },
     'confirm.deleteWorkEntry': { en: 'Delete this work entry?', it: 'Eliminare questa giornata?' },
+    'pin.title': { en: 'Enter PIN', it: 'Inserisci PIN' },
+    'pin.placeholder': { en: 'Enter 4-digit PIN', it: 'Inserisci PIN a 4 cifre' },
+    'pin.unlock': { en: 'Unlock', it: 'Sblocca' },
+    'pin.wrong': { en: 'Wrong PIN', it: 'PIN errato' },
+    'settings.empPin': { en: 'Employee Section PIN', it: 'PIN Sezione Dipendenti' },
+    'settings.empPinDesc': { en: 'Set a 4-digit PIN to protect employee access', it: 'Imposta un PIN a 4 cifre per proteggere l\'accesso ai dipendenti' },
+    'settings.empPinPlaceholder': { en: 'Enter 4-digit PIN', it: 'Inserisci PIN a 4 cifre' },
+    'settings.empPinSave': { en: 'Save PIN', it: 'Salva PIN' },
+    'settings.empPinRemove': { en: 'Remove PIN', it: 'Rimuovi PIN' },
+    'settings.empPinSaved': { en: 'PIN saved', it: 'PIN salvato' },
+    'settings.empPinRemoved': { en: 'PIN removed', it: 'PIN rimosso' },
+    'settings.empPinInvalid': { en: 'PIN must be 4 digits', it: 'Il PIN deve essere di 4 cifre' },
 };
 
 function t(key, replacements) {
@@ -541,7 +553,18 @@ function getInitials(name) {
 
 // ---- NAVIGATION ----
 
+let empPinUnlocked = false;
+
 function navigateTo(page) {
+    // Check PIN protection for employees page
+    if (page === 'employees' && !empPinUnlocked) {
+        const pin = localStorage.getItem('gs_emp_pin');
+        if (pin) {
+            openPinModal();
+            return;
+        }
+    }
+
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.nav-item, .tab-item').forEach(n => n.classList.remove('active'));
 
@@ -564,6 +587,56 @@ function navigateTo(page) {
         case 'guests': renderGuests(); break;
         case 'employees': renderEmployees(); break;
     }
+}
+
+function openPinModal() {
+    const modal = document.getElementById('pinModal');
+    const input = document.getElementById('pinInput');
+    const error = document.getElementById('pinError');
+    modal.classList.add('open');
+    input.value = '';
+    error.style.display = 'none';
+    setTimeout(() => input.focus(), 100);
+}
+
+function closePinModal() {
+    document.getElementById('pinModal').classList.remove('open');
+}
+
+function submitPin() {
+    const input = document.getElementById('pinInput');
+    const error = document.getElementById('pinError');
+    const stored = localStorage.getItem('gs_emp_pin');
+
+    if (input.value === stored) {
+        empPinUnlocked = true;
+        closePinModal();
+        navigateTo('employees');
+    } else {
+        error.style.display = 'block';
+        input.value = '';
+        input.focus();
+    }
+}
+
+function saveEmpPin() {
+    const input = document.getElementById('settingEmpPin');
+    const val = input.value.trim();
+    if (!/^\d{4}$/.test(val)) {
+        showToast(t('settings.empPinInvalid'), 'error');
+        return;
+    }
+    localStorage.setItem('gs_emp_pin', val);
+    empPinUnlocked = false;
+    input.value = '';
+    showToast(t('settings.empPinSaved'), 'success');
+}
+
+function removeEmpPin() {
+    localStorage.removeItem('gs_emp_pin');
+    empPinUnlocked = false;
+    document.getElementById('settingEmpPin').value = '';
+    showToast(t('settings.empPinRemoved'), 'success');
 }
 
 // Setup nav listeners

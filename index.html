@@ -806,6 +806,18 @@
                 <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
 
                 <div class="settings-section">
+                    <label class="settings-label" data-i18n="settings.empPin">PIN Sezione Dipendenti</label>
+                    <p style="font-size:12px;color:var(--text-secondary);margin:0 0 10px" data-i18n="settings.empPinDesc">Imposta un PIN a 4 cifre per proteggere l'accesso ai dipendenti</p>
+                    <div style="display:flex;align-items:center;gap:8px">
+                        <input type="password" id="settingEmpPin" maxlength="4" inputmode="numeric" pattern="[0-9]*" style="width:120px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:16px;letter-spacing:8px;text-align:center" data-i18n-placeholder="settings.empPinPlaceholder" placeholder="PIN">
+                        <button class="btn btn-primary" onclick="saveEmpPin()" data-i18n="settings.empPinSave">Salva PIN</button>
+                        <button class="btn btn-secondary" onclick="removeEmpPin()" data-i18n="settings.empPinRemove">Rimuovi PIN</button>
+                    </div>
+                </div>
+
+                <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
+
+                <div class="settings-section">
                     <label class="settings-label" data-i18n="settings.importScidoo">Importa Prenotazioni da Scidoo</label>
                     <p style="font-size:12px;color:var(--text-secondary);margin:0 0 10px" data-i18n="settings.importScidooDesc">Carica un CSV esportato da Scidoo. Mapperai le colonne prima dell'importazione.</p>
                     <input type="file" id="csvFileInput" accept=".csv,.txt" style="display:none" onchange="handleCsvFile(event)">
@@ -886,6 +898,24 @@
                     <button class="btn btn-secondary" onclick="closeModal('fileImportModal')" data-i18n="common.cancel">Annulla</button>
                     <button class="btn btn-primary" onclick="executeGuestFileImport()" data-i18n="file.importAll">Importa Tutto</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PIN Modal -->
+    <div class="modal-overlay" id="pinModal" style="z-index:10000">
+        <div class="modal" style="max-width:320px">
+            <div class="modal-header">
+                <h2 data-i18n="pin.title">Inserisci PIN</h2>
+                <button class="modal-close" onclick="closePinModal()">&times;</button>
+            </div>
+            <div class="modal-body" style="padding:24px;text-align:center">
+                <input type="password" id="pinInput" maxlength="4" inputmode="numeric" pattern="[0-9]*" autocomplete="off"
+                    style="width:140px;padding:12px;border:2px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font-size:24px;letter-spacing:10px;text-align:center"
+                    data-i18n-placeholder="pin.placeholder" placeholder="••••"
+                    onkeydown="if(event.key==='Enter')submitPin()">
+                <p id="pinError" style="color:var(--red);font-size:13px;margin:10px 0 0;display:none" data-i18n="pin.wrong">PIN errato</p>
+                <button class="btn btn-primary" onclick="submitPin()" style="margin-top:16px;width:100%" data-i18n="pin.unlock">Sblocca</button>
             </div>
         </div>
     </div>
