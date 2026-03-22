@@ -48,7 +48,11 @@ async function loadAllData() {
             apiGet(API.reservations),
             apiGet(API.rooms),
             apiGet(API.guests),
-            apiGet(API.employees).catch(() => ({ employees: [], workEntries: [] }))
+            apiGet(API.employees).catch(async () => {
+                // Tables might not exist yet — try to init
+                try { await apiPost(API.init, {}); } catch (e) {}
+                return apiGet(API.employees).catch(() => ({ employees: [], workEntries: [] }));
+            })
         ]);
         reservations = resData;
         rooms = roomData;
@@ -3880,8 +3884,6 @@ function openEditEmployee(id) {
     document.getElementById('empRole').value = emp.role || '';
     document.getElementById('empPayType').value = emp.payType;
     document.getElementById('empPayRate').value = emp.payRate || '';
-    document.getElementById('empPhone').value = emp.phone || '';
-    document.getElementById('empEmail').value = emp.email || '';
     document.getElementById('empNotes').value = emp.notes || '';
     document.getElementById('employeeModalTitle').textContent = t('emp.editEmployee');
     document.getElementById('deleteEmpBtn').style.display = 'inline-flex';
@@ -3905,8 +3907,8 @@ async function saveEmployee(e) {
         role: document.getElementById('empRole').value.trim(),
         payType: document.getElementById('empPayType').value,
         payRate: parseFloat(document.getElementById('empPayRate').value) || 0,
-        phone: document.getElementById('empPhone').value.trim(),
-        email: document.getElementById('empEmail').value.trim(),
+        phone: '',
+        email: '',
         notes: document.getElementById('empNotes').value.trim(),
     };
 
@@ -3923,7 +3925,8 @@ async function saveEmployee(e) {
         closeModal('employeeModal');
         renderEmployees();
     } catch (err) {
-        showToast(t('toast.empSaveFail'), 'error');
+        console.error('Employee save error:', err);
+        showToast(t('toast.empSaveFail') + ': ' + err.message, 'error');
     }
 }
 
