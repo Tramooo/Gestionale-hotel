@@ -379,7 +379,7 @@
         <div class="modal">
             <div class="modal-header">
                 <h2 id="workEntryModalTitle" data-i18n="emp.addWorkDay">Aggiungi Giornata</h2>
-                <button class="modal-close" onclick="closeModal('workEntryModal')">&times;</button>
+                <button class="modal-close" onclick="closeWorkEntryModal()">&times;</button>
             </div>
             <div class="modal-body">
                 <form id="workEntryForm" onsubmit="saveWorkEntry(event)">
@@ -400,7 +400,7 @@
                         </div>
                     </div>
                     <div class="modal-actions">
-                        <button type="button" class="btn btn-ghost" onclick="closeModal('workEntryModal')" data-i18n="common.cancel">Annulla</button>
+                        <button type="button" class="btn btn-ghost" onclick="closeWorkEntryModal()" data-i18n="common.cancel">Annulla</button>
                         <button type="submit" class="btn btn-primary" data-i18n="common.save">Salva</button>
                     </div>
                 </form>

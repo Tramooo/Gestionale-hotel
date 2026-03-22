@@ -4043,7 +4043,14 @@ function openEmployeeDetail(empId) {
     openModal('employeeDetailModal');
 }
 
+function closeWorkEntryModal() {
+    const empId = document.getElementById('workEntryEmployeeId').value;
+    closeModal('workEntryModal');
+    if (empId) openEmployeeDetail(empId);
+}
+
 function openNewWorkEntry(empId) {
+    closeModal('employeeDetailModal');
     document.getElementById('workEntryForm').reset();
     document.getElementById('workEntryId').value = '';
     document.getElementById('workEntryEmployeeId').value = empId;
@@ -4056,6 +4063,7 @@ function openNewWorkEntry(empId) {
 function openEditWorkEntry(workId) {
     const entry = workEntries.find(w => w.id === workId);
     if (!entry) return;
+    closeModal('employeeDetailModal');
     document.getElementById('workEntryId').value = entry.id;
     document.getElementById('workEntryEmployeeId').value = entry.employeeId;
     document.getElementById('workEntryDate').value = entry.workDate;
