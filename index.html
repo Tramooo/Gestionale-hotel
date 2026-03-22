@@ -30,6 +30,10 @@
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                 <span data-i18n="nav.calendar">Calendario</span>
             </a>
+            <a href="#" class="nav-item" data-page="employees">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                <span data-i18n="nav.employees">Dipendenti</span>
+            </a>
         </nav>
         <div class="sidebar-footer">
             <button class="settings-btn" onclick="openModal('settingsModal')" data-i18n-title="nav.settings">
@@ -59,6 +63,10 @@
         <a href="#" class="tab-item" data-page="calendar">
             <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
             <span data-i18n="nav.calendar">Calendario</span>
+        </a>
+        <a href="#" class="tab-item" data-page="employees">
+            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            <span data-i18n="nav.employees">Dipendenti</span>
         </a>
     </nav>
 
@@ -277,9 +285,149 @@
                 </table>
             </div>
         </section>
+
+        <!-- ======================== EMPLOYEES ======================== -->
+        <section class="page" id="page-employees">
+            <header class="page-header">
+                <div>
+                    <h1 class="page-title" data-i18n="emp.title">Dipendenti</h1>
+                    <p class="page-subtitle" data-i18n="emp.subtitle">Gestisci dipendenti, presenze e retribuzioni</p>
+                </div>
+                <button class="btn btn-primary" onclick="openNewEmployeeModal()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    <span data-i18n="emp.addEmployee">Aggiungi Dipendente</span>
+                </button>
+            </header>
+
+            <!-- Month selector for pay view -->
+            <div class="filters-bar" style="flex-wrap:wrap;gap:12px">
+                <div class="search-box">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" data-i18n-placeholder="emp.searchEmployees" placeholder="Cerca dipendenti..." id="searchEmployees" oninput="renderEmployees()">
+                </div>
+                <div style="display:flex;align-items:center;gap:8px">
+                    <button class="btn btn-ghost btn-sm" onclick="empMonthNav(-1)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="15 18 9 12 15 6"/></svg>
+                    </button>
+                    <span id="empMonthLabel" style="font-weight:600;min-width:140px;text-align:center"></span>
+                    <button class="btn btn-ghost btn-sm" onclick="empMonthNav(1)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div id="employeesGrid" class="employees-grid">
+                <!-- Populated by JS -->
+            </div>
+        </section>
+
     </main>
 
     <!-- ======================== MODALS ======================== -->
+
+    <!-- Employee Modal -->
+    <div class="modal-overlay" id="employeeModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="employeeModalTitle" data-i18n="emp.addEmployee">Aggiungi Dipendente</h2>
+                <button class="modal-close" onclick="closeModal('employeeModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="employeeForm" onsubmit="saveEmployee(event)">
+                    <input type="hidden" id="empId">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label data-i18n="emp.firstName">Nome</label>
+                            <input type="text" id="empFirstName" required>
+                        </div>
+                        <div class="form-group">
+                            <label data-i18n="emp.lastName">Cognome</label>
+                            <input type="text" id="empLastName" required>
+                        </div>
+                        <div class="form-group">
+                            <label data-i18n="emp.role">Ruolo</label>
+                            <input type="text" id="empRole" data-i18n-placeholder="emp.rolePlaceholder" placeholder="es. Receptionist, Cameriere...">
+                        </div>
+                        <div class="form-group">
+                            <label data-i18n="emp.payType">Tipo Retribuzione</label>
+                            <select id="empPayType" onchange="togglePayRateLabel()">
+                                <option value="monthly" data-i18n="emp.monthly">Mensile</option>
+                                <option value="hourly" data-i18n="emp.hourly">Oraria</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label id="empPayRateLabel" data-i18n="emp.monthlyPay">Retribuzione Mensile (&euro;)</label>
+                            <input type="number" id="empPayRate" min="0" step="0.01" placeholder="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label data-i18n="guest.phone">Telefono</label>
+                            <input type="tel" id="empPhone">
+                        </div>
+                        <div class="form-group">
+                            <label data-i18n="guest.email">Email</label>
+                            <input type="email" id="empEmail">
+                        </div>
+                        <div class="form-group full">
+                            <label data-i18n="res.notes">Note</label>
+                            <textarea id="empNotes" rows="2"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-danger" id="deleteEmpBtn" onclick="deleteEmployee()" style="margin-right:auto;display:none" data-i18n="common.delete">Elimina</button>
+                        <button type="button" class="btn btn-ghost" onclick="closeModal('employeeModal')" data-i18n="common.cancel">Annulla</button>
+                        <button type="submit" class="btn btn-primary" data-i18n="common.save">Salva</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Work Entry Modal -->
+    <div class="modal-overlay" id="workEntryModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="workEntryModalTitle" data-i18n="emp.addWorkDay">Aggiungi Giornata</h2>
+                <button class="modal-close" onclick="closeModal('workEntryModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="workEntryForm" onsubmit="saveWorkEntry(event)">
+                    <input type="hidden" id="workEntryId">
+                    <input type="hidden" id="workEntryEmployeeId">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label data-i18n="emp.date">Data</label>
+                            <input type="date" id="workEntryDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label data-i18n="emp.hours">Ore Lavorate</label>
+                            <input type="number" id="workEntryHours" min="0" max="24" step="0.25" placeholder="8">
+                        </div>
+                        <div class="form-group full">
+                            <label data-i18n="res.notes">Note</label>
+                            <textarea id="workEntryNotes" rows="2"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-ghost" onclick="closeModal('workEntryModal')" data-i18n="common.cancel">Annulla</button>
+                        <button type="submit" class="btn btn-primary" data-i18n="common.save">Salva</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Employee Detail Modal -->
+    <div class="modal-overlay" id="employeeDetailModal">
+        <div class="modal modal-large">
+            <div class="modal-header">
+                <h2 id="empDetailName"></h2>
+                <button class="modal-close" onclick="closeModal('employeeDetailModal')">&times;</button>
+            </div>
+            <div class="modal-body" id="employeeDetailBody">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </div>
 
     <!-- New / Edit Reservation Modal -->
     <div class="modal-overlay" id="reservationModal">

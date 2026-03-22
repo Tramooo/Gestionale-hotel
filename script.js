@@ -11,7 +11,8 @@ const API = {
     init: '/api/init',
     assignments: '/api/assignments',
     plannerConfig: '/api/planner-config',
-    alloggiati: '/api/alloggiati'
+    alloggiati: '/api/alloggiati',
+    employees: '/api/employees'
 };
 
 async function apiGet(url) {
@@ -43,11 +44,17 @@ async function apiDelete(url, id) {
 
 async function loadAllData() {
     try {
-        [reservations, rooms, guests] = await Promise.all([
+        const [resData, roomData, guestData, empData] = await Promise.all([
             apiGet(API.reservations),
             apiGet(API.rooms),
-            apiGet(API.guests)
+            apiGet(API.guests),
+            apiGet(API.employees).catch(() => ({ employees: [], workEntries: [] }))
         ]);
+        reservations = resData;
+        rooms = roomData;
+        guests = guestData;
+        employees = empData.employees || [];
+        workEntries = empData.workEntries || [];
         computeRoomStatuses();
     } catch (err) {
         console.error('Failed to load data from database:', err);
@@ -87,6 +94,9 @@ let currentRoomFilter = 'all';
 let calendarDate = new Date();
 let currentAssignmentReservationId = null;
 let assignmentData = []; // current working copy of room assignments
+let employees = [];
+let workEntries = [];
+let empViewMonth = new Date(); // currently viewed month for employee pay
 
 // ---- i18n ----
 
@@ -402,6 +412,47 @@ const TRANSLATIONS = {
     'preview.showingFirst': { en: 'Showing first 20 of', it: 'Primi 20 di' },
     'preview.docNo': { en: 'Doc No.', it: 'N. Doc.' },
     'preview.birthDate': { en: 'Birth Date', it: 'Data Nascita' },
+
+    // Employees
+    'nav.employees': { en: 'Employees', it: 'Dipendenti' },
+    'emp.title': { en: 'Employees', it: 'Dipendenti' },
+    'emp.subtitle': { en: 'Manage employees, attendance and payroll', it: 'Gestisci dipendenti, presenze e retribuzioni' },
+    'emp.addEmployee': { en: 'Add Employee', it: 'Aggiungi Dipendente' },
+    'emp.editEmployee': { en: 'Edit Employee', it: 'Modifica Dipendente' },
+    'emp.searchEmployees': { en: 'Search employees...', it: 'Cerca dipendenti...' },
+    'emp.firstName': { en: 'First Name', it: 'Nome' },
+    'emp.lastName': { en: 'Last Name', it: 'Cognome' },
+    'emp.role': { en: 'Role', it: 'Ruolo' },
+    'emp.rolePlaceholder': { en: 'e.g. Receptionist, Waiter...', it: 'es. Receptionist, Cameriere...' },
+    'emp.payType': { en: 'Pay Type', it: 'Tipo Retribuzione' },
+    'emp.monthly': { en: 'Monthly', it: 'Mensile' },
+    'emp.hourly': { en: 'Hourly', it: 'Oraria' },
+    'emp.monthlyPay': { en: 'Monthly Pay', it: 'Retribuzione Mensile' },
+    'emp.hourlyPay': { en: 'Hourly Rate', it: 'Tariffa Oraria' },
+    'emp.daysWorked': { en: 'Days', it: 'Giorni' },
+    'emp.hoursWorked': { en: 'Hours', it: 'Ore' },
+    'emp.estimatedPay': { en: 'Est. Pay', it: 'Retrib. Stimata' },
+    'emp.addWorkDay': { en: 'Add Work Day', it: 'Aggiungi Giornata' },
+    'emp.editWorkDay': { en: 'Edit Work Day', it: 'Modifica Giornata' },
+    'emp.date': { en: 'Date', it: 'Data' },
+    'emp.hours': { en: 'Hours Worked', it: 'Ore Lavorate' },
+    'emp.noEmployees': { en: 'No employees yet', it: 'Nessun dipendente' },
+    'emp.noWorkDays': { en: 'No work days recorded this month', it: 'Nessuna giornata registrata questo mese' },
+    'emp.monthlySummary': { en: 'Monthly Summary', it: 'Riepilogo Mensile' },
+    'emp.workDays': { en: 'Work Days', it: 'Giornate Lavorative' },
+    'emp.totalHours': { en: 'Total Hours', it: 'Ore Totali' },
+    'emp.workingDaysInMonth': { en: 'Working Days in Month', it: 'Giorni Lavorativi nel Mese' },
+    'emp.actions': { en: 'Actions', it: 'Azioni' },
+    'toast.empSaved': { en: 'Employee saved', it: 'Dipendente salvato' },
+    'toast.empSaveFail': { en: 'Failed to save employee', it: 'Salvataggio dipendente fallito' },
+    'toast.empDeleted': { en: 'Employee deleted', it: 'Dipendente eliminato' },
+    'toast.empDeleteFail': { en: 'Failed to delete employee', it: 'Eliminazione dipendente fallita' },
+    'toast.workSaved': { en: 'Work entry saved', it: 'Giornata salvata' },
+    'toast.workSaveFail': { en: 'Failed to save work entry', it: 'Salvataggio giornata fallito' },
+    'toast.workDeleted': { en: 'Work entry deleted', it: 'Giornata eliminata' },
+    'toast.workDeleteFail': { en: 'Failed to delete work entry', it: 'Eliminazione giornata fallita' },
+    'confirm.deleteEmployee': { en: 'Delete this employee and all their work records?', it: 'Eliminare questo dipendente e tutte le sue presenze?' },
+    'confirm.deleteWorkEntry': { en: 'Delete this work entry?', it: 'Eliminare questa giornata?' },
 };
 
 function t(key, replacements) {
@@ -507,6 +558,7 @@ function navigateTo(page) {
         case 'calendar': renderCalendar(); break;
         case 'rooms': renderRooms(); break;
         case 'guests': renderGuests(); break;
+        case 'employees': renderEmployees(); break;
     }
 }
 
@@ -3716,6 +3768,341 @@ function showBarTooltip(e) {
 
 function hideBarTooltip() {
     if (barTipEl) barTipEl.style.display = 'none';
+}
+
+// =============================================
+// EMPLOYEES
+// =============================================
+
+function empMonthNav(delta) {
+    empViewMonth.setMonth(empViewMonth.getMonth() + delta);
+    renderEmployees();
+}
+
+function getWorkingDaysInMonth(year, month) {
+    let count = 0;
+    const d = new Date(year, month, 1);
+    while (d.getMonth() === month) {
+        const dow = d.getDay();
+        if (dow !== 0 && dow !== 6) count++; // Mon-Fri
+        d.setDate(d.getDate() + 1);
+    }
+    return count;
+}
+
+function getEmployeeMonthStats(empId, year, month) {
+    const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
+    const entries = workEntries.filter(w => w.employeeId === empId && w.workDate && w.workDate.startsWith(monthStr));
+    const daysWorked = entries.length;
+    const totalHours = entries.reduce((sum, w) => sum + (w.hours || 0), 0);
+    return { daysWorked, totalHours, entries };
+}
+
+function calcEstimatedPay(emp, daysWorked, totalHours, workingDaysInMonth) {
+    if (emp.payType === 'hourly') {
+        return totalHours * emp.payRate;
+    }
+    // monthly: proportional to days worked
+    if (workingDaysInMonth === 0) return 0;
+    return (emp.payRate / workingDaysInMonth) * daysWorked;
+}
+
+function renderEmployees() {
+    const grid = document.getElementById('employeesGrid');
+    const search = (document.getElementById('searchEmployees')?.value || '').toLowerCase();
+    const year = empViewMonth.getFullYear();
+    const month = empViewMonth.getMonth();
+    const monthNames = t('months.full');
+    const workingDays = getWorkingDaysInMonth(year, month);
+
+    document.getElementById('empMonthLabel').textContent = `${monthNames[month]} ${year}`;
+
+    let filtered = employees;
+    if (search) {
+        filtered = filtered.filter(e =>
+            (e.firstName + ' ' + e.lastName + ' ' + (e.role || '')).toLowerCase().includes(search)
+        );
+    }
+
+    if (filtered.length === 0) {
+        grid.innerHTML = `<div class="empty-state"><p>${t('emp.noEmployees')}</p></div>`;
+        return;
+    }
+
+    grid.innerHTML = filtered.map(emp => {
+        const stats = getEmployeeMonthStats(emp.id, year, month);
+        const estimated = calcEstimatedPay(emp, stats.daysWorked, stats.totalHours, workingDays);
+        const initials = getInitials(emp.firstName + ' ' + emp.lastName);
+
+        return `
+            <div class="employee-card" onclick="openEmployeeDetail('${emp.id}')">
+                <div class="employee-card-header">
+                    <div class="avatar">${initials}</div>
+                    <div class="emp-info">
+                        <div class="emp-name">${escapeHtml(emp.lastName)} ${escapeHtml(emp.firstName)}</div>
+                        <div class="emp-role">${escapeHtml(emp.role || '—')} · ${emp.payType === 'hourly' ? t('emp.hourly') : t('emp.monthly')}</div>
+                    </div>
+                </div>
+                <div class="employee-card-stats">
+                    <div class="emp-stat">
+                        <span class="emp-stat-value">${stats.daysWorked}</span>
+                        <span class="emp-stat-label">${t('emp.daysWorked')}</span>
+                    </div>
+                    <div class="emp-stat">
+                        <span class="emp-stat-value">${stats.totalHours.toFixed(1)}</span>
+                        <span class="emp-stat-label">${t('emp.hoursWorked')}</span>
+                    </div>
+                    <div class="emp-stat">
+                        <span class="emp-stat-value">&euro;${estimated.toFixed(0)}</span>
+                        <span class="emp-stat-label">${t('emp.estimatedPay')}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function openNewEmployeeModal() {
+    document.getElementById('employeeForm').reset();
+    document.getElementById('empId').value = '';
+    document.getElementById('employeeModalTitle').textContent = t('emp.addEmployee');
+    document.getElementById('deleteEmpBtn').style.display = 'none';
+    togglePayRateLabel();
+    openModal('employeeModal');
+}
+
+function openEditEmployee(id) {
+    const emp = employees.find(e => e.id === id);
+    if (!emp) return;
+    document.getElementById('empId').value = emp.id;
+    document.getElementById('empFirstName').value = emp.firstName;
+    document.getElementById('empLastName').value = emp.lastName;
+    document.getElementById('empRole').value = emp.role || '';
+    document.getElementById('empPayType').value = emp.payType;
+    document.getElementById('empPayRate').value = emp.payRate || '';
+    document.getElementById('empPhone').value = emp.phone || '';
+    document.getElementById('empEmail').value = emp.email || '';
+    document.getElementById('empNotes').value = emp.notes || '';
+    document.getElementById('employeeModalTitle').textContent = t('emp.editEmployee');
+    document.getElementById('deleteEmpBtn').style.display = 'inline-flex';
+    togglePayRateLabel();
+    openModal('employeeModal');
+}
+
+function togglePayRateLabel() {
+    const payType = document.getElementById('empPayType').value;
+    const label = document.getElementById('empPayRateLabel');
+    label.textContent = (payType === 'hourly' ? t('emp.hourlyPay') : t('emp.monthlyPay')) + ' (\u20AC)';
+}
+
+async function saveEmployee(e) {
+    e.preventDefault();
+    const id = document.getElementById('empId').value;
+    const data = {
+        id: id || generateId(),
+        firstName: document.getElementById('empFirstName').value.trim(),
+        lastName: document.getElementById('empLastName').value.trim(),
+        role: document.getElementById('empRole').value.trim(),
+        payType: document.getElementById('empPayType').value,
+        payRate: parseFloat(document.getElementById('empPayRate').value) || 0,
+        phone: document.getElementById('empPhone').value.trim(),
+        email: document.getElementById('empEmail').value.trim(),
+        notes: document.getElementById('empNotes').value.trim(),
+    };
+
+    try {
+        if (id) {
+            await apiPut(API.employees, data);
+            const idx = employees.findIndex(e => e.id === id);
+            if (idx >= 0) employees[idx] = data;
+        } else {
+            await apiPost(API.employees, data);
+            employees.push(data);
+        }
+        showToast(t('toast.empSaved'));
+        closeModal('employeeModal');
+        renderEmployees();
+    } catch (err) {
+        showToast(t('toast.empSaveFail'), 'error');
+    }
+}
+
+async function deleteEmployee() {
+    const id = document.getElementById('empId').value;
+    if (!id || !confirm(t('confirm.deleteEmployee'))) return;
+    try {
+        await apiDelete(API.employees, id);
+        employees = employees.filter(e => e.id !== id);
+        workEntries = workEntries.filter(w => w.employeeId !== id);
+        showToast(t('toast.empDeleted'));
+        closeModal('employeeModal');
+        renderEmployees();
+    } catch (err) {
+        showToast(t('toast.empDeleteFail'), 'error');
+    }
+}
+
+function openEmployeeDetail(empId) {
+    const emp = employees.find(e => e.id === empId);
+    if (!emp) return;
+
+    const year = empViewMonth.getFullYear();
+    const month = empViewMonth.getMonth();
+    const monthNames = t('months.full');
+    const workingDays = getWorkingDaysInMonth(year, month);
+    const stats = getEmployeeMonthStats(empId, year, month);
+    const estimated = calcEstimatedPay(emp, stats.daysWorked, stats.totalHours, workingDays);
+
+    document.getElementById('empDetailName').textContent = `${emp.lastName} ${emp.firstName}`;
+
+    const payInfo = emp.payType === 'hourly'
+        ? `${t('emp.hourlyPay')}: \u20AC${emp.payRate.toFixed(2)}/h`
+        : `${t('emp.monthlyPay')}: \u20AC${emp.payRate.toFixed(2)}`;
+
+    let workRowsHtml = '';
+    if (stats.entries.length > 0) {
+        const sorted = [...stats.entries].sort((a, b) => a.workDate.localeCompare(b.workDate));
+        workRowsHtml = sorted.map(w => `
+            <tr>
+                <td>${formatDateDisplay(w.workDate)}</td>
+                <td>${w.hours.toFixed(1)}h</td>
+                <td>${escapeHtml(w.notes || '—')}</td>
+                <td style="text-align:right">
+                    <button class="btn btn-ghost btn-sm" onclick="openEditWorkEntry('${w.id}')" title="${t('common.edit')}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </button>
+                    <button class="btn btn-ghost btn-sm" onclick="deleteWorkEntry('${w.id}','${empId}')" title="${t('common.delete')}" style="color:var(--red)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    const body = document.getElementById('employeeDetailBody');
+    body.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+            <div>
+                <span style="color:var(--text-secondary);font-size:13px">${escapeHtml(emp.role || '—')} · ${payInfo}</span>
+            </div>
+            <div style="display:flex;gap:8px">
+                <button class="btn btn-secondary btn-sm" onclick="closeModal('employeeDetailModal');openEditEmployee('${empId}')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    ${t('common.edit')}
+                </button>
+                <button class="btn btn-primary btn-sm" onclick="openNewWorkEntry('${empId}')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    ${t('emp.addWorkDay')}
+                </button>
+            </div>
+        </div>
+
+        <div class="emp-detail-section">
+            <h4>${t('emp.monthlySummary')} — ${monthNames[month]} ${year}</h4>
+            <div class="emp-summary-grid">
+                <div class="emp-summary-card">
+                    <div class="value">${stats.daysWorked}</div>
+                    <div class="label">${t('emp.workDays')}</div>
+                </div>
+                <div class="emp-summary-card">
+                    <div class="value">${stats.totalHours.toFixed(1)}</div>
+                    <div class="label">${t('emp.totalHours')}</div>
+                </div>
+                <div class="emp-summary-card">
+                    <div class="value">${workingDays}</div>
+                    <div class="label">${t('emp.workingDaysInMonth')}</div>
+                </div>
+                <div class="emp-summary-card">
+                    <div class="value" style="color:var(--green)">&euro;${estimated.toFixed(2)}</div>
+                    <div class="label">${t('emp.estimatedPay')}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="emp-detail-section">
+            <h4>${t('emp.workDays')} — ${monthNames[month]} ${year}</h4>
+            ${stats.entries.length === 0 ? `<div class="emp-no-data">${t('emp.noWorkDays')}</div>` : `
+            <div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px">
+                <table class="emp-work-table">
+                    <thead><tr>
+                        <th>${t('emp.date')}</th>
+                        <th>${t('emp.hours')}</th>
+                        <th>${t('res.notes')}</th>
+                        <th style="text-align:right">${t('emp.actions')}</th>
+                    </tr></thead>
+                    <tbody>${workRowsHtml}</tbody>
+                </table>
+            </div>
+            `}
+        </div>
+    `;
+
+    openModal('employeeDetailModal');
+}
+
+function openNewWorkEntry(empId) {
+    document.getElementById('workEntryForm').reset();
+    document.getElementById('workEntryId').value = '';
+    document.getElementById('workEntryEmployeeId').value = empId;
+    document.getElementById('workEntryDate').value = formatDate(new Date());
+    document.getElementById('workEntryHours').value = '8';
+    document.getElementById('workEntryModalTitle').textContent = t('emp.addWorkDay');
+    openModal('workEntryModal');
+}
+
+function openEditWorkEntry(workId) {
+    const entry = workEntries.find(w => w.id === workId);
+    if (!entry) return;
+    document.getElementById('workEntryId').value = entry.id;
+    document.getElementById('workEntryEmployeeId').value = entry.employeeId;
+    document.getElementById('workEntryDate').value = entry.workDate;
+    document.getElementById('workEntryHours').value = entry.hours || '';
+    document.getElementById('workEntryNotes').value = entry.notes || '';
+    document.getElementById('workEntryModalTitle').textContent = t('emp.editWorkDay');
+    openModal('workEntryModal');
+}
+
+async function saveWorkEntry(e) {
+    e.preventDefault();
+    const id = document.getElementById('workEntryId').value;
+    const empId = document.getElementById('workEntryEmployeeId').value;
+    const data = {
+        id: id || generateId(),
+        employeeId: empId,
+        workDate: document.getElementById('workEntryDate').value,
+        hours: parseFloat(document.getElementById('workEntryHours').value) || 0,
+        notes: document.getElementById('workEntryNotes').value.trim(),
+    };
+
+    try {
+        if (id) {
+            await apiPut(API.employees + '?type=work', data);
+            const idx = workEntries.findIndex(w => w.id === id);
+            if (idx >= 0) workEntries[idx] = data;
+        } else {
+            await apiPost(API.employees + '?type=work', data);
+            workEntries.push(data);
+        }
+        showToast(t('toast.workSaved'));
+        closeModal('workEntryModal');
+        renderEmployees();
+        openEmployeeDetail(empId);
+    } catch (err) {
+        showToast(t('toast.workSaveFail'), 'error');
+    }
+}
+
+async function deleteWorkEntry(workId, empId) {
+    if (!confirm(t('confirm.deleteWorkEntry'))) return;
+    try {
+        await fetch(`${API.employees}?id=${workId}&type=work`, { method: 'DELETE' });
+        workEntries = workEntries.filter(w => w.id !== workId);
+        showToast(t('toast.workDeleted'));
+        renderEmployees();
+        openEmployeeDetail(empId);
+    } catch (err) {
+        showToast(t('toast.workDeleteFail'), 'error');
+    }
 }
 
 // Apply saved theme immediately

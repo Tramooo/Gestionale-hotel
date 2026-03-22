@@ -1,0 +1,90 @@
+import { neon } from '@neondatabase/serverless';
+
+export default async function handler(req, res) {
+  const sql = neon(process.env.DATABASE_URL);
+
+  try {
+    if (req.method === 'GET') {
+      const employees = await sql`SELECT * FROM employees ORDER BY last_name, first_name`;
+      const workEntries = await sql`SELECT * FROM work_entries ORDER BY work_date DESC`;
+      return res.status(200).json({
+        employees: employees.map(e => ({
+          id: e.id,
+          firstName: e.first_name,
+          lastName: e.last_name,
+          role: e.role,
+          payType: e.pay_type,
+          payRate: parseFloat(e.pay_rate) || 0,
+          phone: e.phone,
+          email: e.email,
+          notes: e.notes,
+        })),
+        workEntries: workEntries.map(w => ({
+          id: w.id,
+          employeeId: w.employee_id,
+          workDate: w.work_date,
+          hours: parseFloat(w.hours) || 0,
+          notes: w.notes,
+        }))
+      });
+    }
+
+    if (req.method === 'POST') {
+      const { type } = req.query;
+
+      if (type === 'work') {
+        const w = req.body;
+        await sql`
+          INSERT INTO work_entries (id, employee_id, work_date, hours, notes)
+          VALUES (${w.id}, ${w.employeeId}, ${w.workDate}, ${w.hours || 0}, ${w.notes || null})
+        `;
+        return res.status(201).json({ success: true });
+      }
+
+      const e = req.body;
+      await sql`
+        INSERT INTO employees (id, first_name, last_name, role, pay_type, pay_rate, phone, email, notes)
+        VALUES (${e.id}, ${e.firstName}, ${e.lastName}, ${e.role || null}, ${e.payType}, ${e.payRate || 0}, ${e.phone || null}, ${e.email || null}, ${e.notes || null})
+      `;
+      return res.status(201).json({ success: true });
+    }
+
+    if (req.method === 'PUT') {
+      const { type } = req.query;
+
+      if (type === 'work') {
+        const w = req.body;
+        await sql`
+          UPDATE work_entries SET employee_id=${w.employeeId}, work_date=${w.workDate},
+          hours=${w.hours || 0}, notes=${w.notes || null}
+          WHERE id=${w.id}
+        `;
+        return res.status(200).json({ success: true });
+      }
+
+      const e = req.body;
+      await sql`
+        UPDATE employees SET first_name=${e.firstName}, last_name=${e.lastName},
+        role=${e.role || null}, pay_type=${e.payType}, pay_rate=${e.payRate || 0},
+        phone=${e.phone || null}, email=${e.email || null}, notes=${e.notes || null}
+        WHERE id=${e.id}
+      `;
+      return res.status(200).json({ success: true });
+    }
+
+    if (req.method === 'DELETE') {
+      const { id, type } = req.query;
+      if (type === 'work') {
+        await sql`DELETE FROM work_entries WHERE id = ${id}`;
+      } else {
+        await sql`DELETE FROM employees WHERE id = ${id}`;
+      }
+      return res.status(200).json({ success: true });
+    }
+
+    return res.status(405).json({ error: 'Method not allowed' });
+  } catch (err) {
+    console.error('Employees API error:', err);
+    return res.status(500).json({ error: err.message });
+  }
+}

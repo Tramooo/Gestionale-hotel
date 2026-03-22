@@ -88,6 +88,30 @@ export default async function handler(req, res) {
       ALTER TABLE room_assignments ADD COLUMN IF NOT EXISTS cell_values TEXT DEFAULT '{}'
     `;
 
+    await sql`
+      CREATE TABLE IF NOT EXISTS employees (
+        id TEXT PRIMARY KEY,
+        first_name TEXT NOT NULL,
+        last_name TEXT NOT NULL,
+        role TEXT,
+        pay_type TEXT NOT NULL DEFAULT 'monthly',
+        pay_rate NUMERIC DEFAULT 0,
+        phone TEXT,
+        email TEXT,
+        notes TEXT
+      )
+    `;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS work_entries (
+        id TEXT PRIMARY KEY,
+        employee_id TEXT REFERENCES employees(id) ON DELETE CASCADE,
+        work_date DATE NOT NULL,
+        hours NUMERIC DEFAULT 0,
+        notes TEXT
+      )
+    `;
+
     res.status(200).json({ message: 'Tables created successfully' });
   } catch (err) {
     console.error('Init error:', err);
