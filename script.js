@@ -460,6 +460,7 @@ const TRANSLATIONS = {
     'confirm.deleteWorkEntry': { en: 'Delete this work entry?', it: 'Eliminare questa giornata?' },
     'assign.roomRequest': { en: 'Room request notes', it: 'Note richiesta camere' },
     'assign.roomRequestPlaceholder': { en: 'e.g. 10 double, 5 twin, 3 quad...', it: 'es. 10 doppie, 5 twin, 3 quadruple...' },
+    'assign.print': { en: 'Print', it: 'Stampa' },
     'pin.title': { en: 'Enter PIN', it: 'Inserisci PIN' },
     'pin.placeholder': { en: 'Enter 4-digit PIN', it: 'Inserisci PIN a 4 cifre' },
     'pin.unlock': { en: 'Unlock', it: 'Sblocca' },
@@ -1673,7 +1674,7 @@ function renderAssignmentSpreadsheet() {
     const assignMap = {};
     assignmentData.forEach(a => { assignMap[a.roomId] = a; });
 
-    const totalCols = 2 + plannerColumns.length + 1; // room + type + dynamic cols + add btn
+    const totalCols = 1 + plannerColumns.length + 1; // room + dynamic cols + add btn
 
     const r = reservations.find(x => x.id === currentAssignmentReservationId);
     const roomNotesVal = r ? escapeHtml(r.roomNotes || '') : '';
@@ -1696,7 +1697,6 @@ function renderAssignmentSpreadsheet() {
             <thead>
                 <tr>
                     <th class="col-room">${t('rooms.room')}</th>
-                    <th class="col-type">${t('rooms.type')}</th>
                     ${plannerColumns.map((col, i) => `
                         <th class="col-dynamic">
                             <div class="col-header-wrap">
@@ -1725,7 +1725,6 @@ function renderAssignmentSpreadsheet() {
             html += `
                 <tr class="assignment-row ${hasData ? 'assigned' : ''}" data-room-id="${rm.id}">
                     <td class="col-room"><strong>${escapeHtml(rm.number)}</strong></td>
-                    <td class="col-type">${escapeHtml(rm.type)} (${rm.capacity})</td>
                     ${plannerColumns.map(col => {
                         const val = vals[col.id] != null ? vals[col.id] : '';
                         return `
@@ -1820,6 +1819,71 @@ function renamePlannerColumn(el) {
         return;
     }
     plannerColumns[idx].name = newName;
+}
+
+function printAssignments() {
+    const r = reservations.find(x => x.id === currentAssignmentReservationId);
+    if (!r) return;
+
+    const sortedRooms = [...rooms].sort((a, b) => a.floor - b.floor || a.number.localeCompare(b.number, undefined, { numeric: true }));
+    const floors = {};
+    sortedRooms.forEach(rm => {
+        if (!floors[rm.floor]) floors[rm.floor] = [];
+        floors[rm.floor].push(rm);
+    });
+    const assignMap = {};
+    assignmentData.forEach(a => { assignMap[a.roomId] = a; });
+
+    // Only include rooms that have data
+    const assignedRooms = sortedRooms.filter(rm => {
+        const a = assignMap[rm.id];
+        if (!a) return false;
+        const vals = a.cellValues || {};
+        return Object.values(vals).some(v => v !== '' && v !== 0 && v != null);
+    });
+
+    let tableRows = '';
+    let currentFloor = null;
+    for (const rm of assignedRooms) {
+        if (rm.floor !== currentFloor) {
+            currentFloor = rm.floor;
+            tableRows += `<tr><td colspan="${1 + plannerColumns.length}" style="background:#f0f0f0;font-weight:700;padding:6px 10px">${t('rooms.floor')} ${currentFloor}</td></tr>`;
+        }
+        const vals = (assignMap[rm.id] || {}).cellValues || {};
+        tableRows += `<tr>
+            <td style="padding:5px 10px;font-weight:600;border:1px solid #ddd">${rm.number}</td>
+            ${plannerColumns.map(col => `<td style="padding:5px 10px;border:1px solid #ddd">${vals[col.id] != null ? vals[col.id] : ''}</td>`).join('')}
+        </tr>`;
+    }
+
+    const printHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${r.groupName}</title>
+        <style>
+            body { font-family: -apple-system, sans-serif; padding: 24px; color: #222; }
+            h1 { font-size: 20px; margin: 0 0 4px; }
+            .subtitle { font-size: 13px; color: #666; margin-bottom: 16px; }
+            table { border-collapse: collapse; width: 100%; }
+            th { background: #333; color: #fff; padding: 6px 10px; text-align: left; font-size: 12px; }
+            td { font-size: 12px; }
+            .notes { margin-top: 16px; padding: 10px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; white-space: pre-wrap; }
+            .notes-label { font-weight: 600; font-size: 11px; color: #666; margin-bottom: 4px; }
+            @media print { body { padding: 0; } }
+        </style></head><body>
+        <h1>${r.groupName}</h1>
+        <div class="subtitle">${formatDateDisplay(r.checkin)} → ${formatDateDisplay(r.checkout)} · ${r.roomCount} ${r.roomCount !== 1 ? t('cal.roomPlural') : t('cal.roomSingular')} · ${r.guestCount} ${r.guestCount !== 1 ? t('cal.guestPlural') : t('cal.guestSingular')}</div>
+        ${r.roomNotes ? `<div class="notes"><div class="notes-label">${t('assign.roomRequest')}</div>${r.roomNotes}</div>` : ''}
+        <table>
+            <thead><tr>
+                <th>${t('rooms.room')}</th>
+                ${plannerColumns.map(col => `<th>${col.name}</th>`).join('')}
+            </tr></thead>
+            <tbody>${tableRows}</tbody>
+        </table>
+        <script>window.onload=function(){window.print();}<\/script>
+    </body></html>`;
+
+    const w = window.open('', '_blank');
+    w.document.write(printHtml);
+    w.document.close();
 }
 
 async function saveAssignmentRoomNotes() {
