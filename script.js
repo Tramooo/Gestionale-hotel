@@ -179,6 +179,7 @@ const TRANSLATIONS = {
     'cal.guestSingular': { en: 'guest', it: 'ospite' },
     'cal.guestPlural': { en: 'guests', it: 'ospiti' },
     'cal.expires': { en: 'Expires', it: 'Scade il' },
+    'cal.expiringToday': { en: 'Expiring today', it: 'In scadenza oggi' },
 
     // Days & Months
     'days.short': { en: ['Su','Mo','Tu','We','Th','Fr','Sa'], it: ['Do','Lu','Ma','Me','Gi','Ve','Sa'] },
@@ -2291,6 +2292,7 @@ function renderCalendar() {
 
     initGridDrag();
     renderPlannerMonthBar();
+    renderExpiringBanner();
 }
 
 // Rebuild board without resetting scroll position
@@ -2314,6 +2316,40 @@ function refreshCalendar() {
     const roomsInner = plannerRoomsEl.querySelector('.p-rooms-inner');
     if (headerInner) headerInner.style.transform = `translateX(${-slBefore}px)`;
     if (roomsInner) roomsInner.style.transform = `translateY(${-stBefore}px)`;
+    renderExpiringBanner();
+}
+
+function renderExpiringBanner() {
+    const banner = document.getElementById('expiringBanner');
+    if (!banner) return;
+    const today = formatDate(new Date());
+    const expiring = reservations.filter(r => r.status === 'pending' && r.expiration === today);
+
+    if (expiring.length === 0) {
+        banner.style.display = 'none';
+        return;
+    }
+
+    banner.style.display = 'block';
+    banner.innerHTML = `
+        <div class="expiring-banner">
+            <div class="expiring-banner-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                ${t('cal.expiringToday')} (${expiring.length})
+            </div>
+            <div class="expiring-banner-list">
+                ${expiring.map(r => `
+                    <div class="expiring-banner-item" onclick="openReservationDetail('${r.id}')">
+                        <span class="expiring-banner-name">${escapeHtml(r.groupName)}</span>
+                        <span class="expiring-banner-dates">${formatDateDisplay(r.checkin)} → ${formatDateDisplay(r.checkout)}</span>
+                        <span class="expiring-banner-info">${r.roomCount} ${r.roomCount !== 1 ? t('cal.roomPlural') : t('cal.roomSingular')} · ${r.guestCount} ${r.guestCount !== 1 ? t('cal.guestPlural') : t('cal.guestSingular')}</span>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
 }
 
 function buildBoardHTML() {

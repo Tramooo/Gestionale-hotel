@@ -1071,6 +1071,54 @@ body {
     flex-shrink: 0;
 }
 
+/* Expiring reservations banner */
+.expiring-banner {
+    background: color-mix(in srgb, var(--orange) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--orange) 30%, transparent);
+    border-radius: 10px;
+    margin: 10px 16px 0;
+    padding: 12px 16px;
+}
+.expiring-banner-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--orange);
+    margin-bottom: 8px;
+}
+.expiring-banner-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.expiring-banner-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background 0.15s;
+}
+.expiring-banner-item:hover {
+    background: var(--bg-secondary);
+}
+.expiring-banner-name {
+    font-weight: 600;
+    color: var(--text);
+}
+.expiring-banner-dates {
+    color: var(--text-secondary);
+}
+.expiring-banner-info {
+    color: var(--text-secondary);
+}
+
 /*
  * 4-panel grid layout:
  *   ┌──────────┬──────────────────────┐
