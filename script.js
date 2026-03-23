@@ -1875,7 +1875,7 @@ function printAssignments() {
             td { font-size: 12px; }
             .page-block { page-break-after: always; }
             .page-block:last-child { page-break-after: avoid; }
-            @media print { body { padding: 0; } }
+            @media print { @page { margin: 0; } body { padding: 10mm; } }
         </style></head><body>
         ${pages}
         <script>window.onload=function(){window.print();}<\/script>
