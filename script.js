@@ -458,6 +458,8 @@ const TRANSLATIONS = {
     'toast.workDeleteFail': { en: 'Failed to delete work entry', it: 'Eliminazione giornata fallita' },
     'confirm.deleteEmployee': { en: 'Delete this employee and all their work records?', it: 'Eliminare questo dipendente e tutte le sue presenze?' },
     'confirm.deleteWorkEntry': { en: 'Delete this work entry?', it: 'Eliminare questa giornata?' },
+    'assign.roomRequest': { en: 'Room request notes', it: 'Note richiesta camere' },
+    'assign.roomRequestPlaceholder': { en: 'e.g. 10 double, 5 twin, 3 quad...', it: 'es. 10 doppie, 5 twin, 3 quadruple...' },
     'pin.title': { en: 'Enter PIN', it: 'Inserisci PIN' },
     'pin.placeholder': { en: 'Enter 4-digit PIN', it: 'Inserisci PIN a 4 cifre' },
     'pin.unlock': { en: 'Unlock', it: 'Sblocca' },
@@ -1673,10 +1675,19 @@ function renderAssignmentSpreadsheet() {
 
     const totalCols = 2 + plannerColumns.length + 1; // room + type + dynamic cols + add btn
 
+    const r = reservations.find(x => x.id === currentAssignmentReservationId);
+    const roomNotesVal = r ? escapeHtml(r.roomNotes || '') : '';
+
     let html = `
         <div class="assignment-toolbar">
             <div class="assignment-stats" id="assignmentStats">
                 ${getAssignmentStatsHTML()}
+            </div>
+            <div class="assignment-room-notes">
+                <label class="assignment-room-notes-label">${t('assign.roomRequest')}</label>
+                <textarea id="assignmentRoomNotes" class="form-control" rows="2"
+                    placeholder="${t('assign.roomRequestPlaceholder')}"
+                    onchange="saveAssignmentRoomNotes()">${roomNotesVal}</textarea>
             </div>
         </div>
         <table class="assignment-table">
@@ -1807,6 +1818,17 @@ function renamePlannerColumn(el) {
         return;
     }
     plannerColumns[idx].name = newName;
+}
+
+async function saveAssignmentRoomNotes() {
+    const r = reservations.find(x => x.id === currentAssignmentReservationId);
+    if (!r) return;
+    r.roomNotes = document.getElementById('assignmentRoomNotes').value;
+    try {
+        await apiPut(API.reservations, { ...r });
+    } catch (err) {
+        console.error('Failed to save room notes:', err);
+    }
 }
 
 async function saveAllAssignments() {
