@@ -44,15 +44,14 @@ async function apiDelete(url, id) {
 
 async function loadAllData() {
     try {
+        // Ensure all tables and columns exist
+        try { await apiPost(API.init, {}); } catch (e) {}
+
         const [resData, roomData, guestData, empData] = await Promise.all([
             apiGet(API.reservations),
             apiGet(API.rooms),
             apiGet(API.guests),
-            apiGet(API.employees).catch(async () => {
-                // Tables might not exist yet — try to init
-                try { await apiPost(API.init, {}); } catch (e) {}
-                return apiGet(API.employees).catch(() => ({ employees: [], workEntries: [] }));
-            })
+            apiGet(API.employees).catch(() => ({ employees: [], workEntries: [] }))
         ]);
         reservations = resData;
         rooms = roomData;
