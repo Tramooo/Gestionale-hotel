@@ -1833,47 +1833,51 @@ function printAssignments() {
     const assignMap = {};
     assignmentData.forEach(a => { assignMap[a.roomId] = a; });
 
-    // Only include rooms that have data
-    const assignedRooms = sortedRooms.filter(rm => {
-        const a = assignMap[rm.id];
-        if (!a) return false;
-        const vals = a.cellValues || {};
-        return Object.values(vals).some(v => v !== '' && v !== 0 && v != null);
-    });
+    // Group assigned rooms by floor
+    const assignedFloors = {};
+    const floorKeys = Object.keys(floors).sort((a, b) => a - b);
+    for (const fk of floorKeys) {
+        const floorRooms = floors[fk].filter(rm => {
+            const a = assignMap[rm.id];
+            if (!a) return false;
+            const vals = a.cellValues || {};
+            return Object.values(vals).some(v => v !== '' && v !== 0 && v != null);
+        });
+        if (floorRooms.length > 0) assignedFloors[fk] = floorRooms;
+    }
 
-    let tableRows = '';
-    let currentFloor = null;
-    for (const rm of assignedRooms) {
-        if (rm.floor !== currentFloor) {
-            currentFloor = rm.floor;
-            tableRows += `<tr><td colspan="${1 + plannerColumns.length}" style="background:#f0f0f0;font-weight:700;padding:6px 10px">${t('rooms.floor')} ${currentFloor}</td></tr>`;
+    const assignedFloorKeys = Object.keys(assignedFloors);
+    const theadHtml = `<thead><tr><th>${t('rooms.room')}</th>${plannerColumns.map(col => `<th>${col.name}</th>`).join('')}</tr></thead>`;
+
+    // Build pages with 2 floors each
+    let pages = '';
+    for (let i = 0; i < assignedFloorKeys.length; i += 2) {
+        let rows = '';
+        for (let j = i; j < Math.min(i + 2, assignedFloorKeys.length); j++) {
+            const fk = assignedFloorKeys[j];
+            rows += `<tr><td colspan="${1 + plannerColumns.length}" style="background:#f0f0f0;font-weight:700;padding:6px 10px">${t('rooms.floor')} ${fk}</td></tr>`;
+            for (const rm of assignedFloors[fk]) {
+                const vals = (assignMap[rm.id] || {}).cellValues || {};
+                rows += `<tr>
+                    <td style="padding:5px 10px;font-weight:600;border:1px solid #ddd">${rm.number}</td>
+                    ${plannerColumns.map(col => `<td style="padding:5px 10px;border:1px solid #ddd">${vals[col.id] != null ? vals[col.id] : ''}</td>`).join('')}
+                </tr>`;
+            }
         }
-        const vals = (assignMap[rm.id] || {}).cellValues || {};
-        tableRows += `<tr>
-            <td style="padding:5px 10px;font-weight:600;border:1px solid #ddd">${rm.number}</td>
-            ${plannerColumns.map(col => `<td style="padding:5px 10px;border:1px solid #ddd">${vals[col.id] != null ? vals[col.id] : ''}</td>`).join('')}
-        </tr>`;
+        pages += `<div class="page-block"><table>${theadHtml}<tbody>${rows}</tbody></table></div>`;
     }
 
     const printHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${r.groupName}</title>
         <style>
             body { font-family: -apple-system, sans-serif; padding: 24px; color: #222; }
-            h1 { font-size: 20px; margin: 0 0 4px; }
-            .subtitle { font-size: 13px; color: #666; margin-bottom: 16px; }
             table { border-collapse: collapse; width: 100%; }
             th { background: #333; color: #fff; padding: 6px 10px; text-align: left; font-size: 12px; }
             td { font-size: 12px; }
-            .notes { margin-top: 16px; padding: 10px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; white-space: pre-wrap; }
-            .notes-label { font-weight: 600; font-size: 11px; color: #666; margin-bottom: 4px; }
+            .page-block { page-break-after: always; }
+            .page-block:last-child { page-break-after: avoid; }
             @media print { body { padding: 0; } }
         </style></head><body>
-        <table>
-            <thead><tr>
-                <th>${t('rooms.room')}</th>
-                ${plannerColumns.map(col => `<th>${col.name}</th>`).join('')}
-            </tr></thead>
-            <tbody>${tableRows}</tbody>
-        </table>
+        ${pages}
         <script>window.onload=function(){window.print();}<\/script>
     </body></html>`;
 
