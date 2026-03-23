@@ -1868,9 +1868,6 @@ function printAssignments() {
             .notes-label { font-weight: 600; font-size: 11px; color: #666; margin-bottom: 4px; }
             @media print { body { padding: 0; } }
         </style></head><body>
-        <h1>${r.groupName}</h1>
-        <div class="subtitle">${formatDateDisplay(r.checkin)} → ${formatDateDisplay(r.checkout)} · ${r.roomCount} ${r.roomCount !== 1 ? t('cal.roomPlural') : t('cal.roomSingular')} · ${r.guestCount} ${r.guestCount !== 1 ? t('cal.guestPlural') : t('cal.guestSingular')}</div>
-        ${r.roomNotes ? `<div class="notes"><div class="notes-label">${t('assign.roomRequest')}</div>${r.roomNotes}</div>` : ''}
         <table>
             <thead><tr>
                 <th>${t('rooms.room')}</th>
