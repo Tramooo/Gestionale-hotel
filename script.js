@@ -1679,18 +1679,20 @@ function renderAssignmentSpreadsheet() {
     const roomNotesVal = r ? escapeHtml(r.roomNotes || '') : '';
 
     let html = `
-        <div class="assignment-toolbar">
-            <div class="assignment-stats" id="assignmentStats">
-                ${getAssignmentStatsHTML()}
-            </div>
-            <div class="assignment-room-notes">
+        <div class="assignment-layout">
+            <div class="assignment-sidebar">
                 <label class="assignment-room-notes-label">${t('assign.roomRequest')}</label>
-                <textarea id="assignmentRoomNotes" class="form-control" rows="2"
+                <textarea id="assignmentRoomNotes" class="form-control"
                     placeholder="${t('assign.roomRequestPlaceholder')}"
                     onchange="saveAssignmentRoomNotes()">${roomNotesVal}</textarea>
             </div>
-        </div>
-        <table class="assignment-table">
+            <div class="assignment-main">
+                <div class="assignment-toolbar">
+                    <div class="assignment-stats" id="assignmentStats">
+                        ${getAssignmentStatsHTML()}
+                    </div>
+                </div>
+                <table class="assignment-table">
             <thead>
                 <tr>
                     <th class="col-room">${t('rooms.room')}</th>
@@ -1739,7 +1741,7 @@ function renderAssignmentSpreadsheet() {
         }
     }
 
-    html += `</tbody></table>`;
+    html += `</tbody></table></div></div>`;
     body.innerHTML = html;
 }
 
