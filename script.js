@@ -236,6 +236,9 @@ const TRANSLATIONS = {
     'guestList.noRoomAssigned': { en: 'No room assigned', it: 'Nessuna camera assegnata' },
     'guestList.edit': { en: 'Edit', it: 'Modifica' },
     'guestList.remove': { en: 'Remove', it: 'Rimuovi' },
+    'guestList.removeAll': { en: 'Remove All', it: 'Rimuovi Tutti' },
+    'confirm.removeAllGuests': { en: 'Remove all guests from this reservation?', it: 'Rimuovere tutti gli ospiti da questa prenotazione?' },
+    'toast.allGuestsRemoved': { en: 'All guests removed', it: 'Tutti gli ospiti rimossi' },
 
     // Guest form
     'guest.addToGroup': { en: 'Add Guest to Group', it: 'Aggiungi Ospite al Gruppo' },
@@ -1285,6 +1288,7 @@ function openGuestsList(reservationId) {
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
             <span style="color:var(--text-secondary)">${resGuests.length} ${resGuests.length !== 1 ? t('cal.guestPlural') : t('cal.guestSingular')}</span>
             <div style="display:flex;gap:8px">
+                ${resGuests.length > 0 ? `<button class="btn btn-sm btn-ghost detail-delete-btn" onclick="removeAllGuests('${reservationId}')">${t('guestList.removeAll')}</button>` : ''}
                 <button class="btn btn-sm btn-secondary" onclick="openFileImportModal('${reservationId}')">${t('guestList.importFromFile')}</button>
                 <button class="btn btn-sm btn-primary" onclick="openAddGuestModal('${reservationId}')">${t('guestList.addGuest')}</button>
             </div>
@@ -2266,6 +2270,21 @@ async function saveGuest(e) {
     openGuestsList(data.reservationId);
     openReservationDetail(data.reservationId);
     renderGuests();
+}
+
+async function removeAllGuests(reservationId) {
+    if (!confirm(t('confirm.removeAllGuests'))) return;
+    const resGuests = guests.filter(g => g.reservationId === reservationId);
+    try {
+        await Promise.all(resGuests.map(g => apiDelete(API.guests, g.id)));
+    } catch (err) {
+        console.error(err);
+        showToast(t('toast.guestRemoveFail'), 'error');
+        return;
+    }
+    guests = guests.filter(g => g.reservationId !== reservationId);
+    showToast(t('toast.allGuestsRemoved'));
+    openGuestsList(reservationId);
 }
 
 async function deleteGuest(guestId, reservationId) {
@@ -3274,32 +3293,42 @@ async function processGuestFile(file) {
 
 // ---- XLSX Path ----
 
-async function processXlsxFile(file) {
-    const buf = await file.arrayBuffer();
-    const wb = XLSX.read(buf, { type: 'array', cellDates: true });
-    const ws = wb.Sheets[wb.SheetNames[0]];
-
-    // First try with headers (default behavior)
-    let json = XLSX.utils.sheet_to_json(ws, { defval: '', raw: false, dateNF: 'DD/MM/YYYY' });
-    if (json.length === 0) { showToast(t('toast.noDataSpreadsheet'), 'error'); return; }
-
-    // Check if the first row actually contains recognizable headers
-    const headers = Object.keys(json[0]);
-    let hasRecognizedHeaders = false;
+function scoreSheetHeaders(headers) {
+    let score = 0;
     for (const field of getGuestImportFields()) {
         const aliases = GUEST_COL_ALIASES[field.key] || [];
         for (const alias of aliases) {
-            if (headers.some(h => h.toLowerCase().trim() === alias || h.toLowerCase().trim().includes(alias))) {
-                hasRecognizedHeaders = true;
+            if (headers.some(h => normalizeStr(h) === alias || normalizeStr(h).includes(alias))) {
+                score++;
                 break;
             }
         }
-        if (hasRecognizedHeaders) break;
+    }
+    return score;
+}
+
+async function processXlsxFile(file) {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+    const jsonOpts = { defval: '', raw: false, dateNF: 'DD/MM/YYYY' };
+
+    // Try all sheets and pick the one with the most recognized headers
+    let bestSheet = wb.SheetNames[0];
+    let bestScore = 0;
+    for (const name of wb.SheetNames) {
+        const sj = XLSX.utils.sheet_to_json(wb.Sheets[name], jsonOpts);
+        if (sj.length === 0) continue;
+        const score = scoreSheetHeaders(Object.keys(sj[0]));
+        if (score > bestScore) { bestScore = score; bestSheet = name; }
     }
 
-    // If no headers recognized, re-read with generic column names so the first row becomes data
-    if (!hasRecognizedHeaders) {
-        const rawRows = XLSX.utils.sheet_to_json(ws, { defval: '', header: 1, raw: false, dateNF: 'DD/MM/YYYY' });
+    const ws = wb.Sheets[bestSheet];
+    let json = XLSX.utils.sheet_to_json(ws, jsonOpts);
+    if (json.length === 0) { showToast(t('toast.noDataSpreadsheet'), 'error'); return; }
+
+    // If no headers recognized on any sheet, re-read with generic column names
+    if (bestScore === 0) {
+        const rawRows = XLSX.utils.sheet_to_json(ws, { ...jsonOpts, header: 1 });
         if (rawRows.length === 0) { showToast(t('toast.noDataSpreadsheet'), 'error'); return; }
         const numCols = Math.max(...rawRows.map(r => r.length));
         const genHeaders = [];
