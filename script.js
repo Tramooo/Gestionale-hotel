@@ -3276,11 +3276,11 @@ async function processGuestFile(file) {
 
 async function processXlsxFile(file) {
     const buf = await file.arrayBuffer();
-    const wb = XLSX.read(buf, { type: 'array' });
+    const wb = XLSX.read(buf, { type: 'array', cellDates: true });
     const ws = wb.Sheets[wb.SheetNames[0]];
 
     // First try with headers (default behavior)
-    let json = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    let json = XLSX.utils.sheet_to_json(ws, { defval: '', raw: false, dateNF: 'DD/MM/YYYY' });
     if (json.length === 0) { showToast(t('toast.noDataSpreadsheet'), 'error'); return; }
 
     // Check if the first row actually contains recognizable headers
@@ -3299,7 +3299,7 @@ async function processXlsxFile(file) {
 
     // If no headers recognized, re-read with generic column names so the first row becomes data
     if (!hasRecognizedHeaders) {
-        const rawRows = XLSX.utils.sheet_to_json(ws, { defval: '', header: 1 });
+        const rawRows = XLSX.utils.sheet_to_json(ws, { defval: '', header: 1, raw: false, dateNF: 'DD/MM/YYYY' });
         if (rawRows.length === 0) { showToast(t('toast.noDataSpreadsheet'), 'error'); return; }
         const numCols = Math.max(...rawRows.map(r => r.length));
         const genHeaders = [];
@@ -3335,14 +3335,18 @@ async function processXlsxFile(file) {
     renderGuestFilePreviewTable(guestFileParsedRows);
 }
 
+function normalizeStr(s) {
+    return s.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
 function autoMapGuestColumn(fieldKey) {
     const candidates = GUEST_COL_ALIASES[fieldKey] || [];
     for (const c of candidates) {
-        const match = guestFileXlsxHeaders.find(h => h.toLowerCase().trim() === c);
+        const match = guestFileXlsxHeaders.find(h => normalizeStr(h) === c);
         if (match) return match;
     }
     for (const c of candidates) {
-        const match = guestFileXlsxHeaders.find(h => h.toLowerCase().trim().includes(c));
+        const match = guestFileXlsxHeaders.find(h => normalizeStr(h).includes(c));
         if (match) return match;
     }
     return '';
@@ -3366,12 +3370,25 @@ function autoDetectColumnsByContent() {
     const detectors = {
         sex: vals => {
             const sexVals = ['m', 'f', 'male', 'female', 'maschile', 'femminile', 'maschio', 'femmina', '1', '2'];
-            const matches = vals.filter(v => sexVals.includes(v.toLowerCase()));
-            return matches.length / Math.max(vals.length, 1);
+            const matches = vals.filter(v => sexVals.includes(v.toLowerCase().trim()));
+            // Also detect columns where ALL values are single char M or F
+            const mfMatches = vals.filter(v => /^[mfMF]$/.test(v.trim()));
+            const score = Math.max(matches.length, mfMatches.length) / Math.max(vals.length, 1);
+            return score;
         },
         birthDate: vals => {
             const datePattern = /^(\d{1,2}[\/.\\-]\d{1,2}[\/.\\-]\d{2,4}|\d{4}[\/.\\-]\d{1,2}[\/.\\-]\d{1,2})$/;
-            const matches = vals.filter(v => datePattern.test(v));
+            // Also match dates like "01 gen 2000", "1 gennaio 2000", Excel serial numbers, JS date strings
+            const itMonths = /gen|feb|mar|apr|mag|giu|lug|ago|set|ott|nov|dic|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec/i;
+            const matches = vals.filter(v => {
+                const s = v.trim();
+                if (datePattern.test(s)) return true;
+                if (itMonths.test(s) && /\d/.test(s)) return true;
+                // JS Date toString or ISO format
+                if (/^\d{4}-\d{2}-\d{2}/.test(s)) return true;
+                if (/\w{3}\s+\w{3}\s+\d{1,2}\s+\d{4}/.test(s)) return true;
+                return false;
+            });
             return matches.length / Math.max(vals.length, 1);
         },
         email: vals => {
@@ -3405,7 +3422,15 @@ function autoDetectColumnsByContent() {
             return matches.length / Math.max(vals.length, 1);
         },
         citizenship: vals => {
-            // Country names or ISO codes (3 letters), heuristic: most values are the same (nationality tends to repeat)
+            const commonNationalities = ['italia', 'italiano', 'italiana', 'germany', 'germania', 'tedesco', 'tedesca',
+                'france', 'francia', 'francese', 'spain', 'spagna', 'spagnolo', 'spagnola', 'uk', 'british', 'inglese',
+                'usa', 'american', 'americano', 'americana', 'romania', 'rumeno', 'rumena', 'poland', 'polonia', 'polacco',
+                'china', 'cina', 'cinese', 'brazil', 'brasile', 'brasiliano', 'brasiliana', 'albanese', 'albania',
+                'marocco', 'marocchino', 'marocchina', 'tunisia', 'tunisino', 'tunisina', 'italian', 'french', 'spanish',
+                'german', 'dutch', 'portuguese', 'swiss', 'austrian', 'belgian', 'svizzera', 'austria', 'belgio'];
+            const matches = vals.filter(v => commonNationalities.includes(v.toLowerCase().trim()));
+            if (matches.length > 0) return matches.length / Math.max(vals.length, 1);
+            // Fallback: country-like text with low unique ratio
             const unique = new Set(vals.map(v => v.toLowerCase()));
             const isCountryLike = vals.every(v => /^[A-Za-zÀ-ÿ\s'-]{2,}$/.test(v) && v.length <= 30);
             return isCountryLike && unique.size <= Math.ceil(vals.length * 0.5) ? 0.4 : 0;
