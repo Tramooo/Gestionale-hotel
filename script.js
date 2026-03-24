@@ -346,6 +346,7 @@ const TRANSLATIONS = {
     'field.sex': { en: 'Sex', it: 'Sesso' },
     'field.birthDate': { en: 'Date of Birth', it: 'Data di Nascita' },
     'field.birthCity': { en: 'Birth City', it: 'Città di Nascita' },
+    'field.birthComune': { en: 'Birth Comune', it: 'Comune di Nascita' },
     'field.birthProvince': { en: 'Birth Province', it: 'Provincia di Nascita' },
     'field.birthCountry': { en: 'Birth Country', it: 'Nazione di Nascita' },
     'field.citizenship': { en: 'Citizenship', it: 'Cittadinanza' },
@@ -3917,14 +3918,15 @@ function renderGuestFilePreviewTable(rows) {
     }
 
     const showCols = [
-        { key: 'lastName', label: t('field.lastName') },
-        { key: 'firstName', label: t('field.firstName') },
-        { key: 'sex', label: t('field.sex') },
-        { key: 'birthDate', label: t('preview.birthDate') },
+        { key: 'lastName', label: t('field.lastName'), required: true },
+        { key: 'firstName', label: t('field.firstName'), required: true },
+        { key: 'sex', label: t('field.sex'), required: true },
+        { key: 'birthDate', label: t('preview.birthDate'), required: true },
+        { key: 'birthComune', label: t('field.birthComune') },
+        { key: 'birthProvince', label: t('field.birthProvince') },
+        { key: 'citizenship', label: t('field.citizenship'), required: true },
         { key: 'docType', label: t('field.docType') },
         { key: 'docNumber', label: t('preview.docNo') },
-        { key: 'email', label: t('field.email') },
-        { key: 'phone', label: t('field.phone') },
     ];
 
     const preview = rows.slice(0, 20);
@@ -3935,7 +3937,7 @@ function renderGuestFilePreviewTable(rows) {
         html += '<tr>';
         showCols.forEach(c => {
             const val = r[c.key] || '';
-            const missing = c.key === 'lastName' || c.key === 'firstName' ? !val : false;
+            const missing = c.required && !val;
             html += `<td${missing ? ' style="color:var(--red);font-style:italic"' : ''}>${val ? escapeHtml(val) : (missing ? 'missing' : '—')}</td>`;
         });
         html += '</tr>';
