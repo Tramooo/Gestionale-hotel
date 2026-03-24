@@ -63,6 +63,7 @@ export default async function handler(req, res) {
     await sql`ALTER TABLE guests ADD COLUMN IF NOT EXISTS citizenship TEXT`;
     await sql`ALTER TABLE guests ADD COLUMN IF NOT EXISTS doc_issued_place TEXT`;
     await sql`ALTER TABLE guests ADD COLUMN IF NOT EXISTS guest_type TEXT DEFAULT '16'`;
+    await sql`ALTER TABLE guests ADD COLUMN IF NOT EXISTS residence_comune TEXT`;
 
     await sql`
       CREATE TABLE IF NOT EXISTS room_assignments (

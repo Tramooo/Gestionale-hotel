@@ -24,7 +24,8 @@ export default async function handler(req, res) {
         birthCountry: g.birth_country,
         citizenship: g.citizenship,
         docIssuedPlace: g.doc_issued_place,
-        guestType: g.guest_type || '16'
+        guestType: g.guest_type || '16',
+        residenceComune: g.residence_comune
       })));
     }
 
@@ -33,9 +34,9 @@ export default async function handler(req, res) {
       const roomId = g.roomId || null;
       await sql`
         INSERT INTO guests (id, reservation_id, first_name, last_name, email, phone, doc_type, doc_number, room_id, notes,
-          sex, birth_date, birth_comune, birth_province, birth_country, citizenship, doc_issued_place, guest_type)
+          sex, birth_date, birth_comune, birth_province, birth_country, citizenship, doc_issued_place, guest_type, residence_comune)
         VALUES (${g.id}, ${g.reservationId}, ${g.firstName}, ${g.lastName}, ${g.email}, ${g.phone}, ${g.docType}, ${g.docNumber}, ${roomId}, ${g.notes},
-          ${g.sex || null}, ${g.birthDate || null}, ${g.birthComune || null}, ${g.birthProvince || null}, ${g.birthCountry || null}, ${g.citizenship || null}, ${g.docIssuedPlace || null}, ${g.guestType || '16'})
+          ${g.sex || null}, ${g.birthDate || null}, ${g.birthComune || null}, ${g.birthProvince || null}, ${g.birthCountry || null}, ${g.citizenship || null}, ${g.docIssuedPlace || null}, ${g.guestType || '16'}, ${g.residenceComune || null})
       `;
       return res.status(201).json({ success: true });
     }
@@ -50,7 +51,7 @@ export default async function handler(req, res) {
         sex=${g.sex || null}, birth_date=${g.birthDate || null}, birth_comune=${g.birthComune || null},
         birth_province=${g.birthProvince || null}, birth_country=${g.birthCountry || null},
         citizenship=${g.citizenship || null}, doc_issued_place=${g.docIssuedPlace || null},
-        guest_type=${g.guestType || '16'}
+        guest_type=${g.guestType || '16'}, residence_comune=${g.residenceComune || null}
         WHERE id=${g.id}
       `;
       return res.status(200).json({ success: true });

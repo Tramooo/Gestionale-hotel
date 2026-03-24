@@ -347,6 +347,7 @@ const TRANSLATIONS = {
     'field.birthDate': { en: 'Date of Birth', it: 'Data di Nascita' },
     'field.birthCity': { en: 'Birth City', it: 'Città di Nascita' },
     'field.birthComune': { en: 'Birth Comune', it: 'Comune di Nascita' },
+    'field.residenceComune': { en: 'Residence Comune', it: 'Comune di Residenza' },
     'field.birthProvince': { en: 'Birth Province', it: 'Provincia di Nascita' },
     'field.birthCountry': { en: 'Birth Country', it: 'Nazione di Nascita' },
     'field.citizenship': { en: 'Citizenship', it: 'Cittadinanza' },
@@ -3200,6 +3201,7 @@ function getGuestImportFields() {
         { key: 'email',          label: t('field.email') },
         { key: 'phone',          label: t('field.phone') },
         { key: 'guestType',      label: t('field.guestType') },
+        { key: 'residenceComune', label: t('field.residenceComune') },
     ];
 }
 
@@ -3218,6 +3220,7 @@ const GUEST_COL_ALIASES = {
     email:          ['email', 'e-mail', 'mail', 'posta elettronica'],
     phone:          ['telefono', 'phone', 'cellulare', 'mobile', 'tel'],
     guestType:      ['tipo alloggiato', 'guest type', 'tipo ospite', 'tipo'],
+    residenceComune: ['comune residenza', 'comune di residenza', 'residenza', 'residence', 'residence city', 'comune_residenza'],
 };
 
 let guestFileParsedRows = [];
@@ -3574,6 +3577,7 @@ function mapXlsxGuestRow(row, mapping) {
         email: get('email'),
         phone: get('phone'),
         guestType: normalizeGuestType(get('guestType')),
+        residenceComune: get('residenceComune'),
         notes: '',
     };
 }
@@ -3923,17 +3927,16 @@ function renderGuestFilePreviewTable(rows) {
         { key: 'sex', label: t('field.sex'), required: true },
         { key: 'birthDate', label: t('preview.birthDate'), required: true },
         { key: 'birthComune', label: t('field.birthComune') },
-        { key: 'birthProvince', label: t('field.birthProvince') },
+        { key: 'residenceComune', label: t('field.residenceComune') },
         { key: 'citizenship', label: t('field.citizenship'), required: true },
         { key: 'docType', label: t('field.docType') },
         { key: 'docNumber', label: t('preview.docNo') },
     ];
 
-    const preview = rows.slice(0, 20);
     let html = '<table><thead><tr>';
     showCols.forEach(c => { html += `<th>${c.label}</th>`; });
     html += '</tr></thead><tbody>';
-    preview.forEach(r => {
+    rows.forEach(r => {
         html += '<tr>';
         showCols.forEach(c => {
             const val = r[c.key] || '';
@@ -3943,7 +3946,6 @@ function renderGuestFilePreviewTable(rows) {
         html += '</tr>';
     });
     html += '</tbody></table>';
-    if (count > 20) html += `<p style="padding:8px 12px;font-size:12px;color:var(--text-secondary)">${t('preview.showingFirst')} ${count}</p>`;
     document.getElementById('guestFilePreviewTable').innerHTML = html;
 }
 
