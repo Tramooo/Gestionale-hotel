@@ -227,6 +227,15 @@ const TRANSLATIONS = {
     'detail.previewRecords': { en: 'Preview Records', it: 'Anteprima' },
     'detail.test': { en: 'Test', it: 'Test' },
     'detail.sendToPolice': { en: 'Send to Police', it: 'Invia alla Polizia' },
+    'guest.regType': { en: 'Registration type', it: 'Tipo registrazione' },
+    'guest.regSingle': { en: 'Single Guests', it: 'Ospiti Singoli' },
+    'guest.regGroup': { en: 'Group', it: 'Gruppo' },
+    'guest.setLeader': { en: 'Set as Leader', it: 'Capogruppo' },
+    'guest.leader': { en: 'Leader', it: 'Capogruppo' },
+    'guest.member': { en: 'Member', it: 'Membro' },
+    'guest.missingFields': { en: 'Missing', it: 'Mancano' },
+    'guest.schedineErrors': { en: 'errors in schedine', it: 'errori nelle schedine' },
+    'guest.noErrors': { en: 'All schedine are valid', it: 'Tutte le schedine sono valide' },
 
     // Guest list modal
     'guestList.title': { en: 'Guests', it: 'Ospiti' },
@@ -1278,16 +1287,65 @@ async function saveDetailNotes(id) {
 
 // ---- Guests List Modal ----
 
+function getGuestMissingFields(g) {
+    const missing = [];
+    if (!g.firstName) missing.push(t('field.firstName'));
+    if (!g.lastName) missing.push(t('field.lastName'));
+    if (!g.sex) missing.push(t('field.sex'));
+    if (!g.birthDate) missing.push(t('field.birthDate'));
+    if (!g.birthComune) missing.push(t('field.birthComune'));
+    if (!g.citizenship) missing.push(t('field.citizenship'));
+    // Document required only for capogruppo (17) and single guests (16)
+    if ((g.guestType === '16' || g.guestType === '17') && !g.docNumber) missing.push(t('field.docNumber'));
+    if ((g.guestType === '16' || g.guestType === '17') && !g.docType) missing.push(t('field.docType'));
+    return missing;
+}
+
 function openGuestsList(reservationId) {
     const r = reservations.find(x => x.id === reservationId);
     if (!r) return;
 
     const resGuests = guests.filter(g => g.reservationId === reservationId);
 
-    document.getElementById('guestsListTitle').textContent = `Guests — ${r.groupName}`;
+    // Check if group mode (any guest has type 17 or 19)
+    const hasGroupTypes = resGuests.some(g => g.guestType === '17' || g.guestType === '19');
+    const isGroup = hasGroupTypes || resGuests.length > 1;
+
+    // Count total errors
+    let totalErrors = 0;
+    resGuests.forEach(g => { totalErrors += getGuestMissingFields(g).length; });
+
+    document.getElementById('guestsListTitle').textContent = `${t('detail.manageGuests')} — ${r.groupName}`;
     const body = document.getElementById('guestsListBody');
     body.innerHTML = `
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div class="schedine-header">
+            <div class="schedine-header-left">
+                <h3 style="margin:0">${t('detail.schedine')}</h3>
+                ${totalErrors > 0 ? `
+                    <span class="schedine-error-badge" title="${totalErrors} ${t('guest.schedineErrors')}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        ${totalErrors} ${t('guest.schedineErrors')}
+                    </span>
+                ` : `
+                    <span class="schedine-ok-badge">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        ${t('guest.noErrors')}
+                    </span>
+                `}
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+                <button class="btn btn-sm btn-primary" onclick="alloggiatiSend('${reservationId}')">${t('detail.sendToPolice')}</button>
+            </div>
+        </div>
+        <div id="alloggiatiResults"></div>
+
+        <div class="guest-reg-type" style="margin:16px 0 12px">
+            <span style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-right:10px">${t('guest.regType')}:</span>
+            <button class="btn btn-sm ${!isGroup ? 'btn-primary' : 'btn-secondary'}" onclick="setAllGuestsType('${reservationId}', 'single')">${t('guest.regSingle')}</button>
+            <button class="btn btn-sm ${isGroup ? 'btn-primary' : 'btn-secondary'}" onclick="setAllGuestsType('${reservationId}', 'group')">${t('guest.regGroup')}</button>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
             <span style="color:var(--text-secondary)">${resGuests.length} ${resGuests.length !== 1 ? t('cal.guestPlural') : t('cal.guestSingular')}</span>
             <div style="display:flex;gap:8px">
                 ${resGuests.length > 0 ? `<button class="btn btn-sm btn-ghost detail-delete-btn" onclick="removeAllGuests('${reservationId}')">${t('guestList.removeAll')}</button>` : ''}
@@ -1299,37 +1357,71 @@ function openGuestsList(reservationId) {
             ${resGuests.length === 0 ? `<div class="empty-state small"><p>${t('guestList.noGuests')}</p></div>` :
             resGuests.map(g => {
                 const room = g.roomId ? rooms.find(rm => rm.id === g.roomId) : null;
+                const missing = getGuestMissingFields(g);
+                const isLeader = g.guestType === '17';
+                const guestTypeLabel = g.guestType === '17' ? t('guest.leader') : g.guestType === '19' ? t('guest.member') : '';
                 return `
-                    <div class="detail-guest-item">
+                    <div class="detail-guest-item ${missing.length > 0 ? 'guest-has-errors' : ''}">
                         <div class="guest-avatar">${getInitials(g.firstName + ' ' + g.lastName)}</div>
-                        <div class="guest-info">
-                            <strong>${escapeHtml(g.firstName + ' ' + g.lastName)}</strong><br>
+                        <div class="guest-info" style="flex:1;min-width:0">
+                            <div style="display:flex;align-items:center;gap:6px">
+                                <strong>${escapeHtml(g.firstName + ' ' + g.lastName)}</strong>
+                                ${guestTypeLabel ? `<span class="guest-type-badge ${isLeader ? 'leader' : 'member'}">${guestTypeLabel}</span>` : ''}
+                            </div>
                             <span>${room ? t('rooms.room') + ' ' + room.number : t('guestList.noRoomAssigned')}${g.docNumber ? ' &middot; ' + g.docType + ': ' + g.docNumber : ''}</span>
+                            ${missing.length > 0 ? `<div class="guest-missing-fields">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                ${t('guest.missingFields')}: ${missing.join(', ')}
+                            </div>` : ''}
                         </div>
-                        <button class="btn btn-ghost btn-sm" onclick="openEditGuestModal('${g.id}')">${t('guestList.edit')}</button>
-                        <button class="btn btn-ghost btn-sm" onclick="deleteGuest('${g.id}', '${reservationId}')">${t('guestList.remove')}</button>
+                        <div style="display:flex;gap:4px;align-items:center;flex-shrink:0">
+                            ${isGroup && !isLeader ? `<button class="btn btn-ghost btn-sm" onclick="setGuestAsLeader('${g.id}', '${reservationId}')" title="${t('guest.setLeader')}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                            </button>` : ''}
+                            <button class="btn btn-ghost btn-sm" onclick="openEditGuestModal('${g.id}')">${t('guestList.edit')}</button>
+                            <button class="btn btn-ghost btn-sm" onclick="deleteGuest('${g.id}', '${reservationId}')">${t('guestList.remove')}</button>
+                        </div>
                     </div>
                 `;
             }).join('')}
         </div>
-
-        <div class="detail-section" style="margin-top:24px">
-            <h3>${t('detail.schedine')}</h3>
-            <div id="alloggiatiPanel">
-                <p style="color:var(--text-secondary);margin-bottom:12px">
-                    ${t('detail.schedineDesc')}
-                </p>
-                <div style="display:flex;gap:8px;flex-wrap:wrap">
-                    <button class="btn btn-sm btn-secondary" onclick="alloggiatiPreview('${reservationId}')">${t('detail.previewRecords')}</button>
-                    <button class="btn btn-sm btn-secondary" onclick="alloggiatiTest('${reservationId}')">${t('detail.test')}</button>
-                    <button class="btn btn-sm btn-primary" onclick="alloggiatiSend('${reservationId}')">${t('detail.sendToPolice')}</button>
-                </div>
-                <div id="alloggiatiResults" style="margin-top:12px"></div>
-            </div>
-        </div>
     `;
 
     openModal('guestsListModal');
+}
+
+async function setAllGuestsType(reservationId, mode) {
+    const resGuests = guests.filter(g => g.reservationId === reservationId);
+    if (resGuests.length === 0) return;
+
+    if (mode === 'single') {
+        for (const g of resGuests) { g.guestType = '16'; }
+    } else {
+        // First guest becomes leader, rest become members
+        const hasLeader = resGuests.some(g => g.guestType === '17');
+        if (!hasLeader && resGuests.length > 0) resGuests[0].guestType = '17';
+        for (const g of resGuests) {
+            if (g.guestType !== '17') g.guestType = '19';
+        }
+    }
+
+    try {
+        await Promise.all(resGuests.map(g => apiPut(API.guests, g)));
+    } catch (err) { console.error(err); }
+
+    openGuestsList(reservationId);
+}
+
+async function setGuestAsLeader(guestId, reservationId) {
+    const resGuests = guests.filter(g => g.reservationId === reservationId);
+    for (const g of resGuests) {
+        g.guestType = g.id === guestId ? '17' : '19';
+    }
+    try {
+        await Promise.all(resGuests.map(g => apiPut(API.guests, g)));
+    } catch (err) { console.error(err); }
+
+    openGuestsList(reservationId);
 }
 
 // ---- Alloggiati Web ----

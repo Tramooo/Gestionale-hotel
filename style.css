@@ -2421,6 +2421,71 @@ select.cell-input option {
     color: var(--text-secondary);
 }
 
+.detail-guest-item.guest-has-errors {
+    border-left: 3px solid var(--red);
+}
+
+.guest-missing-fields {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--red);
+    margin-top: 4px;
+}
+
+.guest-type-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+}
+.guest-type-badge.leader {
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
+    color: var(--accent);
+}
+.guest-type-badge.member {
+    background: color-mix(in srgb, var(--text-secondary) 15%, transparent);
+    color: var(--text-secondary);
+}
+
+.schedine-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0 12px;
+    border-bottom: 1px solid var(--border-light);
+    margin-bottom: 12px;
+}
+.schedine-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.schedine-error-badge {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--red);
+}
+.schedine-ok-badge {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--green);
+}
+
+.guest-reg-type {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
 .detail-rooms-list {
     display: flex;
     flex-wrap: wrap;
