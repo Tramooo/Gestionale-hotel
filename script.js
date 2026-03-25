@@ -1346,15 +1346,15 @@ function openGuestsList(reservationId) {
             <button class="btn btn-sm ${isGroup ? 'btn-primary' : 'btn-secondary'}" onclick="setAllGuestsType('${reservationId}', 'group')">${t('guest.regGroup')}</button>
         </div>
 
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px;flex-wrap:wrap">
-            <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
-                <span style="color:var(--text-secondary);white-space:nowrap">${resGuests.length} ${resGuests.length !== 1 ? t('cal.guestPlural') : t('cal.guestSingular')}</span>
-                <input type="text" id="guestSearchInput" class="form-control" placeholder="${t('guestList.search')}" oninput="filterGuestsList()" style="max-width:220px;padding:5px 10px;font-size:12px">
-            </div>
-            <div style="display:flex;gap:8px;flex-shrink:0">
-                ${resGuests.length > 0 ? `<button class="btn btn-sm btn-ghost detail-delete-btn" onclick="removeAllGuests('${reservationId}')">${t('guestList.removeAll')}</button>` : ''}
-                <button class="btn btn-sm btn-secondary" onclick="openFileImportModal('${reservationId}')">${t('guestList.importFromFile')}</button>
-                <button class="btn btn-sm btn-primary" onclick="openAddGuestModal('${reservationId}')">${t('guestList.addGuest')}</button>
+        <div style="margin-bottom:12px">
+            <input type="text" id="guestSearchInput" class="form-control" placeholder="${t('guestList.search')}" oninput="filterGuestsList()" style="width:100%;padding:8px 12px;font-size:13px;margin-bottom:10px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+                <span style="color:var(--text-secondary)">${resGuests.length} ${resGuests.length !== 1 ? t('cal.guestPlural') : t('cal.guestSingular')}</span>
+                <div style="display:flex;gap:8px">
+                    ${resGuests.length > 0 ? `<button class="btn btn-sm btn-ghost detail-delete-btn" onclick="removeAllGuests('${reservationId}')">${t('guestList.removeAll')}</button>` : ''}
+                    <button class="btn btn-sm btn-secondary" onclick="openFileImportModal('${reservationId}')">${t('guestList.importFromFile')}</button>
+                    <button class="btn btn-sm btn-primary" onclick="openAddGuestModal('${reservationId}')">${t('guestList.addGuest')}</button>
+                </div>
             </div>
         </div>
         <div class="detail-guests-list">
