@@ -236,6 +236,7 @@ const TRANSLATIONS = {
     'guest.missingFields': { en: 'Missing', it: 'Mancano' },
     'guest.schedineErrors': { en: 'errors in schedine', it: 'errori nelle schedine' },
     'guest.noErrors': { en: 'All schedine are valid', it: 'Tutte le schedine sono valide' },
+    'guestList.search': { en: 'Search guest...', it: 'Cerca ospite...' },
 
     // Guest list modal
     'guestList.title': { en: 'Guests', it: 'Ospiti' },
@@ -1345,9 +1346,12 @@ function openGuestsList(reservationId) {
             <button class="btn btn-sm ${isGroup ? 'btn-primary' : 'btn-secondary'}" onclick="setAllGuestsType('${reservationId}', 'group')">${t('guest.regGroup')}</button>
         </div>
 
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-            <span style="color:var(--text-secondary)">${resGuests.length} ${resGuests.length !== 1 ? t('cal.guestPlural') : t('cal.guestSingular')}</span>
-            <div style="display:flex;gap:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
+                <span style="color:var(--text-secondary);white-space:nowrap">${resGuests.length} ${resGuests.length !== 1 ? t('cal.guestPlural') : t('cal.guestSingular')}</span>
+                ${resGuests.length > 3 ? `<input type="text" id="guestSearchInput" class="form-control" placeholder="${t('guestList.search')}" oninput="filterGuestsList()" style="max-width:220px;padding:5px 10px;font-size:12px">` : ''}
+            </div>
+            <div style="display:flex;gap:8px;flex-shrink:0">
                 ${resGuests.length > 0 ? `<button class="btn btn-sm btn-ghost detail-delete-btn" onclick="removeAllGuests('${reservationId}')">${t('guestList.removeAll')}</button>` : ''}
                 <button class="btn btn-sm btn-secondary" onclick="openFileImportModal('${reservationId}')">${t('guestList.importFromFile')}</button>
                 <button class="btn btn-sm btn-primary" onclick="openAddGuestModal('${reservationId}')">${t('guestList.addGuest')}</button>
@@ -1388,6 +1392,14 @@ function openGuestsList(reservationId) {
     `;
 
     openModal('guestsListModal');
+}
+
+function filterGuestsList() {
+    const query = (document.getElementById('guestSearchInput')?.value || '').toLowerCase();
+    document.querySelectorAll('.detail-guests-list .detail-guest-item').forEach(el => {
+        const name = el.querySelector('strong')?.textContent.toLowerCase() || '';
+        el.style.display = name.includes(query) ? '' : 'none';
+    });
 }
 
 async function setAllGuestsType(reservationId, mode) {
