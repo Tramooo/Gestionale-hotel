@@ -1349,7 +1349,7 @@ function openGuestsList(reservationId) {
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px;flex-wrap:wrap">
             <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
                 <span style="color:var(--text-secondary);white-space:nowrap">${resGuests.length} ${resGuests.length !== 1 ? t('cal.guestPlural') : t('cal.guestSingular')}</span>
-                ${resGuests.length > 3 ? `<input type="text" id="guestSearchInput" class="form-control" placeholder="${t('guestList.search')}" oninput="filterGuestsList()" style="max-width:220px;padding:5px 10px;font-size:12px">` : ''}
+                <input type="text" id="guestSearchInput" class="form-control" placeholder="${t('guestList.search')}" oninput="filterGuestsList()" style="max-width:220px;padding:5px 10px;font-size:12px">
             </div>
             <div style="display:flex;gap:8px;flex-shrink:0">
                 ${resGuests.length > 0 ? `<button class="btn btn-sm btn-ghost detail-delete-btn" onclick="removeAllGuests('${reservationId}')">${t('guestList.removeAll')}</button>` : ''}
