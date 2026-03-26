@@ -434,6 +434,9 @@ const TRANSLATIONS = {
 
     // Employees
     'nav.employees': { en: 'Employees', it: 'Dipendenti' },
+    'nav.management': { en: 'Management', it: 'Gestione' },
+    'mgmt.title': { en: 'Management', it: 'Gestione' },
+    'mgmt.subtitle': { en: 'Revenue, employees, attendance and payroll', it: 'Guadagni, dipendenti, presenze e retribuzioni' },
     'emp.title': { en: 'Employees', it: 'Dipendenti' },
     'emp.subtitle': { en: 'Manage employees, attendance and payroll', it: 'Gestisci dipendenti, presenze e retribuzioni' },
     'emp.addEmployee': { en: 'Add Employee', it: 'Aggiungi Dipendente' },
@@ -479,8 +482,8 @@ const TRANSLATIONS = {
     'pin.placeholder': { en: 'Enter 4-digit PIN', it: 'Inserisci PIN a 4 cifre' },
     'pin.unlock': { en: 'Unlock', it: 'Sblocca' },
     'pin.wrong': { en: 'Wrong PIN', it: 'PIN errato' },
-    'settings.empPin': { en: 'Employee Section PIN', it: 'PIN Sezione Dipendenti' },
-    'settings.empPinDesc': { en: 'Set a 4-digit PIN to protect employee access', it: 'Imposta un PIN a 4 cifre per proteggere l\'accesso ai dipendenti' },
+    'settings.empPin': { en: 'Management Section PIN', it: 'PIN Sezione Gestione' },
+    'settings.empPinDesc': { en: 'Set a 4-digit PIN to protect access to management', it: 'Imposta un PIN a 4 cifre per proteggere l\'accesso alla gestione' },
     'settings.empPinPlaceholder': { en: 'Enter 4-digit PIN', it: 'Inserisci PIN a 4 cifre' },
     'settings.empPinSave': { en: 'Save PIN', it: 'Salva PIN' },
     'settings.empPinRemove': { en: 'Remove PIN', it: 'Rimuovi PIN' },
@@ -575,7 +578,7 @@ let empPinUnlocked = false;
 
 function navigateTo(page) {
     // Check PIN protection for employees page
-    if (page === 'employees' && !empPinUnlocked) {
+    if (page === 'management' && !empPinUnlocked) {
         const pin = localStorage.getItem('gs_emp_pin');
         if (pin) {
             openPinModal();
@@ -603,7 +606,7 @@ function navigateTo(page) {
         case 'calendar': renderCalendar(); break;
         case 'rooms': renderRooms(); break;
         case 'guests': renderGuests(); break;
-        case 'employees': renderEmployees(); break;
+        case 'management': renderManagement(); break;
     }
 }
 
@@ -629,7 +632,7 @@ function submitPin() {
     if (input.value === stored) {
         empPinUnlocked = true;
         closePinModal();
-        navigateTo('employees');
+        navigateTo('management');
     } else {
         error.style.display = 'block';
         input.value = '';
@@ -729,22 +732,9 @@ function renderDashboard() {
     const activeGroups = reservations.filter(r => r.status === 'confirmed' || r.status === 'checked-in');
     const totalGuests = activeGroups.reduce((sum, r) => sum + (r.guestCount || 0), 0);
     const occupiedRooms = rooms.filter(r => r.status === 'occupied').length;
-    const now = new Date();
-    const monthRevenue = reservations
-        .filter(r => {
-            const d = new Date(r.checkin);
-            return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-        })
-        .reduce((sum, r) => sum + (r.price || 0), 0);
-    const yearRevenue = reservations
-        .filter(r => (r.status === 'confirmed' || r.status === 'checked-in') && new Date(r.checkin).getFullYear() === now.getFullYear())
-        .reduce((sum, r) => sum + (r.price || 0), 0);
-
     document.getElementById('stat-active-groups').textContent = activeGroups.length;
     document.getElementById('stat-total-guests').textContent = totalGuests;
     document.getElementById('stat-rooms-occupied').textContent = occupiedRooms + '/' + rooms.length;
-    document.getElementById('stat-revenue').textContent = '\u20AC' + monthRevenue.toLocaleString();
-    document.getElementById('stat-year-revenue').textContent = '\u20AC' + yearRevenue.toLocaleString();
 
     // Occupancy ring
     const totalRooms = rooms.length;
@@ -4176,6 +4166,27 @@ function calcEstimatedPay(emp, daysWorked, totalHours) {
     }
     // monthly: daily rate = monthly pay / 30, then multiply by days worked
     return (emp.payRate / 30) * daysWorked;
+}
+
+function renderManagement() {
+    // Revenue stats
+    const now = new Date();
+    const monthRevenue = reservations
+        .filter(r => {
+            const d = new Date(r.checkin);
+            return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        })
+        .reduce((sum, r) => sum + (r.price || 0), 0);
+    const yearRevenue = reservations
+        .filter(r => (r.status === 'confirmed' || r.status === 'checked-in') && new Date(r.checkin).getFullYear() === now.getFullYear())
+        .reduce((sum, r) => sum + (r.price || 0), 0);
+
+    const revEl = document.getElementById('stat-revenue');
+    const yearEl = document.getElementById('stat-year-revenue');
+    if (revEl) revEl.textContent = '\u20AC' + monthRevenue.toLocaleString();
+    if (yearEl) yearEl.textContent = '\u20AC' + yearRevenue.toLocaleString();
+
+    renderEmployees();
 }
 
 function renderEmployees() {
