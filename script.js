@@ -577,7 +577,7 @@ function getInitials(name) {
 let empPinUnlocked = false;
 
 function navigateTo(page) {
-    // Check PIN protection for employees page
+    // Check PIN protection for management page (ask every time)
     if (page === 'management' && !empPinUnlocked) {
         const pin = localStorage.getItem('gs_emp_pin');
         if (pin) {
@@ -630,9 +630,10 @@ function submitPin() {
     const stored = localStorage.getItem('gs_emp_pin');
 
     if (input.value === stored) {
-        empPinUnlocked = true;
+        empPinUnlocked = true; // temporary flag, cleared after navigation
         closePinModal();
         navigateTo('management');
+        empPinUnlocked = false;
     } else {
         error.style.display = 'block';
         input.value = '';
