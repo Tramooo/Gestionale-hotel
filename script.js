@@ -1318,6 +1318,48 @@ function openGuestsList(reservationId) {
 
     document.getElementById('guestsListTitle').textContent = `${t('detail.manageGuests')} — ${r.groupName}`;
     const body = document.getElementById('guestsListBody');
+
+    // Build guest list HTML separately to catch errors per-guest
+    let guestListHtml = '';
+    if (resGuests.length === 0) {
+        guestListHtml = `<div class="empty-state small"><p>${t('guestList.noGuests')}</p></div>`;
+    } else {
+        for (const g of resGuests) {
+            try {
+                const room = g.roomId ? rooms.find(rm => rm.id === g.roomId) : null;
+                const missing = getGuestMissingFields(g);
+                const isLeader = g.guestType === '17';
+                const guestTypeLabel = g.guestType === '17' ? t('guest.leader') : g.guestType === '19' ? t('guest.member') : '';
+                guestListHtml += `
+                    <div class="detail-guest-item ${missing.length > 0 ? 'guest-has-errors' : ''}">
+                        <div class="guest-avatar">${getInitials((g.firstName || '') + ' ' + (g.lastName || ''))}</div>
+                        <div class="guest-info" style="flex:1;min-width:0">
+                            <div style="display:flex;align-items:center;gap:6px">
+                                <strong>${escapeHtml((g.firstName || '') + ' ' + (g.lastName || ''))}</strong>
+                                ${guestTypeLabel ? `<span class="guest-type-badge ${isLeader ? 'leader' : 'member'}">${guestTypeLabel}</span>` : ''}
+                            </div>
+                            <span>${room ? t('rooms.room') + ' ' + room.number : t('guestList.noRoomAssigned')}${g.docNumber ? ' &middot; ' + escapeHtml(g.docType || '') + ': ' + escapeHtml(g.docNumber) : ''}</span>
+                            ${missing.length > 0 ? `<div class="guest-missing-fields">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                ${t('guest.missingFields')}: ${missing.join(', ')}
+                            </div>` : ''}
+                        </div>
+                        <div style="display:flex;gap:4px;align-items:center;flex-shrink:0">
+                            ${isGroup && !isLeader ? `<button class="btn btn-ghost btn-sm" onclick="setGuestAsLeader('${g.id}', '${reservationId}')" title="${t('guest.setLeader')}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                            </button>` : ''}
+                            <button class="btn btn-ghost btn-sm" onclick="openEditGuestModal('${g.id}')">${t('guestList.edit')}</button>
+                            <button class="btn btn-ghost btn-sm" onclick="deleteGuest('${g.id}', '${reservationId}')">${t('guestList.remove')}</button>
+                        </div>
+                    </div>
+                `;
+            } catch (e) {
+                console.error('Error rendering guest', g.id, e);
+                guestListHtml += `<div class="detail-guest-item" style="color:red">Error rendering guest ${escapeHtml((g.firstName || '') + ' ' + (g.lastName || ''))}: ${escapeHtml(e.message)}</div>`;
+            }
+        }
+    }
+
     body.innerHTML = `
         <div class="schedine-header">
             <div class="schedine-header-left">
@@ -1358,36 +1400,7 @@ function openGuestsList(reservationId) {
             </div>
         </div>
         <div class="detail-guests-list">
-            ${resGuests.length === 0 ? `<div class="empty-state small"><p>${t('guestList.noGuests')}</p></div>` :
-            resGuests.map(g => {
-                const room = g.roomId ? rooms.find(rm => rm.id === g.roomId) : null;
-                const missing = getGuestMissingFields(g);
-                const isLeader = g.guestType === '17';
-                const guestTypeLabel = g.guestType === '17' ? t('guest.leader') : g.guestType === '19' ? t('guest.member') : '';
-                return `
-                    <div class="detail-guest-item ${missing.length > 0 ? 'guest-has-errors' : ''}">
-                        <div class="guest-avatar">${getInitials(g.firstName + ' ' + g.lastName)}</div>
-                        <div class="guest-info" style="flex:1;min-width:0">
-                            <div style="display:flex;align-items:center;gap:6px">
-                                <strong>${escapeHtml(g.firstName + ' ' + g.lastName)}</strong>
-                                ${guestTypeLabel ? `<span class="guest-type-badge ${isLeader ? 'leader' : 'member'}">${guestTypeLabel}</span>` : ''}
-                            </div>
-                            <span>${room ? t('rooms.room') + ' ' + room.number : t('guestList.noRoomAssigned')}${g.docNumber ? ' &middot; ' + g.docType + ': ' + g.docNumber : ''}</span>
-                            ${missing.length > 0 ? `<div class="guest-missing-fields">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                                ${t('guest.missingFields')}: ${missing.join(', ')}
-                            </div>` : ''}
-                        </div>
-                        <div style="display:flex;gap:4px;align-items:center;flex-shrink:0">
-                            ${isGroup && !isLeader ? `<button class="btn btn-ghost btn-sm" onclick="setGuestAsLeader('${g.id}', '${reservationId}')" title="${t('guest.setLeader')}">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                            </button>` : ''}
-                            <button class="btn btn-ghost btn-sm" onclick="openEditGuestModal('${g.id}')">${t('guestList.edit')}</button>
-                            <button class="btn btn-ghost btn-sm" onclick="deleteGuest('${g.id}', '${reservationId}')">${t('guestList.remove')}</button>
-                        </div>
-                    </div>
-                `;
-            }).join('')}
+            ${guestListHtml}
         </div>
     `;
 
