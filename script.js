@@ -1377,7 +1377,7 @@ function openGuestsList(reservationId) {
                 `}
             </div>
             <div style="display:flex;gap:8px;align-items:center">
-                <button class="btn btn-sm btn-primary" onclick="alloggiatiSend('${reservationId}')">${t('detail.sendToPolice')}</button>
+                <button class="btn btn-sm btn-primary" onclick="alloggiatiSend('${reservationId}')" ${totalErrors > 0 || resGuests.length === 0 ? 'disabled' : ''}>${t('detail.sendToPolice')}</button>
             </div>
         </div>
         <div id="alloggiatiResults"></div>
