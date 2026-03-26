@@ -1389,7 +1389,10 @@ function openGuestsList(reservationId) {
         </div>
 
         <div style="margin-bottom:12px">
-            <input type="text" id="guestSearchInput" class="form-control" placeholder="${t('guestList.search')}" oninput="filterGuestsList()" style="width:100%;padding:8px 12px;font-size:13px;margin-bottom:10px">
+            <div class="guest-search-wrap">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="guestSearchInput" placeholder="${t('guestList.search')}" oninput="filterGuestsList()">
+            </div>
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
                 <span style="color:var(--text-secondary)">${resGuests.length} ${resGuests.length !== 1 ? t('cal.guestPlural') : t('cal.guestSingular')}</span>
                 <div style="display:flex;gap:8px">
