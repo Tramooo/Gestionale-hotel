@@ -184,6 +184,7 @@ const TRANSLATIONS = {
     'days.short': { en: ['Su','Mo','Tu','We','Th','Fr','Sa'], it: ['Do','Lu','Ma','Me','Gi','Ve','Sa'] },
     'days.datepicker': { en: ['Mo','Tu','We','Th','Fr','Sa','Su'], it: ['Lu','Ma','Me','Gi','Ve','Sa','Do'] },
     'months.full': { en: ['January','February','March','April','May','June','July','August','September','October','November','December'], it: ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'] },
+    'months.dayHeaders': { en: ['Mo','Tu','We','Th','Fr','Sa','Su'], it: ['Lu','Ma','Me','Gi','Ve','Sa','Do'] },
     'months.short': { en: ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'], it: ['GEN','FEB','MAR','APR','MAG','GIU','LUG','AGO','SET','OTT','NOV','DIC'] },
 
     // Reservations
@@ -200,6 +201,10 @@ const TRANSLATIONS = {
     'res.cancelled': { en: 'Cancelled', it: 'Cancellata' },
     'res.expirationDate': { en: 'Expiration Date', it: 'Data Scadenza' },
     'res.totalPrice': { en: 'Total Price', it: 'Prezzo Totale' },
+    'res.pricePerPerson': { en: 'Price/Person', it: 'Prezzo/Persona' },
+    'res.gratuity': { en: 'Gratuity', it: 'Gratuità' },
+    'res.guests': { en: 'Guests', it: 'Ospiti' },
+    'res.freeGuests': { en: 'free guests', it: 'ospiti gratuiti' },
     'res.notes': { en: 'Notes', it: 'Note' },
     'res.notesPlaceholder': { en: 'Special requests, dietary needs, etc.', it: 'Richieste speciali, esigenze alimentari, ecc.' },
     'res.rooms': { en: 'Rooms', it: 'Camere' },
@@ -465,6 +470,9 @@ const TRANSLATIONS = {
     'emp.totalHours': { en: 'Total Hours', it: 'Ore Totali' },
     'emp.daysInMonth': { en: 'Days in Month', it: 'Giorni nel Mese' },
     'emp.actions': { en: 'Actions', it: 'Azioni' },
+    'emp.enterHours': { en: 'Enter hours worked (0 to remove):', it: 'Inserisci ore lavorate (0 per rimuovere):' },
+    'emp.calHintHourly': { en: 'Click a day to enter hours worked. Click again to edit or enter 0 to remove.', it: 'Clicca un giorno per inserire le ore. Clicca di nuovo per modificare o inserisci 0 per rimuovere.' },
+    'emp.calHintMonthly': { en: 'Click a day to mark as worked. Click again to unmark.', it: 'Clicca un giorno per segnarlo come lavorato. Clicca di nuovo per rimuovere.' },
     'toast.empSaved': { en: 'Employee saved', it: 'Dipendente salvato' },
     'toast.empSaveFail': { en: 'Failed to save employee', it: 'Salvataggio dipendente fallito' },
     'toast.empDeleted': { en: 'Employee deleted', it: 'Dipendente eliminato' },
@@ -566,6 +574,26 @@ function nightsBetween(checkin, checkout) {
     const d1 = new Date(checkin);
     const d2 = new Date(checkout);
     return Math.max(1, Math.round((d2 - d1) / (1000 * 60 * 60 * 24)));
+}
+
+function calcReservationPrice() {
+    const guestCount = parseInt(document.getElementById('resGuestCount').value) || 0;
+    const pricePerPerson = parseFloat(document.getElementById('resPricePerPerson').value) || 0;
+    const gratuity = parseInt(document.getElementById('resGratuity').value) || 0;
+    const checkin = document.getElementById('resCheckin').value;
+    const checkout = document.getElementById('resCheckout').value;
+
+    const nights = (checkin && checkout) ? nightsBetween(checkin, checkout) : 0;
+    const freeGuests = guestCount > 0 ? Math.floor(gratuity / guestCount) : 0;
+    const payingGuests = Math.max(0, guestCount - freeGuests);
+    const total = payingGuests * nights * pricePerPerson;
+
+    document.getElementById('resPrice').value = total;
+    const display = document.getElementById('resTotalPrice');
+    display.textContent = '\u20AC' + total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (freeGuests > 0) {
+        display.innerHTML += ` <span class="res-calc-detail">(${freeGuests} ${t('res.freeGuests')})</span>`;
+    }
 }
 
 function getInitials(name) {
@@ -1069,6 +1097,7 @@ function selectDatePickerDay(btn, dateStr) {
     document.getElementById(targetId).value = dateStr;
     setDatePickerDisplay(wrapper, dateStr);
     wrapper.querySelector('.mini-cal-dropdown').classList.remove('open');
+    if (targetId === 'resCheckin' || targetId === 'resCheckout') calcReservationPrice();
 }
 
 function setDatePickerDisplay(wrapper, dateStr) {
@@ -1092,6 +1121,11 @@ function openNewReservationModal() {
     setDateFieldValue('resCheckin', formatDate(new Date()));
     setDateFieldValue('resCheckout', formatDate(addDays(new Date(), 3)));
     setDateFieldValue('resExpiration', formatDate(addDays(new Date(), 7)));
+    document.getElementById('resGuestCount').value = '';
+    document.getElementById('resPricePerPerson').value = '';
+    document.getElementById('resGratuity').value = '';
+    document.getElementById('resTotalPrice').textContent = '\u20AC0';
+    document.getElementById('resPrice').value = 0;
     populateRoomChecklist([]);
     toggleExpirationField();
     openModal('reservationModal');
@@ -1108,8 +1142,11 @@ function openEditReservation(id) {
     setDateFieldValue('resCheckout', r.checkout);
     document.getElementById('resStatus').value = r.status;
     setDateFieldValue('resExpiration', r.expiration || '');
-    document.getElementById('resPrice').value = r.price || '';
+    document.getElementById('resGuestCount').value = r.guestCount || '';
+    document.getElementById('resPricePerPerson').value = r.pricePerPerson || '';
+    document.getElementById('resGratuity').value = r.gratuity || '';
     document.getElementById('resNotes').value = r.notes || '';
+    calcReservationPrice();
     toggleExpirationField();
 
     // Get rooms assigned to this reservation
@@ -1129,10 +1166,13 @@ async function saveReservation(e) {
         groupName: document.getElementById('resGroupName').value.trim(),
         checkin: document.getElementById('resCheckin').value,
         checkout: document.getElementById('resCheckout').value,
+        guestCount: parseInt(document.getElementById('resGuestCount').value) || 0,
         roomCount: selectedRooms.length,
         roomIds: selectedRooms,
         status: document.getElementById('resStatus').value,
         expiration: document.getElementById('resStatus').value === 'pending' ? document.getElementById('resExpiration').value : '',
+        pricePerPerson: parseFloat(document.getElementById('resPricePerPerson').value) || 0,
+        gratuity: parseInt(document.getElementById('resGratuity').value) || 0,
         price: parseFloat(document.getElementById('resPrice').value) || 0,
         notes: document.getElementById('resNotes').value.trim()
     };
@@ -1242,6 +1282,18 @@ function openReservationDetail(id) {
                     <span class="detail-info-label">${t('res.nights')}</span>
                     <span class="detail-info-value">${nights}</span>
                 </div>
+                <div class="detail-info-item">
+                    <span class="detail-info-label">${t('res.guests')}</span>
+                    <span class="detail-info-value">${r.guestCount || 0}</span>
+                </div>
+                <div class="detail-info-item">
+                    <span class="detail-info-label">${t('res.pricePerPerson')}</span>
+                    <span class="detail-info-value">&euro;${(r.pricePerPerson || 0).toLocaleString()}</span>
+                </div>
+                ${r.gratuity ? `<div class="detail-info-item">
+                    <span class="detail-info-label">${t('res.gratuity')}</span>
+                    <span class="detail-info-value">${r.gratuity} (${r.guestCount > 0 ? Math.floor(r.gratuity / r.guestCount) : 0} ${t('res.freeGuests')})</span>
+                </div>` : ''}
                 <div class="detail-info-item detail-info-price">
                     <span class="detail-info-label">${t('res.totalPrice')}</span>
                     <span class="detail-info-value">&euro;${(r.price || 0).toLocaleString()}</span>
@@ -4329,7 +4381,7 @@ function openEmployeeDetail(empId) {
     const year = empViewMonth.getFullYear();
     const month = empViewMonth.getMonth();
     const monthNames = t('months.full');
-    const daysInMonth = getDaysInMonth(year, month);
+    const dim = getDaysInMonth(year, month);
     const stats = getEmployeeMonthStats(empId, year, month);
     const estimated = calcEstimatedPay(emp, stats.daysWorked, stats.totalHours);
 
@@ -4339,24 +4391,45 @@ function openEmployeeDetail(empId) {
         ? `${t('emp.hourlyPay')}: \u20AC${emp.payRate.toFixed(2)}/h`
         : `${t('emp.monthlyPay')}: \u20AC${emp.payRate.toFixed(2)}`;
 
-    let workRowsHtml = '';
-    if (stats.entries.length > 0) {
-        const sorted = [...stats.entries].sort((a, b) => a.workDate.localeCompare(b.workDate));
-        workRowsHtml = sorted.map(w => `
-            <tr>
-                <td>${formatDateDisplay(w.workDate)}</td>
-                <td>${w.hours.toFixed(1)}h</td>
-                <td>${escapeHtml(w.notes || '—')}</td>
-                <td style="text-align:right">
-                    <button class="btn btn-ghost btn-sm" onclick="openEditWorkEntry('${w.id}')" title="${t('common.edit')}">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    </button>
-                    <button class="btn btn-ghost btn-sm" onclick="deleteWorkEntry('${w.id}','${empId}')" title="${t('common.delete')}" style="color:var(--red)">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
-                    </button>
-                </td>
-            </tr>
-        `).join('');
+    // Build calendar grid
+    const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
+    const startOffset = (firstDay + 6) % 7; // convert to Mon=0
+    const dayHeaders = t('months.dayHeaders') || ['Lu','Ma','Me','Gi','Ve','Sa','Do'];
+
+    // Map entries by date string
+    const entryMap = {};
+    stats.entries.forEach(w => { entryMap[w.workDate] = w; });
+
+    const todayStr = formatDate(new Date());
+
+    let calCells = '';
+    // Day headers
+    calCells += dayHeaders.map(d => `<div class="emp-cal-header">${d}</div>`).join('');
+    // Empty cells before first day
+    for (let i = 0; i < startOffset; i++) calCells += '<div class="emp-cal-cell empty"></div>';
+    // Day cells
+    for (let d = 1; d <= dim; d++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const entry = entryMap[dateStr];
+        const isToday = dateStr === todayStr;
+        const dayOfWeek = (startOffset + d - 1) % 7;
+        const isWeekend = dayOfWeek >= 5;
+        let cls = 'emp-cal-cell';
+        if (isToday) cls += ' today';
+        if (isWeekend) cls += ' weekend';
+        if (entry) cls += ' worked';
+
+        if (emp.payType === 'hourly') {
+            calCells += `<div class="${cls}" onclick="empCalDayClick('${empId}','${dateStr}')">
+                <span class="emp-cal-day">${d}</span>
+                ${entry ? `<span class="emp-cal-hours">${entry.hours}h</span>` : ''}
+            </div>`;
+        } else {
+            calCells += `<div class="${cls}" onclick="empCalDayToggle('${empId}','${dateStr}')">
+                <span class="emp-cal-day">${d}</span>
+                ${entry ? `<svg class="emp-cal-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>` : ''}
+            </div>`;
+        }
     }
 
     const body = document.getElementById('employeeDetailBody');
@@ -4365,20 +4438,13 @@ function openEmployeeDetail(empId) {
             <div>
                 <span style="color:var(--text-secondary);font-size:13px">${escapeHtml(emp.role || '—')} · ${payInfo}</span>
             </div>
-            <div style="display:flex;gap:8px">
-                <button class="btn btn-secondary btn-sm" onclick="closeModal('employeeDetailModal');openEditEmployee('${empId}')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    ${t('common.edit')}
-                </button>
-                <button class="btn btn-primary btn-sm" onclick="openNewWorkEntry('${empId}')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    ${t('emp.addWorkDay')}
-                </button>
-            </div>
+            <button class="btn btn-secondary btn-sm" onclick="closeModal('employeeDetailModal');openEditEmployee('${empId}')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                ${t('common.edit')}
+            </button>
         </div>
 
         <div class="emp-detail-section">
-            <h4>${t('emp.monthlySummary')} — ${monthNames[month]} ${year}</h4>
             <div class="emp-summary-grid">
                 <div class="emp-summary-card">
                     <div class="value">${stats.daysWorked}</div>
@@ -4389,10 +4455,6 @@ function openEmployeeDetail(empId) {
                     <div class="label">${t('emp.totalHours')}</div>
                 </div>
                 <div class="emp-summary-card">
-                    <div class="value">${daysInMonth}</div>
-                    <div class="label">${t('emp.daysInMonth')}</div>
-                </div>
-                <div class="emp-summary-card">
                     <div class="value" style="color:var(--green)">&euro;${estimated.toFixed(2)}</div>
                     <div class="label">${t('emp.estimatedPay')}</div>
                 </div>
@@ -4400,24 +4462,68 @@ function openEmployeeDetail(empId) {
         </div>
 
         <div class="emp-detail-section">
-            <h4>${t('emp.workDays')} — ${monthNames[month]} ${year}</h4>
-            ${stats.entries.length === 0 ? `<div class="emp-no-data">${t('emp.noWorkDays')}</div>` : `
-            <div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px">
-                <table class="emp-work-table">
-                    <thead><tr>
-                        <th>${t('emp.date')}</th>
-                        <th>${t('emp.hours')}</th>
-                        <th>${t('res.notes')}</th>
-                        <th style="text-align:right">${t('emp.actions')}</th>
-                    </tr></thead>
-                    <tbody>${workRowsHtml}</tbody>
-                </table>
+            <h4>${monthNames[month]} ${year}</h4>
+            <div class="emp-cal-grid">
+                ${calCells}
             </div>
-            `}
+            ${emp.payType === 'hourly' ? `<p style="font-size:11px;color:var(--text-secondary);margin-top:8px">${t('emp.calHintHourly')}</p>` :
+            `<p style="font-size:11px;color:var(--text-secondary);margin-top:8px">${t('emp.calHintMonthly')}</p>`}
         </div>
     `;
 
     openModal('employeeDetailModal');
+}
+
+// Calendar day click for hourly employees — prompt for hours
+async function empCalDayClick(empId, dateStr) {
+    const existing = workEntries.find(w => w.employeeId === empId && w.workDate === dateStr);
+    if (existing) {
+        const input = prompt(t('emp.enterHours'), existing.hours);
+        if (input === null) return;
+        const hours = parseFloat(input);
+        if (isNaN(hours) || hours < 0) return;
+        if (hours === 0) {
+            // Remove entry
+            try {
+                await fetch(`${API.employees}?id=${existing.id}&type=work`, { method: 'DELETE' });
+                workEntries = workEntries.filter(w => w.id !== existing.id);
+            } catch (err) { console.error(err); }
+        } else {
+            existing.hours = hours;
+            try { await apiPut(API.employees + '?type=work', existing); } catch (err) { console.error(err); }
+        }
+    } else {
+        const input = prompt(t('emp.enterHours'), '8');
+        if (input === null) return;
+        const hours = parseFloat(input);
+        if (isNaN(hours) || hours <= 0) return;
+        const data = { id: generateId(), employeeId: empId, workDate: dateStr, hours, notes: '' };
+        try {
+            await apiPost(API.employees + '?type=work', data);
+            workEntries.push(data);
+        } catch (err) { console.error(err); }
+    }
+    renderEmployees();
+    openEmployeeDetail(empId);
+}
+
+// Calendar day toggle for monthly employees — toggle worked/not worked
+async function empCalDayToggle(empId, dateStr) {
+    const existing = workEntries.find(w => w.employeeId === empId && w.workDate === dateStr);
+    if (existing) {
+        try {
+            await fetch(`${API.employees}?id=${existing.id}&type=work`, { method: 'DELETE' });
+            workEntries = workEntries.filter(w => w.id !== existing.id);
+        } catch (err) { console.error(err); }
+    } else {
+        const data = { id: generateId(), employeeId: empId, workDate: dateStr, hours: 8, notes: '' };
+        try {
+            await apiPost(API.employees + '?type=work', data);
+            workEntries.push(data);
+        } catch (err) { console.error(err); }
+    }
+    renderEmployees();
+    openEmployeeDetail(empId);
 }
 
 function closeWorkEntryModal() {

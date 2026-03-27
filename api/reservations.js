@@ -20,6 +20,8 @@ export default async function handler(req, res) {
         status: r.status,
         expiration: toDateStr(r.expiration),
         price: Number(r.price),
+        pricePerPerson: Number(r.price_per_person) || 0,
+        gratuity: Number(r.gratuity) || 0,
         notes: r.notes,
         roomNotes: r.room_notes,
         createdAt: r.created_at
@@ -32,8 +34,8 @@ export default async function handler(req, res) {
       const roomIds = JSON.stringify(r.roomIds || []);
       const expiration = r.expiration || null;
       await sql`
-        INSERT INTO reservations (id, group_name, organizer, email, checkin, checkout, guest_count, room_count, room_ids, status, expiration, price, notes, room_notes, created_at)
-        VALUES (${r.id}, ${r.groupName}, ${r.organizer}, ${r.email}, ${r.checkin}, ${r.checkout}, ${r.guestCount}, ${r.roomCount}, ${roomIds}, ${r.status}, ${expiration}, ${r.price}, ${r.notes}, ${r.roomNotes || null}, ${r.createdAt})
+        INSERT INTO reservations (id, group_name, organizer, email, checkin, checkout, guest_count, room_count, room_ids, status, expiration, price, price_per_person, gratuity, notes, room_notes, created_at)
+        VALUES (${r.id}, ${r.groupName}, ${r.organizer}, ${r.email}, ${r.checkin}, ${r.checkout}, ${r.guestCount}, ${r.roomCount}, ${roomIds}, ${r.status}, ${expiration}, ${r.price}, ${r.pricePerPerson || 0}, ${r.gratuity || 0}, ${r.notes}, ${r.roomNotes || null}, ${r.createdAt})
       `;
       return res.status(201).json({ success: true });
     }
@@ -45,7 +47,7 @@ export default async function handler(req, res) {
       await sql`
         UPDATE reservations SET group_name=${r.groupName}, organizer=${r.organizer}, email=${r.email},
         checkin=${r.checkin}, checkout=${r.checkout}, guest_count=${r.guestCount}, room_count=${r.roomCount},
-        room_ids=${roomIds}, status=${r.status}, expiration=${expiration}, price=${r.price}, notes=${r.notes}, room_notes=${r.roomNotes || null}
+        room_ids=${roomIds}, status=${r.status}, expiration=${expiration}, price=${r.price}, price_per_person=${r.pricePerPerson || 0}, gratuity=${r.gratuity || 0}, notes=${r.notes}, room_notes=${r.roomNotes || null}
         WHERE id=${r.id}
       `;
       return res.status(200).json({ success: true });

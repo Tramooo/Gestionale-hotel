@@ -2282,6 +2282,19 @@ select.cell-input option {
     gap: 6px;
 }
 
+.res-calc-total {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent);
+    padding: 8px 0;
+}
+
+.res-calc-detail {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text-secondary);
+}
+
 .detail-delete-btn {
     margin-left: auto;
     color: var(--red) !important;
@@ -3073,4 +3086,91 @@ select.cell-input option {
     padding: 32px 16px;
     color: var(--text-secondary);
     font-size: 13px;
+}
+
+/* Employee Calendar Grid */
+.emp-cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+}
+
+.emp-cal-header {
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    padding: 6px 0;
+}
+
+.emp-cal-cell {
+    aspect-ratio: 1;
+    border-radius: var(--radius-md);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-light);
+    position: relative;
+    min-height: 48px;
+}
+
+.emp-cal-cell.empty {
+    background: none;
+    border: none;
+    cursor: default;
+}
+
+.emp-cal-cell:not(.empty):hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(0,122,255,0.12);
+}
+
+.emp-cal-cell.weekend {
+    background: var(--bg-tertiary);
+}
+
+.emp-cal-cell.today {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(0,122,255,0.15);
+}
+
+.emp-cal-cell.worked {
+    background: var(--green-light);
+    border-color: var(--green);
+}
+
+.emp-cal-day {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    line-height: 1;
+}
+
+.emp-cal-hours {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--green);
+    margin-top: 2px;
+}
+
+.emp-cal-check {
+    color: var(--green);
+    margin-top: 2px;
+}
+
+@media (max-width: 768px) {
+    .emp-cal-cell {
+        min-height: 36px;
+    }
+    .emp-cal-day {
+        font-size: 11px;
+    }
+    .emp-cal-hours {
+        font-size: 9px;
+    }
 }
