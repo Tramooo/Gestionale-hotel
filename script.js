@@ -4279,15 +4279,17 @@ function getArubaSession() {
         token,
         refreshToken: sessionStorage.getItem('aruba_refresh_token'),
         username: sessionStorage.getItem('aruba_username'),
+        vatCode: sessionStorage.getItem('aruba_vatcode'),
         expiresAt
     };
 }
 
-function setArubaSession(data, username) {
+function setArubaSession(data, username, vatCode) {
     sessionStorage.setItem('aruba_token', data.access_token);
     sessionStorage.setItem('aruba_refresh_token', data.refresh_token);
     sessionStorage.setItem('aruba_expires_at', String(Date.now() + (data.expires_in * 1000)));
     sessionStorage.setItem('aruba_username', username);
+    sessionStorage.setItem('aruba_vatcode', vatCode || '');
 }
 
 function clearArubaSession() {
@@ -4295,6 +4297,7 @@ function clearArubaSession() {
     sessionStorage.removeItem('aruba_refresh_token');
     sessionStorage.removeItem('aruba_expires_at');
     sessionStorage.removeItem('aruba_username');
+    sessionStorage.removeItem('aruba_vatcode');
 }
 
 function isArubaLoggedIn() {
@@ -4304,6 +4307,7 @@ function isArubaLoggedIn() {
 async function refreshArubaToken() {
     const refresh = sessionStorage.getItem('aruba_refresh_token');
     const username = sessionStorage.getItem('aruba_username');
+    const vatCode = sessionStorage.getItem('aruba_vatcode');
     if (!refresh) return false;
     try {
         const resp = await fetch(API.aruba + '?action=refresh', {
@@ -4313,7 +4317,7 @@ async function refreshArubaToken() {
         });
         if (!resp.ok) return false;
         const data = await resp.json();
-        setArubaSession(data, username);
+        setArubaSession(data, username, vatCode);
         return true;
     } catch { return false; }
 }
@@ -4321,7 +4325,8 @@ async function refreshArubaToken() {
 async function arubaLogin() {
     const username = document.getElementById('arubaUsername').value.trim();
     const password = document.getElementById('arubaPassword').value;
-    if (!username || !password) return;
+    const vatCode = document.getElementById('arubaVatCode').value.trim();
+    if (!username || !password || !vatCode) return;
     try {
         const resp = await fetch(API.aruba + '?action=login', {
             method: 'POST',
@@ -4333,7 +4338,7 @@ async function arubaLogin() {
             return;
         }
         const data = await resp.json();
-        setArubaSession(data, username);
+        setArubaSession(data, username, vatCode);
         renderArubaInvoices();
     } catch (err) {
         showToast(t('inv.loginError'), 'error');
@@ -4382,9 +4387,10 @@ async function fetchArubaInvoices() {
     document.getElementById('arubaInvoiceTable').innerHTML = `<div class="empty-state small"><p>${t('inv.loading')}</p></div>`;
 
     try {
+        const vat = encodeURIComponent(session.vatCode || '');
         const [recvResp, sentResp] = await Promise.all([
-            fetch(`${API.aruba}?action=invoices-received&username=${encodeURIComponent(session.username)}&token=${encodeURIComponent(session.token)}`),
-            fetch(`${API.aruba}?action=invoices-sent&username=${encodeURIComponent(session.username)}&token=${encodeURIComponent(session.token)}`)
+            fetch(`${API.aruba}?action=invoices-received&username=${encodeURIComponent(session.username)}&token=${encodeURIComponent(session.token)}&vatcode=${vat}`),
+            fetch(`${API.aruba}?action=invoices-sent&username=${encodeURIComponent(session.username)}&token=${encodeURIComponent(session.token)}&vatcode=${vat}`)
         ]);
 
         if (recvResp.status === 401 || sentResp.status === 401) {

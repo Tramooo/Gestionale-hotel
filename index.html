@@ -353,9 +353,13 @@
                                 <label data-i18n="inv.username">Username</label>
                                 <input type="text" id="arubaUsername" autocomplete="username">
                             </div>
-                            <div class="form-group" style="margin-bottom:20px">
+                            <div class="form-group" style="margin-bottom:16px">
                                 <label data-i18n="inv.password">Password</label>
-                                <input type="password" id="arubaPassword" autocomplete="current-password" onkeydown="if(event.key==='Enter')arubaLogin()">
+                                <input type="password" id="arubaPassword" autocomplete="current-password">
+                            </div>
+                            <div class="form-group" style="margin-bottom:20px">
+                                <label data-i18n="inv.vatCode">Partita IVA</label>
+                                <input type="text" id="arubaVatCode" placeholder="es. 01234567890" onkeydown="if(event.key==='Enter')arubaLogin()">
                             </div>
                             <button class="btn btn-primary" onclick="arubaLogin()" style="width:100%" data-i18n="inv.login">Accedi</button>
                         </div>
