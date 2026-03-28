@@ -22,7 +22,7 @@ export default async function handler(req, res) {
         workEntries: workEntries.map(w => ({
           id: w.id,
           employeeId: w.employee_id,
-          workDate: w.work_date,
+          workDate: w.work_date ? new Date(w.work_date).toISOString().split('T')[0] : null,
           hours: parseFloat(w.hours) || 0,
           notes: w.notes,
           startTime: w.start_time || null,
