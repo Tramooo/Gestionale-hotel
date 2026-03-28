@@ -4399,9 +4399,29 @@ async function fetchArubaInvoices() {
         const recvData = await recvResp.json();
         const sentData = await sentResp.json();
 
-        // Aruba returns { content: [...], totalElements, totalPages, ... } or an array
-        arubaInvoicesReceived = Array.isArray(recvData) ? recvData : (recvData.content || []);
-        arubaInvoicesSent = Array.isArray(sentData) ? sentData : (sentData.content || []);
+        // Aruba returns { content: [...], totalElements, totalPages, ... }
+        // Each content item has sender/receiver objects and invoices[] array
+        // Flatten so each invoice line becomes a row
+        function flattenAruba(data, type) {
+            const items = Array.isArray(data) ? data : (data.content || []);
+            const flat = [];
+            items.forEach(item => {
+                const party = type === 'received'
+                    ? (item.sender && item.sender.description || '—')
+                    : (item.receiver && item.receiver.description || '—');
+                const subInvoices = item.invoices || [];
+                if (subInvoices.length === 0) {
+                    flat.push({ date: item.creationDate || '—', number: '—', party, amount: 0, status: '—', filename: item.filename });
+                } else {
+                    subInvoices.forEach(sub => {
+                        flat.push({ date: sub.invoiceDate || item.creationDate || '—', number: sub.number || '—', party, amount: 0, status: sub.status || '—', filename: item.filename });
+                    });
+                }
+            });
+            return flat;
+        }
+        arubaInvoicesReceived = flattenAruba(recvData, 'received');
+        arubaInvoicesSent = flattenAruba(sentData, 'sent');
 
         renderArubaInvoiceTable();
         renderArubaSummary();
@@ -4434,25 +4454,17 @@ function renderArubaInvoiceTable() {
             <th>${t('inv.date')}</th>
             <th>${t('inv.number')}</th>
             <th>${thirdCol}</th>
-            <th style="text-align:right">${t('inv.amount')}</th>
+            <th>Stato</th>
         </tr></thead><tbody>`;
 
     invoices.forEach(inv => {
-        // Aruba invoice fields may vary - common fields:
-        // invoiceDate, invoiceNumber, senderDescription/recipientDescription, totalAmount
-        const date = inv.invoiceDate || inv.date || inv.docDate || '—';
-        const number = inv.invoiceNumber || inv.number || inv.docNumber || '—';
-        const party = isReceived
-            ? (inv.senderDescription || inv.sender || inv.cessionarioCommittente || '—')
-            : (inv.recipientDescription || inv.recipient || inv.cedenteFornitore || '—');
-        const amount = parseFloat(inv.totalAmount || inv.amount || inv.importoTotale || 0);
-        const formattedDate = date !== '—' ? formatDateDisplay(date) : '—';
+        const formattedDate = inv.date !== '—' ? formatDateDisplay(inv.date) : '—';
 
         html += `<tr>
             <td>${formattedDate}</td>
-            <td>${escapeHtml(String(number))}</td>
-            <td>${escapeHtml(String(party))}</td>
-            <td class="invoice-amount" style="text-align:right">&euro;${amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            <td>${escapeHtml(String(inv.number))}</td>
+            <td>${escapeHtml(String(inv.party))}</td>
+            <td>${escapeHtml(String(inv.status))}</td>
         </tr>`;
     });
 
@@ -4461,13 +4473,10 @@ function renderArubaInvoiceTable() {
 }
 
 function renderArubaSummary() {
-    const totalReceived = arubaInvoicesReceived.reduce((sum, inv) => sum + (parseFloat(inv.totalAmount || inv.amount || inv.importoTotale || 0)), 0);
-    const totalSent = arubaInvoicesSent.reduce((sum, inv) => sum + (parseFloat(inv.totalAmount || inv.amount || inv.importoTotale || 0)), 0);
-
     const recvEl = document.getElementById('aruba-total-received');
     const sentEl = document.getElementById('aruba-total-sent');
-    if (recvEl) recvEl.textContent = '\u20AC' + totalReceived.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-    if (sentEl) sentEl.textContent = '\u20AC' + totalSent.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    if (recvEl) recvEl.textContent = arubaInvoicesReceived.length;
+    if (sentEl) sentEl.textContent = arubaInvoicesSent.length;
 }
 
 function renderManagement() {

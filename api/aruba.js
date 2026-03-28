@@ -29,8 +29,8 @@ export default async function handler(req, res) {
     }
 
     if (action === 'invoices-received' && req.method === 'GET') {
-      const { username, token, page, pageSize } = req.query;
-      const params = new URLSearchParams({ username, page: page || '0', pageSize: pageSize || '100' });
+      const { username, token, page, size } = req.query;
+      const params = new URLSearchParams({ username, page: page || '1', size: size || '100' });
       const response = await fetch(`${WS_URL}/services/invoice/in/findByUsername?${params}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -40,8 +40,8 @@ export default async function handler(req, res) {
     }
 
     if (action === 'invoices-sent' && req.method === 'GET') {
-      const { username, token, page, pageSize } = req.query;
-      const params = new URLSearchParams({ username, page: page || '0', pageSize: pageSize || '100' });
+      const { username, token, page, size } = req.query;
+      const params = new URLSearchParams({ username, page: page || '1', size: size || '100' });
       const response = await fetch(`${WS_URL}/services/invoice/out/findByUsername?${params}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
