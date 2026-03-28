@@ -591,7 +591,7 @@ function calcReservationPrice() {
     const checkout = document.getElementById('resCheckout').value;
 
     const nights = (checkin && checkout) ? nightsBetween(checkin, checkout) : 0;
-    const freeGuests = guestCount > 0 ? Math.floor(gratuity / guestCount) : 0;
+    const freeGuests = gratuity > 0 ? Math.floor(guestCount / gratuity) : 0;
     const payingGuests = Math.max(0, guestCount - freeGuests);
     const total = payingGuests * nights * pricePerPerson;
 
@@ -1299,7 +1299,7 @@ function openReservationDetail(id) {
                 </div>
                 ${r.gratuity ? `<div class="detail-info-item">
                     <span class="detail-info-label">${t('res.gratuity')}</span>
-                    <span class="detail-info-value">${r.gratuity} (${r.guestCount > 0 ? Math.floor(r.gratuity / r.guestCount) : 0} ${t('res.freeGuests')})</span>
+                    <span class="detail-info-value">${r.gratuity} (${r.gratuity > 0 ? Math.floor(r.guestCount / r.gratuity) : 0} ${t('res.freeGuests')})</span>
                 </div>` : ''}
                 <div class="detail-info-item detail-info-price">
                     <span class="detail-info-label">${t('res.totalPrice')}</span>
