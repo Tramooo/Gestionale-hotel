@@ -119,7 +119,7 @@ const TRANSLATIONS = {
     'dash.subtitle': { en: 'Overview of your hotel operations', it: 'Panoramica delle operazioni dell\'hotel' },
     'dash.newGroup': { en: 'New Group', it: 'Nuovo Gruppo' },
     'dash.activeGroups': { en: 'Active Groups', it: 'Gruppi Attivi' },
-    'dash.totalGuests': { en: 'Total Guests', it: 'Ospiti Totali' },
+    'dash.totalGuests': { en: 'Total Presences', it: 'Presenze Totali' },
     'dash.roomsOccupied': { en: 'Rooms Occupied', it: 'Camere Occupate' },
     'dash.thisMonth': { en: 'This Month', it: 'Questo Mese' },
     'dash.thisYear': { en: 'This Year', it: 'Quest\'Anno' },
@@ -770,7 +770,10 @@ function renderDashboard() {
     computeRoomStatuses();
     // Stats
     const activeGroups = reservations.filter(r => r.status === 'confirmed' || r.status === 'checked-in');
-    const totalGuests = activeGroups.reduce((sum, r) => sum + (r.guestCount || 0), 0);
+    const totalGuests = activeGroups.reduce((sum, r) => {
+        const nights = (r.checkin && r.checkout) ? nightsBetween(r.checkin, r.checkout) : 0;
+        return sum + (r.guestCount || 0) * nights;
+    }, 0);
     const occupiedRooms = rooms.filter(r => r.status === 'occupied').length;
     document.getElementById('stat-active-groups').textContent = activeGroups.length;
     document.getElementById('stat-total-guests').textContent = totalGuests;
