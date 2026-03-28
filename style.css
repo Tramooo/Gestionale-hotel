@@ -3448,3 +3448,128 @@ select.cell-input option {
         font-size: 12px;
     }
 }
+
+/* ---- Management Sub-tabs ---- */
+.mgmt-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 20px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    padding: 4px;
+}
+
+.mgmt-tab {
+    flex: 1;
+    padding: 8px 16px;
+    border: none;
+    background: none;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+    font-family: inherit;
+    text-align: center;
+}
+
+.mgmt-tab.active {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-sm);
+    font-weight: 600;
+}
+
+.mgmt-tab:hover:not(.active) {
+    color: var(--text-primary);
+}
+
+/* ---- Aruba Login ---- */
+.aruba-login-card {
+    max-width: 420px;
+    margin: 40px auto;
+}
+
+/* ---- Aruba Session Bar ---- */
+.aruba-session-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    box-shadow: var(--shadow-sm);
+}
+
+/* ---- Aruba Invoice Tabs ---- */
+.aruba-inv-tabs {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 16px;
+}
+
+.aruba-inv-tab {
+    padding: 6px 16px;
+    border: 1px solid var(--border-light);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.aruba-inv-tab.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+
+.aruba-inv-tab:hover:not(.active) {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* ---- Invoice Table ---- */
+.invoice-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.invoice-table th {
+    text-align: left;
+    padding: 12px 16px;
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-light);
+}
+
+.invoice-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-light);
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.invoice-table tbody tr:hover {
+    background: var(--bg-tertiary);
+}
+
+.invoice-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.invoice-amount {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}

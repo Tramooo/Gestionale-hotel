@@ -302,34 +302,106 @@
                 </div>
             </div>
 
-            <!-- Employees section -->
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-                <h2 style="font-size:18px;font-weight:600;margin:0" data-i18n="emp.title">Dipendenti</h2>
-                <button class="btn btn-primary" onclick="openNewEmployeeModal()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    <span data-i18n="emp.addEmployee">Aggiungi Dipendente</span>
+            <!-- Management sub-tabs -->
+            <div class="mgmt-tabs">
+                <button class="mgmt-tab active" data-mgmt-tab="employees" onclick="switchMgmtTab('employees')">
+                    <span data-i18n="inv.empTab">Dipendenti</span>
+                </button>
+                <button class="mgmt-tab" data-mgmt-tab="invoices" onclick="switchMgmtTab('invoices')">
+                    <span data-i18n="inv.tab">Fatture</span>
                 </button>
             </div>
 
-            <!-- Month selector for pay view -->
-            <div class="filters-bar" style="flex-wrap:wrap;gap:12px">
-                <div class="search-box">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                    <input type="text" data-i18n-placeholder="emp.searchEmployees" placeholder="Cerca dipendenti..." id="searchEmployees" oninput="renderEmployees()">
-                </div>
-                <div style="display:flex;align-items:center;gap:8px">
-                    <button class="btn btn-ghost btn-sm" onclick="empMonthNav(-1)">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="15 18 9 12 15 6"/></svg>
-                    </button>
-                    <span id="empMonthLabel" style="font-weight:600;min-width:140px;text-align:center"></span>
-                    <button class="btn btn-ghost btn-sm" onclick="empMonthNav(1)">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="9 18 15 12 9 6"/></svg>
+            <!-- Employees tab -->
+            <div id="mgmt-tab-employees">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+                    <h2 style="font-size:18px;font-weight:600;margin:0" data-i18n="emp.title">Dipendenti</h2>
+                    <button class="btn btn-primary" onclick="openNewEmployeeModal()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        <span data-i18n="emp.addEmployee">Aggiungi Dipendente</span>
                     </button>
                 </div>
+                <div class="filters-bar" style="flex-wrap:wrap;gap:12px">
+                    <div class="search-box">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" data-i18n-placeholder="emp.searchEmployees" placeholder="Cerca dipendenti..." id="searchEmployees" oninput="renderEmployees()">
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px">
+                        <button class="btn btn-ghost btn-sm" onclick="empMonthNav(-1)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="15 18 9 12 15 6"/></svg>
+                        </button>
+                        <span id="empMonthLabel" style="font-weight:600;min-width:140px;text-align:center"></span>
+                        <button class="btn btn-ghost btn-sm" onclick="empMonthNav(1)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="9 18 15 12 9 6"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <div id="employeesGrid" class="employees-grid"></div>
             </div>
 
-            <div id="employeesGrid" class="employees-grid">
-                <!-- Populated by JS -->
+            <!-- Invoices tab -->
+            <div id="mgmt-tab-invoices" style="display:none">
+                <!-- Aruba login (shown when not authenticated) -->
+                <div id="arubaLoginSection">
+                    <div class="aruba-login-card card">
+                        <div class="card-header">
+                            <h3 data-i18n="inv.loginTitle">Accesso Aruba</h3>
+                        </div>
+                        <div style="padding:24px">
+                            <p style="font-size:13px;color:var(--text-secondary);margin:0 0 20px" data-i18n="inv.loginDesc">Inserisci le credenziali di fatturazione elettronica Aruba</p>
+                            <div class="form-group" style="margin-bottom:16px">
+                                <label data-i18n="inv.username">Username</label>
+                                <input type="text" id="arubaUsername" autocomplete="username">
+                            </div>
+                            <div class="form-group" style="margin-bottom:20px">
+                                <label data-i18n="inv.password">Password</label>
+                                <input type="password" id="arubaPassword" autocomplete="current-password" onkeydown="if(event.key==='Enter')arubaLogin()">
+                            </div>
+                            <button class="btn btn-primary" onclick="arubaLogin()" style="width:100%" data-i18n="inv.login">Accedi</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Invoice content (shown when authenticated) -->
+                <div id="arubaInvoicesSection" style="display:none">
+                    <div class="aruba-session-bar">
+                        <span id="arubaSessionInfo"></span>
+                        <button class="btn btn-ghost btn-sm" onclick="arubaLogout()" data-i18n="inv.logout">Esci</button>
+                    </div>
+
+                    <div class="stats-grid" style="margin-bottom:20px" id="arubaSummaryCards">
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background:var(--red-light);color:var(--red)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="aruba-total-received">&euro;0</span>
+                                <span class="stat-label" data-i18n="inv.totalReceived">Totale Ricevute</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon green">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="aruba-total-sent">&euro;0</span>
+                                <span class="stat-label" data-i18n="inv.totalSent">Totale Emesse</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="aruba-inv-tabs">
+                        <button class="aruba-inv-tab active" data-aruba-tab="received" onclick="switchArubaTab('received')" data-i18n="inv.received">Ricevute</button>
+                        <button class="aruba-inv-tab" data-aruba-tab="sent" onclick="switchArubaTab('sent')" data-i18n="inv.sent">Emesse</button>
+                        <button class="btn btn-ghost btn-sm" onclick="fetchArubaInvoices()" style="margin-left:auto" title="Refresh">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        </button>
+                    </div>
+
+                    <div id="arubaInvoiceTableWrap" class="card" style="overflow:hidden">
+                        <div id="arubaInvoiceTable"></div>
+                    </div>
+                </div>
             </div>
         </section>
 
