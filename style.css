@@ -3178,18 +3178,18 @@ select.cell-input option {
 /* ---- Employee Spreadsheet Table ---- */
 
 .emp-table-wrap {
-    overflow-x: auto;
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-light);
     background: var(--bg-secondary);
     box-shadow: var(--shadow-sm);
+    overflow: hidden;
 }
 
 .emp-table {
-    width: max-content;
-    min-width: 100%;
+    width: 100%;
     border-collapse: collapse;
     font-size: 13px;
+    table-layout: fixed;
 }
 
 .emp-table thead th {
@@ -3214,20 +3214,22 @@ select.cell-input option {
     z-index: 3;
     text-align: left;
     padding-left: 12px;
-    min-width: 150px;
+    width: 140px;
+    min-width: 140px;
 }
 
 .emp-table thead th.emp-tbl-type {
-    min-width: 44px;
+    width: 40px;
+    min-width: 40px;
 }
 
 .emp-table thead th.emp-tbl-day {
-    min-width: 38px;
     padding: 4px 2px;
 }
 
 .emp-table thead th.emp-tbl-total,
 .emp-table thead th.emp-tbl-pay {
+    width: 60px;
     min-width: 60px;
     padding: 6px 8px;
 }
