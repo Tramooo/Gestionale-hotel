@@ -400,23 +400,14 @@ body {
 #page-management.active {
     display: flex;
     flex-direction: column;
-    min-height: calc(100vh - 64px);
+    min-height: calc(100vh - 32px);
 }
 
 #page-management .employees-grid {
     flex: 1;
     display: flex;
     flex-direction: column;
-}
-
-#page-management .emp-table-wrap {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-}
-
-#page-management .emp-table {
-    flex: 1;
+    min-height: 0;
 }
 
 @keyframes fadeIn {
@@ -3201,31 +3192,33 @@ select.cell-input option {
 
 .emp-table-wrap {
     border-radius: var(--radius-lg);
-    border: 1px solid var(--border-light);
     background: var(--bg-secondary);
     box-shadow: var(--shadow-sm);
     overflow: hidden;
+    flex: 1;
 }
 
 .emp-table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     font-size: 13px;
     table-layout: fixed;
 }
 
+/* ---- Header ---- */
 .emp-table thead th {
     position: sticky;
     top: 0;
-    background: var(--bg-tertiary);
+    background: var(--bg-secondary);
     font-weight: 600;
-    font-size: 11px;
+    font-size: 10px;
     text-transform: uppercase;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.4px;
     color: var(--text-secondary);
-    padding: 6px 4px;
+    padding: 10px 2px 8px;
     text-align: center;
-    border-bottom: 2px solid var(--border-light);
+    border-bottom: 1px solid var(--border-light);
     white-space: nowrap;
     z-index: 2;
 }
@@ -3235,56 +3228,45 @@ select.cell-input option {
     left: 0;
     z-index: 3;
     text-align: left;
-    padding-left: 12px;
-}
-
-.emp-table thead th.emp-tbl-type {
+    padding-left: 16px;
 }
 
 .emp-table thead th.emp-tbl-day {
-    padding: 4px 2px;
-    overflow: hidden;
+    padding: 6px 0;
 }
 
 .emp-table thead th.emp-tbl-total,
 .emp-table thead th.emp-tbl-pay {
-    padding: 6px 4px;
+    padding: 10px 4px 8px;
 }
 
 .emp-tbl-dow {
     display: block;
     font-size: 9px;
     font-weight: 500;
-    color: var(--text-secondary);
-    opacity: 0.7;
+    color: var(--text-tertiary);
     line-height: 1;
-    margin-bottom: 1px;
+    margin-bottom: 2px;
 }
 
 .emp-tbl-dnum {
     display: block;
     font-size: 12px;
     font-weight: 600;
+    color: var(--text-primary);
     line-height: 1.2;
 }
 
-.emp-table tbody tr {
-    transition: background 0.1s;
-}
-
-.emp-table tbody tr:hover {
-    background: var(--bg-tertiary);
-}
-
+/* ---- Body ---- */
 .emp-table tbody td {
-    padding: 8px 4px;
+    padding: 0;
     text-align: center;
     border-bottom: 1px solid var(--border-light);
     color: var(--text-primary);
-    font-size: 13px;
-    cursor: pointer;
+    font-size: 12px;
+    height: 44px;
+    vertical-align: middle;
     transition: background 0.1s;
-    white-space: nowrap;
 }
 
 .emp-table tbody td.emp-tbl-sticky {
@@ -3293,66 +3275,104 @@ select.cell-input option {
     background: var(--bg-secondary);
     z-index: 1;
     text-align: left;
-    padding-left: 12px;
+    padding: 0 8px 0 16px;
     font-weight: 600;
+    font-size: 13px;
     cursor: pointer;
 }
 
+.emp-table tbody tr:hover td {
+    background: rgba(0,122,255,0.02);
+}
 .emp-table tbody tr:hover td.emp-tbl-sticky {
-    background: var(--bg-tertiary);
+    background: var(--bg-secondary);
 }
 
-.emp-table tbody td.emp-tbl-name:hover {
+.emp-table tbody td.emp-tbl-name:hover .emp-tbl-empname {
     color: var(--accent);
-    text-decoration: underline;
+}
+
+.emp-tbl-empname {
+    display: block;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.emp-tbl-role {
+    display: block;
+    font-size: 10px;
+    font-weight: 400;
+    color: var(--text-tertiary);
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .emp-table tbody td.emp-tbl-type {
-    font-size: 11px;
-    color: var(--text-secondary);
+    font-size: 10px;
+    color: var(--text-tertiary);
     cursor: default;
+    font-weight: 500;
+}
+
+/* ---- Day cells ---- */
+.emp-table tbody td.emp-tbl-cell {
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    position: relative;
 }
 
 .emp-table tbody td.emp-tbl-cell:hover {
-    background: rgba(0,122,255,0.06);
+    background: var(--accent-light);
 }
 
-.emp-table tbody td.emp-tbl-weekend {
-    background: var(--bg-tertiary);
-}
-
+.emp-table tbody td.emp-tbl-weekend,
 .emp-table thead th.emp-tbl-weekend {
-    background: color-mix(in srgb, var(--bg-tertiary) 80%, var(--border-light));
+    background: rgba(0,0,0,0.018);
 }
 
-.emp-table tbody td.emp-tbl-today,
-.emp-table thead th.emp-tbl-today {
-    background: rgba(0,122,255,0.08);
-    box-shadow: inset 0 -2px 0 var(--accent);
+.emp-table thead th.emp-tbl-today .emp-tbl-dnum {
+    color: var(--accent);
+}
+.emp-table tbody td.emp-tbl-today {
+    background: rgba(0,122,255,0.04);
 }
 
 .emp-table tbody td.emp-tbl-worked {
     background: var(--green-light);
     color: var(--green);
     font-weight: 700;
+    font-size: 12px;
 }
 
-.emp-table tbody td.emp-tbl-worked.emp-tbl-weekend {
-    background: color-mix(in srgb, var(--green-light) 70%, var(--bg-tertiary));
+.emp-table tbody td.emp-tbl-worked.emp-tbl-today {
+    background: var(--green-light);
 }
 
+/* ---- Totals ---- */
 .emp-table tbody td.emp-tbl-total {
     font-weight: 700;
+    font-size: 12px;
     color: var(--text-primary);
     cursor: default;
-    padding: 8px 8px;
+    padding: 0 4px;
+    border-left: 1px solid var(--border-light);
 }
 
 .emp-table tbody td.emp-tbl-pay {
     font-weight: 700;
+    font-size: 12px;
     color: var(--green);
     cursor: default;
-    padding: 8px 8px;
+    padding: 0 4px;
+}
+
+.emp-table thead th.emp-tbl-total {
+    border-left: 1px solid var(--border-light);
 }
 
 /* Time Popover */

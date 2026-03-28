@@ -4297,7 +4297,8 @@ function renderEmployees() {
         stats.entries.forEach(w => { entryMap[w.workDate] = w; });
 
         const typeLabel = emp.payType === 'hourly' ? '\u20AC/h' : '\u20AC/m';
-        let row = `<td class="emp-tbl-sticky emp-tbl-name" onclick="openEditEmployee('${emp.id}')">${escapeHtml(emp.lastName)} ${escapeHtml(emp.firstName)}</td>`;
+        const roleStr = emp.role ? `<span class="emp-tbl-role">${escapeHtml(emp.role)}</span>` : '';
+        let row = `<td class="emp-tbl-sticky emp-tbl-name" onclick="openEditEmployee('${emp.id}')"><span class="emp-tbl-empname">${escapeHtml(emp.lastName)} ${escapeHtml(emp.firstName)}</span>${roleStr}</td>`;
         row += `<td class="emp-tbl-type">${typeLabel}</td>`;
 
         for (let d = 1; d <= dim; d++) {
