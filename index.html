@@ -281,14 +281,14 @@
             </header>
 
             <!-- Revenue cards -->
-            <div class="stats-grid" style="margin-bottom:24px">
+            <div class="stats-grid" style="margin-bottom:16px">
                 <div class="stat-card">
                     <div class="stat-icon purple">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                     </div>
                     <div class="stat-info">
                         <span class="stat-value" id="stat-revenue">&euro;0</span>
-                        <span class="stat-label" data-i18n="dash.thisMonth">Questo Mese</span>
+                        <span class="stat-label">Guadagno Mese</span>
                     </div>
                 </div>
                 <div class="stat-card">
@@ -297,10 +297,30 @@
                     </div>
                     <div class="stat-info">
                         <span class="stat-value" id="stat-year-revenue">&euro;0</span>
-                        <span class="stat-label" data-i18n="dash.thisYear">Quest'Anno</span>
+                        <span class="stat-label">Guadagno Anno</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: #fff3cd; color: #856404;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-pending-revenue">&euro;0</span>
+                        <span class="stat-label">Potenziale (non confermati)</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: #f8d7da; color: #721c24;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-emp-cost">&euro;0</span>
+                        <span class="stat-label">Costo Dipendenti (mese)</span>
                     </div>
                 </div>
             </div>
+            <!-- Employee cost breakdown -->
+            <div id="empCostBreakdown" class="card" style="margin-bottom:24px;display:none"></div>
 
             <!-- Employees -->
             <div id="mgmt-tab-employees">

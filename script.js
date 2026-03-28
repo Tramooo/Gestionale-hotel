@@ -598,8 +598,12 @@ function calcReservationPrice() {
     document.getElementById('resPrice').value = total;
     const display = document.getElementById('resTotalPrice');
     display.textContent = '\u20AC' + total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    if (freeGuests > 0) {
-        display.innerHTML += ` <span class="res-calc-detail">(${freeGuests} ${t('res.freeGuests')})</span>`;
+    const presenze = payingGuests * nights;
+    let detail = '';
+    if (freeGuests > 0) detail += `${freeGuests} gratuiti, `;
+    if (presenze > 0) detail += `${presenze} presenze`;
+    if (detail) {
+        display.innerHTML += ` <span class="res-calc-detail">(${detail})</span>`;
     }
 }
 
@@ -1301,6 +1305,10 @@ function openReservationDetail(id) {
                     <span class="detail-info-label">${t('res.gratuity')}</span>
                     <span class="detail-info-value">${r.gratuity} (${r.gratuity > 0 ? Math.floor(r.guestCount / r.gratuity) : 0} ${t('res.freeGuests')})</span>
                 </div>` : ''}
+                <div class="detail-info-item">
+                    <span class="detail-info-label">Presenze</span>
+                    <span class="detail-info-value">${(() => { const gc = r.guestCount || 0; const fg = r.gratuity > 0 ? Math.floor(gc / r.gratuity) : 0; return Math.max(0, gc - fg) * nights; })()}</span>
+                </div>
                 <div class="detail-info-item detail-info-price">
                     <span class="detail-info-label">${t('res.totalPrice')}</span>
                     <span class="detail-info-value">&euro;${(r.price || 0).toLocaleString()}</span>
@@ -4229,22 +4237,85 @@ function calcEstimatedPay(emp, daysWorked, totalHours) {
 }
 
 function renderManagement() {
-    // Revenue stats
     const now = new Date();
+    const thisMonth = now.getMonth();
+    const thisYear = now.getFullYear();
+
+    // Monthly revenue (confirmed/checked-in this month)
     const monthRevenue = reservations
         .filter(r => {
             const d = new Date(r.checkin);
-            return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+            return (r.status === 'confirmed' || r.status === 'checked-in') && d.getMonth() === thisMonth && d.getFullYear() === thisYear;
         })
         .reduce((sum, r) => sum + (r.price || 0), 0);
+
+    // Annual revenue (confirmed/checked-in this year)
     const yearRevenue = reservations
-        .filter(r => (r.status === 'confirmed' || r.status === 'checked-in') && new Date(r.checkin).getFullYear() === now.getFullYear())
+        .filter(r => (r.status === 'confirmed' || r.status === 'checked-in') && new Date(r.checkin).getFullYear() === thisYear)
+        .reduce((sum, r) => sum + (r.price || 0), 0);
+
+    // Pending revenue (non-confirmed reservations)
+    const pendingRevenue = reservations
+        .filter(r => r.status === 'pending' || r.status === 'option')
         .reduce((sum, r) => sum + (r.price || 0), 0);
 
     const revEl = document.getElementById('stat-revenue');
     const yearEl = document.getElementById('stat-year-revenue');
+    const pendingEl = document.getElementById('stat-pending-revenue');
     if (revEl) revEl.textContent = '\u20AC' + monthRevenue.toLocaleString();
     if (yearEl) yearEl.textContent = '\u20AC' + yearRevenue.toLocaleString();
+    if (pendingEl) pendingEl.textContent = '\u20AC' + pendingRevenue.toLocaleString();
+
+    // Employee cost breakdown for viewed month
+    const empYear = empViewMonth.getFullYear();
+    const empMonth = empViewMonth.getMonth();
+    let totalEmpCost = 0;
+    const empCosts = [];
+    employees.forEach(emp => {
+        const stats = getEmployeeMonthStats(emp.id, empYear, empMonth);
+        const cost = calcEstimatedPay(emp, stats.daysWorked, stats.totalHours);
+        totalEmpCost += cost;
+        if (cost > 0 || stats.daysWorked > 0) {
+            empCosts.push({ emp, cost, stats });
+        }
+    });
+
+    const empCostEl = document.getElementById('stat-emp-cost');
+    if (empCostEl) empCostEl.textContent = '\u20AC' + Math.round(totalEmpCost).toLocaleString();
+
+    // Employee cost breakdown card
+    const breakdownEl = document.getElementById('empCostBreakdown');
+    if (breakdownEl) {
+        if (empCosts.length > 0) {
+            breakdownEl.style.display = '';
+            let rows = empCosts.map(({ emp, cost, stats }) => {
+                const detail = emp.payType === 'hourly'
+                    ? `${stats.totalHours % 1 === 0 ? stats.totalHours : stats.totalHours.toFixed(1)}h × \u20AC${emp.payRate.toFixed(2)}/h`
+                    : `${stats.daysWorked}g / 30 × \u20AC${emp.payRate.toFixed(0)}`;
+                return `<tr>
+                    <td style="padding:8px 12px;font-weight:500">${escapeHtml(emp.lastName)} ${escapeHtml(emp.firstName)}</td>
+                    <td style="padding:8px 12px;color:var(--text-secondary);font-size:13px">${detail}</td>
+                    <td style="padding:8px 12px;text-align:right;font-weight:600;font-variant-numeric:tabular-nums">\u20AC${Math.round(cost).toLocaleString()}</td>
+                </tr>`;
+            }).join('');
+            breakdownEl.innerHTML = `
+                <table style="width:100%;border-collapse:collapse">
+                    <thead><tr>
+                        <th style="padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--text-secondary);border-bottom:1px solid var(--border-light)">Dipendente</th>
+                        <th style="padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--text-secondary);border-bottom:1px solid var(--border-light)">Dettaglio</th>
+                        <th style="padding:10px 12px;text-align:right;font-size:11px;text-transform:uppercase;color:var(--text-secondary);border-bottom:1px solid var(--border-light)">Costo</th>
+                    </tr></thead>
+                    <tbody>${rows}
+                        <tr style="border-top:2px solid var(--border-light)">
+                            <td colspan="2" style="padding:10px 12px;font-weight:700">Totale</td>
+                            <td style="padding:10px 12px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums">\u20AC${Math.round(totalEmpCost).toLocaleString()}</td>
+                        </tr>
+                    </tbody>
+                </table>`;
+        } else {
+            breakdownEl.style.display = 'none';
+        }
+    }
 
     renderEmployees();
 }
