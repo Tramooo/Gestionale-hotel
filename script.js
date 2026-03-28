@@ -12,8 +12,7 @@ const API = {
     assignments: '/api/assignments',
     plannerConfig: '/api/planner-config',
     alloggiati: '/api/alloggiati',
-    employees: '/api/employees',
-    aruba: '/api/aruba'
+    employees: '/api/employees'
 };
 
 async function apiGet(url) {
@@ -101,10 +100,6 @@ let assignmentData = []; // current working copy of room assignments
 let employees = [];
 let workEntries = [];
 let empViewMonth = new Date(); // currently viewed month for employee pay
-let currentMgmtTab = 'employees';
-let arubaInvoiceTab = 'received';
-let arubaInvoicesReceived = [];
-let arubaInvoicesSent = [];
 
 // ---- i18n ----
 
@@ -510,31 +505,6 @@ const TRANSLATIONS = {
     'settings.empPinSaved': { en: 'PIN saved', it: 'PIN salvato' },
     'settings.empPinRemoved': { en: 'PIN removed', it: 'PIN rimosso' },
     'settings.empPinInvalid': { en: 'PIN must be 4 digits', it: 'Il PIN deve essere di 4 cifre' },
-    'inv.tab': { en: 'Invoices', it: 'Fatture' },
-    'inv.empTab': { en: 'Employees', it: 'Dipendenti' },
-    'inv.loginTitle': { en: 'Aruba Login', it: 'Accesso Aruba' },
-    'inv.loginDesc': { en: 'Enter your Aruba electronic invoicing credentials', it: 'Inserisci le credenziali di fatturazione elettronica Aruba' },
-    'inv.username': { en: 'Username', it: 'Username' },
-    'inv.password': { en: 'Password', it: 'Password' },
-    'inv.login': { en: 'Login', it: 'Accedi' },
-    'inv.logout': { en: 'Logout', it: 'Esci' },
-    'inv.loggedAs': { en: 'Logged in as', it: 'Connesso come' },
-    'inv.expiresIn': { en: 'expires in', it: 'scade tra' },
-    'inv.minutes': { en: 'min', it: 'min' },
-    'inv.received': { en: 'Received', it: 'Ricevute' },
-    'inv.sent': { en: 'Sent', it: 'Emesse' },
-    'inv.date': { en: 'Date', it: 'Data' },
-    'inv.number': { en: 'Number', it: 'Numero' },
-    'inv.supplier': { en: 'Supplier', it: 'Fornitore' },
-    'inv.client': { en: 'Client', it: 'Cliente' },
-    'inv.amount': { en: 'Amount', it: 'Importo' },
-    'inv.totalReceived': { en: 'Total Received', it: 'Totale Ricevute' },
-    'inv.totalSent': { en: 'Total Sent', it: 'Totale Emesse' },
-    'inv.noInvoices': { en: 'No invoices found', it: 'Nessuna fattura trovata' },
-    'inv.loginError': { en: 'Login failed. Check your credentials.', it: 'Accesso fallito. Controlla le credenziali.' },
-    'inv.sessionExpired': { en: 'Session expired. Please login again.', it: 'Sessione scaduta. Effettua nuovamente l\'accesso.' },
-    'inv.loading': { en: 'Loading invoices...', it: 'Caricamento fatture...' },
-    'inv.status': { en: 'Status', it: 'Stato' },
 };
 
 function t(key, replacements) {
@@ -4258,236 +4228,6 @@ function calcEstimatedPay(emp, daysWorked, totalHours) {
     return (emp.payRate / 30) * daysWorked;
 }
 
-// =============================================
-// ARUBA INVOICES
-// =============================================
-
-function switchMgmtTab(tab) {
-    currentMgmtTab = tab;
-    document.querySelectorAll('.mgmt-tab').forEach(b => b.classList.toggle('active', b.dataset.mgmtTab === tab));
-    document.getElementById('mgmt-tab-employees').style.display = tab === 'employees' ? '' : 'none';
-    document.getElementById('mgmt-tab-invoices').style.display = tab === 'invoices' ? '' : 'none';
-    if (tab === 'employees') renderEmployees();
-    if (tab === 'invoices') renderArubaInvoices();
-}
-
-function getArubaSession() {
-    const token = sessionStorage.getItem('aruba_token');
-    const expiresAt = parseInt(sessionStorage.getItem('aruba_expires_at') || '0');
-    if (!token || Date.now() > expiresAt) return null;
-    return {
-        token,
-        refreshToken: sessionStorage.getItem('aruba_refresh_token'),
-        username: sessionStorage.getItem('aruba_username'),
-        vatCode: sessionStorage.getItem('aruba_vatcode'),
-        expiresAt
-    };
-}
-
-function setArubaSession(data, username, vatCode) {
-    sessionStorage.setItem('aruba_token', data.access_token);
-    sessionStorage.setItem('aruba_refresh_token', data.refresh_token);
-    sessionStorage.setItem('aruba_expires_at', String(Date.now() + (data.expires_in * 1000)));
-    sessionStorage.setItem('aruba_username', username);
-    sessionStorage.setItem('aruba_vatcode', vatCode || '');
-}
-
-function clearArubaSession() {
-    sessionStorage.removeItem('aruba_token');
-    sessionStorage.removeItem('aruba_refresh_token');
-    sessionStorage.removeItem('aruba_expires_at');
-    sessionStorage.removeItem('aruba_username');
-    sessionStorage.removeItem('aruba_vatcode');
-}
-
-function isArubaLoggedIn() {
-    return getArubaSession() !== null;
-}
-
-async function refreshArubaToken() {
-    const refresh = sessionStorage.getItem('aruba_refresh_token');
-    const username = sessionStorage.getItem('aruba_username');
-    const vatCode = sessionStorage.getItem('aruba_vatcode');
-    if (!refresh) return false;
-    try {
-        const resp = await fetch(API.aruba + '?action=refresh', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ refresh_token: refresh })
-        });
-        if (!resp.ok) return false;
-        const data = await resp.json();
-        setArubaSession(data, username, vatCode);
-        return true;
-    } catch { return false; }
-}
-
-async function arubaLogin() {
-    const username = document.getElementById('arubaUsername').value.trim();
-    const password = document.getElementById('arubaPassword').value;
-    const vatCode = document.getElementById('arubaVatCode').value.trim();
-    if (!username || !password || !vatCode) return;
-    try {
-        const resp = await fetch(API.aruba + '?action=login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
-        });
-        if (!resp.ok) {
-            showToast(t('inv.loginError'), 'error');
-            return;
-        }
-        const data = await resp.json();
-        setArubaSession(data, username, vatCode);
-        renderArubaInvoices();
-    } catch (err) {
-        showToast(t('inv.loginError'), 'error');
-    }
-}
-
-function arubaLogout() {
-    clearArubaSession();
-    arubaInvoicesReceived = [];
-    arubaInvoicesSent = [];
-    renderArubaInvoices();
-}
-
-function renderArubaInvoices() {
-    const loginSection = document.getElementById('arubaLoginSection');
-    const invoicesSection = document.getElementById('arubaInvoicesSection');
-
-    if (isArubaLoggedIn()) {
-        loginSection.style.display = 'none';
-        invoicesSection.style.display = '';
-        updateArubaSessionBar();
-        if (arubaInvoicesReceived.length === 0 && arubaInvoicesSent.length === 0) {
-            fetchArubaInvoices();
-        } else {
-            renderArubaInvoiceTable();
-            renderArubaSummary();
-        }
-    } else {
-        loginSection.style.display = '';
-        invoicesSection.style.display = 'none';
-    }
-}
-
-function updateArubaSessionBar() {
-    const session = getArubaSession();
-    if (!session) return;
-    const minsLeft = Math.max(0, Math.round((session.expiresAt - Date.now()) / 60000));
-    document.getElementById('arubaSessionInfo').textContent =
-        `${t('inv.loggedAs')} ${session.username} — ${t('inv.expiresIn')} ${minsLeft} ${t('inv.minutes')}`;
-}
-
-async function fetchArubaInvoices() {
-    const session = getArubaSession();
-    if (!session) { renderArubaInvoices(); return; }
-
-    document.getElementById('arubaInvoiceTable').innerHTML = `<div class="empty-state small"><p>${t('inv.loading')}</p></div>`;
-
-    try {
-        const vat = encodeURIComponent(session.vatCode || '');
-        const [recvResp, sentResp] = await Promise.all([
-            fetch(`${API.aruba}?action=invoices-received&username=${encodeURIComponent(session.username)}&token=${encodeURIComponent(session.token)}&vatcode=${vat}`),
-            fetch(`${API.aruba}?action=invoices-sent&username=${encodeURIComponent(session.username)}&token=${encodeURIComponent(session.token)}&vatcode=${vat}`)
-        ]);
-
-        if (recvResp.status === 401 || sentResp.status === 401) {
-            const refreshed = await refreshArubaToken();
-            if (refreshed) { fetchArubaInvoices(); return; }
-            clearArubaSession();
-            showToast(t('inv.sessionExpired'), 'error');
-            renderArubaInvoices();
-            return;
-        }
-
-        const recvData = await recvResp.json();
-        const sentData = await sentResp.json();
-
-        console.log('Aruba received response:', JSON.stringify(recvData, null, 2));
-        console.log('Aruba sent response:', JSON.stringify(sentData, null, 2));
-
-        // Aruba returns { content: [...], totalElements, totalPages, ... }
-        // Each content item has sender/receiver objects and invoices[] array
-        // Flatten so each invoice line becomes a row
-        function flattenAruba(data, type) {
-            const items = Array.isArray(data) ? data : (data.content || []);
-            const flat = [];
-            items.forEach(item => {
-                const party = type === 'received'
-                    ? (item.sender && item.sender.description || '—')
-                    : (item.receiver && item.receiver.description || '—');
-                const subInvoices = item.invoices || [];
-                if (subInvoices.length === 0) {
-                    flat.push({ date: item.creationDate || '—', number: '—', party, amount: 0, status: '—', filename: item.filename });
-                } else {
-                    subInvoices.forEach(sub => {
-                        flat.push({ date: sub.invoiceDate || item.creationDate || '—', number: sub.number || '—', party, amount: 0, status: sub.status || '—', filename: item.filename });
-                    });
-                }
-            });
-            return flat;
-        }
-        arubaInvoicesReceived = flattenAruba(recvData, 'received');
-        arubaInvoicesSent = flattenAruba(sentData, 'sent');
-
-        renderArubaInvoiceTable();
-        renderArubaSummary();
-    } catch (err) {
-        console.error('Aruba fetch error:', err);
-        document.getElementById('arubaInvoiceTable').innerHTML = `<div class="empty-state small"><p>${err.message}</p></div>`;
-    }
-}
-
-function switchArubaTab(tab) {
-    arubaInvoiceTab = tab;
-    document.querySelectorAll('.aruba-inv-tab').forEach(b => b.classList.toggle('active', b.dataset.arubaTab === tab));
-    renderArubaInvoiceTable();
-}
-
-function renderArubaInvoiceTable() {
-    const invoices = arubaInvoiceTab === 'received' ? arubaInvoicesReceived : arubaInvoicesSent;
-    const isReceived = arubaInvoiceTab === 'received';
-    const container = document.getElementById('arubaInvoiceTable');
-
-    if (invoices.length === 0) {
-        container.innerHTML = `<div class="empty-state small"><p>${t('inv.noInvoices')}</p></div>`;
-        return;
-    }
-
-    const thirdCol = isReceived ? t('inv.supplier') : t('inv.client');
-
-    let html = `<table class="invoice-table">
-        <thead><tr>
-            <th>${t('inv.date')}</th>
-            <th>${t('inv.number')}</th>
-            <th>${thirdCol}</th>
-            <th>Stato</th>
-        </tr></thead><tbody>`;
-
-    invoices.forEach(inv => {
-        const formattedDate = inv.date !== '—' ? formatDateDisplay(inv.date) : '—';
-
-        html += `<tr>
-            <td>${formattedDate}</td>
-            <td>${escapeHtml(String(inv.number))}</td>
-            <td>${escapeHtml(String(inv.party))}</td>
-            <td>${escapeHtml(String(inv.status))}</td>
-        </tr>`;
-    });
-
-    html += '</tbody></table>';
-    container.innerHTML = html;
-}
-
-function renderArubaSummary() {
-    const recvEl = document.getElementById('aruba-total-received');
-    const sentEl = document.getElementById('aruba-total-sent');
-    if (recvEl) recvEl.textContent = arubaInvoicesReceived.length;
-    if (sentEl) sentEl.textContent = arubaInvoicesSent.length;
-}
-
 function renderManagement() {
     // Revenue stats
     const now = new Date();
@@ -4506,8 +4246,7 @@ function renderManagement() {
     if (revEl) revEl.textContent = '\u20AC' + monthRevenue.toLocaleString();
     if (yearEl) yearEl.textContent = '\u20AC' + yearRevenue.toLocaleString();
 
-    if (currentMgmtTab === 'employees') renderEmployees();
-    else renderArubaInvoices();
+    renderEmployees();
 }
 
 function renderEmployees() {
