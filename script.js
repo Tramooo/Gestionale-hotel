@@ -4329,9 +4329,15 @@ function renderEmployees() {
         bodyRows += `<tr>${row}</tr>`;
     });
 
+    // Build colgroup for proper column sizing
+    let colgroup = '<colgroup><col style="width:140px"><col style="width:40px">';
+    for (let d = 1; d <= dim; d++) colgroup += '<col>';
+    colgroup += '<col style="width:56px"><col style="width:64px"></colgroup>';
+
     grid.innerHTML = `
         <div class="emp-table-wrap">
             <table class="emp-table">
+                ${colgroup}
                 <thead><tr>${headerCells}</tr></thead>
                 <tbody>${bodyRows}</tbody>
             </table>

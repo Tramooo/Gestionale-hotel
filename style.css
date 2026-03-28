@@ -397,6 +397,28 @@ body {
     display: block;
 }
 
+#page-management.active {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - 64px);
+}
+
+#page-management .employees-grid {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+#page-management .emp-table-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+#page-management .emp-table {
+    flex: 1;
+}
+
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
@@ -3214,24 +3236,19 @@ select.cell-input option {
     z-index: 3;
     text-align: left;
     padding-left: 12px;
-    width: 140px;
-    min-width: 140px;
 }
 
 .emp-table thead th.emp-tbl-type {
-    width: 40px;
-    min-width: 40px;
 }
 
 .emp-table thead th.emp-tbl-day {
     padding: 4px 2px;
+    overflow: hidden;
 }
 
 .emp-table thead th.emp-tbl-total,
 .emp-table thead th.emp-tbl-pay {
-    width: 60px;
-    min-width: 60px;
-    padding: 6px 8px;
+    padding: 6px 4px;
 }
 
 .emp-tbl-dow {
