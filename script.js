@@ -4236,6 +4236,19 @@ function calcEstimatedPay(emp, daysWorked, totalHours) {
     return (emp.payRate / 30) * daysWorked;
 }
 
+function calcReservationRevenue(r) {
+    // Dynamically recalculate price based on presenze formula
+    const gc = r.guestCount || 0;
+    const ppn = r.pricePerPerson || 0;
+    const grat = r.gratuity || 0;
+    const nights = (r.checkin && r.checkout) ? nightsBetween(r.checkin, r.checkout) : 0;
+    if (ppn > 0 && gc > 0 && nights > 0) {
+        const free = grat > 0 ? Math.floor(gc / grat) : 0;
+        return Math.max(0, gc - free) * nights * ppn;
+    }
+    return r.price || 0;
+}
+
 function renderManagement() {
     const now = new Date();
     const thisMonth = now.getMonth();
@@ -4247,17 +4260,17 @@ function renderManagement() {
             const d = new Date(r.checkin);
             return (r.status === 'confirmed' || r.status === 'checked-in') && d.getMonth() === thisMonth && d.getFullYear() === thisYear;
         })
-        .reduce((sum, r) => sum + (r.price || 0), 0);
+        .reduce((sum, r) => sum + calcReservationRevenue(r), 0);
 
     // Annual revenue (confirmed/checked-in this year)
     const yearRevenue = reservations
         .filter(r => (r.status === 'confirmed' || r.status === 'checked-in') && new Date(r.checkin).getFullYear() === thisYear)
-        .reduce((sum, r) => sum + (r.price || 0), 0);
+        .reduce((sum, r) => sum + calcReservationRevenue(r), 0);
 
     // Pending revenue (non-confirmed reservations)
     const pendingRevenue = reservations
-        .filter(r => r.status === 'pending' || r.status === 'option')
-        .reduce((sum, r) => sum + (r.price || 0), 0);
+        .filter(r => r.status === 'pending')
+        .reduce((sum, r) => sum + calcReservationRevenue(r), 0);
 
     const revEl = document.getElementById('stat-revenue');
     const yearEl = document.getElementById('stat-year-revenue');
@@ -4266,32 +4279,53 @@ function renderManagement() {
     if (yearEl) yearEl.textContent = '\u20AC' + yearRevenue.toLocaleString();
     if (pendingEl) pendingEl.textContent = '\u20AC' + pendingRevenue.toLocaleString();
 
-    // Employee cost breakdown for viewed month
-    const empYear = empViewMonth.getFullYear();
-    const empMonth = empViewMonth.getMonth();
-    let totalEmpCost = 0;
-    const empCosts = [];
+    // Employee total cost (all time from work entries)
+    let totalEmpCostAll = 0;
     employees.forEach(emp => {
-        const stats = getEmployeeMonthStats(emp.id, empYear, empMonth);
-        const cost = calcEstimatedPay(emp, stats.daysWorked, stats.totalHours);
-        totalEmpCost += cost;
-        if (cost > 0 || stats.daysWorked > 0) {
-            empCosts.push({ emp, cost, stats });
+        const empEntries = workEntries.filter(w => w.employeeId === emp.id);
+        if (emp.payType === 'hourly') {
+            totalEmpCostAll += empEntries.reduce((sum, w) => sum + (w.hours || 0), 0) * emp.payRate;
+        } else {
+            // Group entries by month, cost per month = (days/30) * monthlyRate
+            const months = {};
+            empEntries.forEach(w => {
+                const m = w.workDate ? w.workDate.substring(0, 7) : null;
+                if (m) months[m] = (months[m] || 0) + 1;
+            });
+            Object.values(months).forEach(days => {
+                totalEmpCostAll += (days / 30) * emp.payRate;
+            });
         }
     });
 
     const empCostEl = document.getElementById('stat-emp-cost');
-    if (empCostEl) empCostEl.textContent = '\u20AC' + Math.round(totalEmpCost).toLocaleString();
+    if (empCostEl) empCostEl.textContent = '\u20AC' + Math.round(totalEmpCostAll).toLocaleString();
 
-    // Employee cost breakdown card
+    // Employee cost breakdown for currently viewed month only
+    const empYear = empViewMonth.getFullYear();
+    const empMonth = empViewMonth.getMonth();
+
     const breakdownEl = document.getElementById('empCostBreakdown');
     if (breakdownEl) {
+        const empCosts = [];
+        let totalMonthCost = 0;
+        employees.forEach(emp => {
+            const stats = getEmployeeMonthStats(emp.id, empYear, empMonth);
+            const cost = calcEstimatedPay(emp, stats.daysWorked, stats.totalHours);
+            totalMonthCost += cost;
+            if (cost > 0 || stats.daysWorked > 0) {
+                empCosts.push({ emp, cost, stats });
+            }
+        });
+
         if (empCosts.length > 0) {
             breakdownEl.style.display = '';
+            const monthNames = t('months.full');
+            const monthLabel = `${monthNames[empMonth]} ${empYear}`;
             let rows = empCosts.map(({ emp, cost, stats }) => {
                 const detail = emp.payType === 'hourly'
-                    ? `${stats.totalHours % 1 === 0 ? stats.totalHours : stats.totalHours.toFixed(1)}h × \u20AC${emp.payRate.toFixed(2)}/h`
-                    : `${stats.daysWorked}g / 30 × \u20AC${emp.payRate.toFixed(0)}`;
+                    ? `${stats.totalHours % 1 === 0 ? stats.totalHours : stats.totalHours.toFixed(1)}h \u00D7 \u20AC${emp.payRate.toFixed(2)}/h`
+                    : `${stats.daysWorked}g / 30 \u00D7 \u20AC${emp.payRate.toFixed(0)}`;
                 return `<tr>
                     <td style="padding:8px 12px;font-weight:500">${escapeHtml(emp.lastName)} ${escapeHtml(emp.firstName)}</td>
                     <td style="padding:8px 12px;color:var(--text-secondary);font-size:13px">${detail}</td>
@@ -4299,6 +4333,7 @@ function renderManagement() {
                 </tr>`;
             }).join('');
             breakdownEl.innerHTML = `
+                <div style="padding:12px 12px 4px;font-weight:600;font-size:14px">Costo dipendenti — ${monthLabel}</div>
                 <table style="width:100%;border-collapse:collapse">
                     <thead><tr>
                         <th style="padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--text-secondary);border-bottom:1px solid var(--border-light)">Dipendente</th>
@@ -4307,8 +4342,8 @@ function renderManagement() {
                     </tr></thead>
                     <tbody>${rows}
                         <tr style="border-top:2px solid var(--border-light)">
-                            <td colspan="2" style="padding:10px 12px;font-weight:700">Totale</td>
-                            <td style="padding:10px 12px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums">\u20AC${Math.round(totalEmpCost).toLocaleString()}</td>
+                            <td colspan="2" style="padding:10px 12px;font-weight:700">Totale mese</td>
+                            <td style="padding:10px 12px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums">\u20AC${Math.round(totalMonthCost).toLocaleString()}</td>
                         </tr>
                     </tbody>
                 </table>`;
