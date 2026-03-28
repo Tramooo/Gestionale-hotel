@@ -201,7 +201,7 @@ const TRANSLATIONS = {
     'res.cancelled': { en: 'Cancelled', it: 'Cancellata' },
     'res.expirationDate': { en: 'Expiration Date', it: 'Data Scadenza' },
     'res.totalPrice': { en: 'Total Price', it: 'Prezzo Totale' },
-    'res.pricePerPerson': { en: 'Price/Person', it: 'Prezzo/Persona' },
+    'res.pricePerPerson': { en: 'Price/Person (\u20AC)', it: 'Prezzo/Persona (\u20AC)' },
     'res.gratuity': { en: 'Gratuity', it: 'Gratuità' },
     'res.guests': { en: 'Guests', it: 'Ospiti' },
     'res.freeGuests': { en: 'free guests', it: 'ospiti gratuiti' },
