@@ -4399,6 +4399,9 @@ async function fetchArubaInvoices() {
         const recvData = await recvResp.json();
         const sentData = await sentResp.json();
 
+        console.log('Aruba received response:', JSON.stringify(recvData, null, 2));
+        console.log('Aruba sent response:', JSON.stringify(sentData, null, 2));
+
         // Aruba returns { content: [...], totalElements, totalPages, ... }
         // Each content item has sender/receiver objects and invoices[] array
         // Flatten so each invoice line becomes a row
