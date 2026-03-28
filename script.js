@@ -473,6 +473,13 @@ const TRANSLATIONS = {
     'emp.enterHours': { en: 'Enter hours worked (0 to remove):', it: 'Inserisci ore lavorate (0 per rimuovere):' },
     'emp.calHintHourly': { en: 'Click a day to enter hours worked. Click again to edit or enter 0 to remove.', it: 'Clicca un giorno per inserire le ore. Clicca di nuovo per modificare o inserisci 0 per rimuovere.' },
     'emp.calHintMonthly': { en: 'Click a day to mark as worked. Click again to unmark.', it: 'Clicca un giorno per segnarlo come lavorato. Clicca di nuovo per rimuovere.' },
+    'emp.startTime': { en: 'Start', it: 'Inizio' },
+    'emp.endTime': { en: 'End', it: 'Fine' },
+    'emp.totalCol': { en: 'Total', it: 'Totale' },
+    'emp.save': { en: 'Save', it: 'Salva' },
+    'emp.delete': { en: 'Delete', it: 'Elimina' },
+    'emp.employee': { en: 'Employee', it: 'Dipendente' },
+    'emp.type': { en: 'Type', it: 'Tipo' },
     'toast.empSaved': { en: 'Employee saved', it: 'Dipendente salvato' },
     'toast.empSaveFail': { en: 'Failed to save employee', it: 'Salvataggio dipendente fallito' },
     'toast.empDeleted': { en: 'Employee deleted', it: 'Dipendente eliminato' },
@@ -4262,37 +4269,212 @@ function renderEmployees() {
         return;
     }
 
-    grid.innerHTML = filtered.map(emp => {
+    const dim = getDaysInMonth(year, month);
+    const dayHeaders = t('months.dayHeaders') || ['Lu','Ma','Me','Gi','Ve','Sa','Do'];
+    const todayStr = formatDate(new Date());
+    const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
+
+    // Build header row
+    let headerCells = `<th class="emp-tbl-sticky">${t('emp.employee')}</th><th class="emp-tbl-type">${t('emp.type')}</th>`;
+    for (let d = 1; d <= dim; d++) {
+        const dateStr = `${monthStr}-${String(d).padStart(2, '0')}`;
+        const dow = (new Date(year, month, d).getDay() + 6) % 7; // Mon=0
+        const isWeekend = dow >= 5;
+        const isToday = dateStr === todayStr;
+        let cls = 'emp-tbl-day';
+        if (isWeekend) cls += ' emp-tbl-weekend';
+        if (isToday) cls += ' emp-tbl-today';
+        headerCells += `<th class="${cls}"><span class="emp-tbl-dow">${dayHeaders[dow]}</span><span class="emp-tbl-dnum">${d}</span></th>`;
+    }
+    headerCells += `<th class="emp-tbl-total">${t('emp.totalCol')}</th><th class="emp-tbl-pay">${t('emp.estimatedPay')}</th>`;
+
+    // Build body rows
+    let bodyRows = '';
+    filtered.forEach(emp => {
         const stats = getEmployeeMonthStats(emp.id, year, month);
         const estimated = calcEstimatedPay(emp, stats.daysWorked, stats.totalHours);
-        const initials = getInitials(emp.firstName + ' ' + emp.lastName);
+        const entryMap = {};
+        stats.entries.forEach(w => { entryMap[w.workDate] = w; });
 
-        return `
-            <div class="employee-card" onclick="openEmployeeDetail('${emp.id}')">
-                <div class="employee-card-header">
-                    <div class="avatar">${initials}</div>
-                    <div class="emp-info">
-                        <div class="emp-name">${escapeHtml(emp.lastName)} ${escapeHtml(emp.firstName)}</div>
-                        <div class="emp-role">${escapeHtml(emp.role || '—')} · ${emp.payType === 'hourly' ? t('emp.hourly') : t('emp.monthly')}</div>
-                    </div>
-                </div>
-                <div class="employee-card-stats">
-                    <div class="emp-stat">
-                        <span class="emp-stat-value">${stats.daysWorked}</span>
-                        <span class="emp-stat-label">${t('emp.daysWorked')}</span>
-                    </div>
-                    <div class="emp-stat">
-                        <span class="emp-stat-value">${stats.totalHours.toFixed(1)}</span>
-                        <span class="emp-stat-label">${t('emp.hoursWorked')}</span>
-                    </div>
-                    <div class="emp-stat">
-                        <span class="emp-stat-value">&euro;${estimated.toFixed(0)}</span>
-                        <span class="emp-stat-label">${t('emp.estimatedPay')}</span>
-                    </div>
-                </div>
+        const typeLabel = emp.payType === 'hourly' ? '\u20AC/h' : '\u20AC/m';
+        let row = `<td class="emp-tbl-sticky emp-tbl-name" onclick="openEditEmployee('${emp.id}')">${escapeHtml(emp.lastName)} ${escapeHtml(emp.firstName)}</td>`;
+        row += `<td class="emp-tbl-type">${typeLabel}</td>`;
+
+        for (let d = 1; d <= dim; d++) {
+            const dateStr = `${monthStr}-${String(d).padStart(2, '0')}`;
+            const entry = entryMap[dateStr];
+            const dow = (new Date(year, month, d).getDay() + 6) % 7;
+            const isWeekend = dow >= 5;
+            const isToday = dateStr === todayStr;
+            let cls = 'emp-tbl-cell';
+            if (isWeekend) cls += ' emp-tbl-weekend';
+            if (isToday) cls += ' emp-tbl-today';
+            if (entry) cls += ' emp-tbl-worked';
+
+            if (emp.payType === 'hourly') {
+                const display = entry ? (entry.hours % 1 === 0 ? entry.hours.toString() : entry.hours.toFixed(1)) : '';
+                row += `<td class="${cls}" data-emp="${emp.id}" data-date="${dateStr}" onclick="openTimePopover('${emp.id}','${dateStr}',this)">${display}</td>`;
+            } else {
+                const display = entry ? '\u2713' : '';
+                row += `<td class="${cls}" data-emp="${emp.id}" data-date="${dateStr}" onclick="empTableToggle('${emp.id}','${dateStr}')">${display}</td>`;
+            }
+        }
+
+        const totalDisplay = emp.payType === 'hourly'
+            ? (stats.totalHours % 1 === 0 ? stats.totalHours + 'h' : stats.totalHours.toFixed(1) + 'h')
+            : stats.daysWorked + 'g';
+        row += `<td class="emp-tbl-total">${totalDisplay}</td>`;
+        row += `<td class="emp-tbl-pay">\u20AC${estimated.toFixed(0)}</td>`;
+
+        bodyRows += `<tr>${row}</tr>`;
+    });
+
+    grid.innerHTML = `
+        <div class="emp-table-wrap">
+            <table class="emp-table">
+                <thead><tr>${headerCells}</tr></thead>
+                <tbody>${bodyRows}</tbody>
+            </table>
+        </div>
+    `;
+}
+
+// Toggle day for monthly employees in table view
+async function empTableToggle(empId, dateStr) {
+    const existing = workEntries.find(w => w.employeeId === empId && w.workDate === dateStr);
+    if (existing) {
+        try {
+            await fetch(`${API.employees}?id=${existing.id}&type=work`, { method: 'DELETE' });
+            workEntries = workEntries.filter(w => w.id !== existing.id);
+        } catch (err) { console.error(err); }
+    } else {
+        const data = { id: generateId(), employeeId: empId, workDate: dateStr, hours: 8, notes: '' };
+        try {
+            await apiPost(API.employees + '?type=work', data);
+            workEntries.push(data);
+        } catch (err) { console.error(err); }
+    }
+    renderEmployees();
+}
+
+// Time entry popover for hourly employees
+function openTimePopover(empId, dateStr, cellEl) {
+    // Remove any existing popover
+    closeTimePopover();
+
+    const existing = workEntries.find(w => w.employeeId === empId && w.workDate === dateStr);
+    const startVal = (existing && existing.startTime) || '08:00';
+    const endVal = (existing && existing.endTime) || '16:00';
+
+    const pop = document.createElement('div');
+    pop.id = 'empTimePopover';
+    pop.className = 'emp-time-popover';
+    pop.innerHTML = `
+        <div class="emp-time-popover-inner">
+            <div class="emp-time-row">
+                <label>${t('emp.startTime')}</label>
+                <input type="time" id="empPopStart" value="${startVal}">
             </div>
-        `;
-    }).join('');
+            <div class="emp-time-row">
+                <label>${t('emp.endTime')}</label>
+                <input type="time" id="empPopEnd" value="${endVal}">
+            </div>
+            <div class="emp-time-calc" id="empPopCalc"></div>
+            <div class="emp-time-actions">
+                <button class="btn btn-primary btn-sm" onclick="saveTimePopover('${empId}','${dateStr}')">${t('emp.save')}</button>
+                ${existing ? `<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteTimePopover('${empId}','${dateStr}')">${t('emp.delete')}</button>` : ''}
+            </div>
+        </div>
+    `;
+    document.body.appendChild(pop);
+
+    // Position near cell
+    const rect = cellEl.getBoundingClientRect();
+    const popW = 200, popH = 180;
+    let left = rect.left + rect.width / 2 - popW / 2;
+    let top = rect.bottom + 6;
+    if (left < 8) left = 8;
+    if (left + popW > window.innerWidth - 8) left = window.innerWidth - popW - 8;
+    if (top + popH > window.innerHeight - 8) top = rect.top - popH - 6;
+    pop.style.left = left + 'px';
+    pop.style.top = top + 'px';
+
+    // Live calc
+    function updateCalc() {
+        const s = document.getElementById('empPopStart').value;
+        const e = document.getElementById('empPopEnd').value;
+        const calc = document.getElementById('empPopCalc');
+        if (s && e) {
+            const hours = calcHoursFromTimes(s, e);
+            calc.textContent = hours.toFixed(1) + 'h';
+        } else {
+            calc.textContent = '';
+        }
+    }
+    document.getElementById('empPopStart').addEventListener('input', updateCalc);
+    document.getElementById('empPopEnd').addEventListener('input', updateCalc);
+    updateCalc();
+
+    // Close on outside click (deferred)
+    setTimeout(() => {
+        document.addEventListener('mousedown', _timePopoverOutsideClick);
+    }, 10);
+}
+
+function _timePopoverOutsideClick(e) {
+    const pop = document.getElementById('empTimePopover');
+    if (pop && !pop.contains(e.target)) {
+        closeTimePopover();
+    }
+}
+
+function closeTimePopover() {
+    const pop = document.getElementById('empTimePopover');
+    if (pop) pop.remove();
+    document.removeEventListener('mousedown', _timePopoverOutsideClick);
+}
+
+function calcHoursFromTimes(start, end) {
+    const [sh, sm] = start.split(':').map(Number);
+    const [eh, em] = end.split(':').map(Number);
+    let mins = (eh * 60 + em) - (sh * 60 + sm);
+    if (mins < 0) mins += 24 * 60; // overnight
+    return mins / 60;
+}
+
+async function saveTimePopover(empId, dateStr) {
+    const startTime = document.getElementById('empPopStart').value;
+    const endTime = document.getElementById('empPopEnd').value;
+    if (!startTime || !endTime) return;
+    const hours = calcHoursFromTimes(startTime, endTime);
+
+    const existing = workEntries.find(w => w.employeeId === empId && w.workDate === dateStr);
+    if (existing) {
+        existing.hours = hours;
+        existing.startTime = startTime;
+        existing.endTime = endTime;
+        try { await apiPut(API.employees + '?type=work', existing); } catch (err) { console.error(err); }
+    } else {
+        const data = { id: generateId(), employeeId: empId, workDate: dateStr, hours, notes: '', startTime, endTime };
+        try {
+            await apiPost(API.employees + '?type=work', data);
+            workEntries.push(data);
+        } catch (err) { console.error(err); }
+    }
+    closeTimePopover();
+    renderEmployees();
+}
+
+async function deleteTimePopover(empId, dateStr) {
+    const existing = workEntries.find(w => w.employeeId === empId && w.workDate === dateStr);
+    if (existing) {
+        try {
+            await fetch(`${API.employees}?id=${existing.id}&type=work`, { method: 'DELETE' });
+            workEntries = workEntries.filter(w => w.id !== existing.id);
+        } catch (err) { console.error(err); }
+    }
+    closeTimePopover();
+    renderEmployees();
 }
 
 function openNewEmployeeModal() {
