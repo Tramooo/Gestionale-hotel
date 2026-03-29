@@ -119,7 +119,7 @@ const TRANSLATIONS = {
     'dash.subtitle': { en: 'Overview of your hotel operations', it: 'Panoramica delle operazioni dell\'hotel' },
     'dash.newGroup': { en: 'New Group', it: 'Nuovo Gruppo' },
     'dash.activeGroups': { en: 'Active Groups', it: 'Gruppi Attivi' },
-    'dash.totalGuests': { en: 'Total Presences', it: 'Presenze Totali' },
+    'dash.totalGuests': { en: "Today's Guests", it: 'Ospiti Oggi' },
     'dash.roomsOccupied': { en: 'Rooms Occupied', it: 'Camere Occupate' },
     'dash.thisMonth': { en: 'This Month', it: 'Questo Mese' },
     'dash.thisYear': { en: 'This Year', it: 'Quest\'Anno' },
@@ -770,13 +770,13 @@ function renderDashboard() {
     computeRoomStatuses();
     // Stats
     const activeGroups = reservations.filter(r => r.status === 'confirmed' || r.status === 'checked-in');
-    const totalGuests = activeGroups.reduce((sum, r) => {
-        const nights = (r.checkin && r.checkout) ? nightsBetween(r.checkin, r.checkout) : 0;
-        return sum + (r.guestCount || 0) * nights;
-    }, 0);
+    const todayStr = formatDate(new Date());
+    const todayGuests = activeGroups
+        .filter(r => r.checkin <= todayStr && r.checkout > todayStr)
+        .reduce((sum, r) => sum + (r.guestCount || 0), 0);
     const occupiedRooms = rooms.filter(r => r.status === 'occupied').length;
     document.getElementById('stat-active-groups').textContent = activeGroups.length;
-    document.getElementById('stat-total-guests').textContent = totalGuests;
+    document.getElementById('stat-total-guests').textContent = todayGuests;
     document.getElementById('stat-rooms-occupied').textContent = occupiedRooms + '/' + rooms.length;
 
     // Occupancy ring
@@ -4281,6 +4281,16 @@ function renderManagement() {
     if (revEl) revEl.textContent = '\u20AC' + monthRevenue.toLocaleString();
     if (yearEl) yearEl.textContent = '\u20AC' + yearRevenue.toLocaleString();
     if (pendingEl) pendingEl.textContent = '\u20AC' + pendingRevenue.toLocaleString();
+
+    // Total presenze (confirmed/checked-in, ospiti × notti)
+    const totalPresenze = reservations
+        .filter(r => r.status === 'confirmed' || r.status === 'checked-in')
+        .reduce((sum, r) => {
+            const nights = (r.checkin && r.checkout) ? nightsBetween(r.checkin, r.checkout) : 0;
+            return sum + (r.guestCount || 0) * nights;
+        }, 0);
+    const presenzeEl = document.getElementById('stat-total-presenze');
+    if (presenzeEl) presenzeEl.textContent = totalPresenze.toLocaleString();
 
     // Employee total cost (all time from work entries)
     let totalEmpCostAll = 0;
