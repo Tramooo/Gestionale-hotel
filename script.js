@@ -932,10 +932,31 @@ function filterReservations() {
 
 // ---- New / Edit Reservation ----
 
-function populateRoomChecklist(selectedRoomIds) {
+function getOccupiedRoomMap(excludeResId) {
+    // Build a map of roomId -> { groupName, checkin, checkout } for all confirmed/pending reservations
+    const checkin = document.getElementById('resCheckin').value;
+    const checkout = document.getElementById('resCheckout').value;
+    const occupied = {}; // roomId -> groupName
+    if (!checkin || !checkout) return occupied;
+    reservations.forEach(res => {
+        if (res.id === excludeResId) return;
+        if (res.status === 'cancelled') return;
+        // Check date overlap: resA.checkin < resB.checkout && resA.checkout > resB.checkin
+        if (res.checkin < checkout && res.checkout > checkin) {
+            const rIds = res.roomIds && res.roomIds.length > 0
+                ? res.roomIds
+                : guests.filter(g => g.reservationId === res.id && g.roomId).map(g => g.roomId);
+            rIds.forEach(id => { occupied[id] = res.groupName; });
+        }
+    });
+    return occupied;
+}
+
+function populateRoomChecklist(selectedRoomIds, excludeResId) {
     const checklist = document.getElementById('resRoomChecklist');
     const sortedRooms = [...rooms].sort((a, b) => a.floor !== b.floor ? a.floor - b.floor : parseInt(a.number) - parseInt(b.number));
     const selected = new Set(selectedRoomIds || []);
+    const occupiedMap = getOccupiedRoomMap(excludeResId);
 
     let html = '';
     let currentFloor = null;
@@ -943,18 +964,32 @@ function populateRoomChecklist(selectedRoomIds) {
         if (r.floor !== currentFloor) {
             currentFloor = r.floor;
             const floorRooms = sortedRooms.filter(rm => rm.floor === r.floor);
-            const allChecked = floorRooms.every(rm => selected.has(rm.id));
+            const availableFloorRooms = floorRooms.filter(rm => !occupiedMap[rm.id]);
+            const allChecked = availableFloorRooms.length > 0 && availableFloorRooms.every(rm => selected.has(rm.id));
             html += `<label class="room-check-floor-header"><input type="checkbox" data-floor="${r.floor}" ${allChecked ? 'checked' : ''} onchange="toggleFloorCheckboxes(this)"> ${t('rooms.floor')} ${r.floor}</label>`;
         }
-        const checked = selected.has(r.id);
-        html += `
-            <label class="room-check-item${checked ? ' checked' : ''}">
-                <input type="checkbox" value="${r.id}" ${checked ? 'checked' : ''} onchange="onRoomCheckChange(this)">
-                <div class="room-check-info">
-                    <span class="room-check-number">${r.number}</span>
-                    <span class="room-check-type">${r.type} &middot; ${r.capacity} ${t('rooms.pax')}</span>
-                </div>
-            </label>`;
+        const isOccupied = !!occupiedMap[r.id];
+        const checked = selected.has(r.id) && !isOccupied;
+        if (isOccupied) {
+            html += `
+                <label class="room-check-item occupied" title="${escapeHtml(occupiedMap[r.id])}">
+                    <input type="checkbox" value="${r.id}" disabled>
+                    <div class="room-check-info">
+                        <span class="room-check-number">${r.number}</span>
+                        <span class="room-check-type">${r.type} &middot; ${r.capacity} ${t('rooms.pax')}</span>
+                    </div>
+                    <span class="room-check-occupied">${escapeHtml(occupiedMap[r.id])}</span>
+                </label>`;
+        } else {
+            html += `
+                <label class="room-check-item${checked ? ' checked' : ''}">
+                    <input type="checkbox" value="${r.id}" ${checked ? 'checked' : ''} onchange="onRoomCheckChange(this)">
+                    <div class="room-check-info">
+                        <span class="room-check-number">${r.number}</span>
+                        <span class="room-check-type">${r.type} &middot; ${r.capacity} ${t('rooms.pax')}</span>
+                    </div>
+                </label>`;
+        }
     });
 
     if (sortedRooms.length === 0) {
@@ -962,13 +997,14 @@ function populateRoomChecklist(selectedRoomIds) {
     }
 
     checklist.innerHTML = html;
-    document.getElementById('resRoomSelectAll').checked = selected.size > 0 && selected.size === rooms.length;
+    const availableChecks = [...checklist.querySelectorAll('.room-check-item:not(.occupied) input[type="checkbox"]')];
+    document.getElementById('resRoomSelectAll').checked = availableChecks.length > 0 && availableChecks.every(c => c.checked);
     updateRoomCount();
 }
 
 function toggleAllRoomCheckboxes(el) {
     const checklist = document.getElementById('resRoomChecklist');
-    checklist.querySelectorAll('input[type="checkbox"]').forEach(c => {
+    checklist.querySelectorAll('input[type="checkbox"]:not(:disabled)').forEach(c => {
         c.checked = el.checked;
         const item = c.closest('.room-check-item');
         if (item) item.classList.toggle('checked', el.checked);
@@ -989,6 +1025,7 @@ function toggleFloorCheckboxes(el) {
     const roomItems = checklist.querySelectorAll('.room-check-item');
     roomItems.forEach(item => {
         const cb = item.querySelector('input[type="checkbox"]');
+        if (cb.disabled) return;
         const roomId = cb.value;
         const room = rooms.find(r => r.id === roomId);
         if (room && String(room.floor) === floor) {
@@ -1111,7 +1148,13 @@ function selectDatePickerDay(btn, dateStr) {
     document.getElementById(targetId).value = dateStr;
     setDatePickerDisplay(wrapper, dateStr);
     wrapper.querySelector('.mini-cal-dropdown').classList.remove('open');
-    if (targetId === 'resCheckin' || targetId === 'resCheckout') calcReservationPrice();
+    if (targetId === 'resCheckin' || targetId === 'resCheckout') {
+        calcReservationPrice();
+        // Refresh room checklist to update availability for new dates
+        const resId = document.getElementById('resId').value || null;
+        const selectedRooms = getSelectedRoomIds();
+        populateRoomChecklist(selectedRooms, resId);
+    }
 }
 
 function setDatePickerDisplay(wrapper, dateStr) {
@@ -1140,7 +1183,7 @@ function openNewReservationModal() {
     document.getElementById('resGratuity').value = '';
     document.getElementById('resTotalPrice').textContent = '\u20AC0';
     document.getElementById('resPrice').value = 0;
-    populateRoomChecklist([]);
+    populateRoomChecklist([], null);
     toggleExpirationField();
     openModal('reservationModal');
 }
@@ -1165,7 +1208,7 @@ function openEditReservation(id) {
 
     // Get rooms assigned to this reservation
     const assignedIds = r.roomIds || getAssignedRoomIds(r.id);
-    populateRoomChecklist(assignedIds);
+    populateRoomChecklist(assignedIds, r.id);
 
     closeModal('reservationDetailModal');
     openModal('reservationModal');
@@ -1731,7 +1774,19 @@ function openAssignRooms(reservationId) {
     const resGuests = guests.filter(g => g.reservationId === reservationId);
     const assignedRoomIds = resGuests.map(g => g.roomId).filter(Boolean);
 
-    const availableRooms = rooms.filter(rm => rm.status === 'available' || assignedRoomIds.includes(rm.id));
+    // Build map of rooms occupied by other overlapping reservations
+    const occupiedByOther = {};
+    reservations.forEach(res => {
+        if (res.id === reservationId || res.status === 'cancelled') return;
+        if (res.checkin < r.checkout && res.checkout > r.checkin) {
+            const rIds = res.roomIds && res.roomIds.length > 0
+                ? res.roomIds
+                : guests.filter(g => g.reservationId === res.id && g.roomId).map(g => g.roomId);
+            rIds.forEach(id => { occupiedByOther[id] = res.groupName; });
+        }
+    });
+
+    const sortedRooms = [...rooms].sort((a, b) => a.floor !== b.floor ? a.floor - b.floor : parseInt(a.number) - parseInt(b.number));
 
     const body = document.getElementById('assignRoomsBody');
     body.innerHTML = `
@@ -1739,8 +1794,20 @@ function openAssignRooms(reservationId) {
             ${t('assign.selectRooms')} <strong>${escapeHtml(r.groupName)}</strong> (${r.roomCount} ${t('assign.needed')})
         </p>
         <div id="assignRoomsList">
-            ${availableRooms.map(rm => {
+            ${sortedRooms.map(rm => {
                 const isSelected = assignedRoomIds.includes(rm.id);
+                const occupier = occupiedByOther[rm.id];
+                if (occupier) {
+                    return `
+                        <div class="assign-room-item" style="opacity:0.5">
+                            <div class="assign-room-info">
+                                <span class="assign-room-number">${t('rooms.room')} ${rm.number}</span>
+                                <span class="assign-room-type">${rm.type} &middot; ${rm.capacity} ${t('rooms.pax')}</span>
+                            </div>
+                            <span class="room-check-occupied">${escapeHtml(occupier)}</span>
+                        </div>
+                    `;
+                }
                 return `
                     <div class="assign-room-item">
                         <div class="assign-room-info">

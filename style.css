@@ -2193,6 +2193,32 @@ select.cell-input option {
     background: rgba(0, 122, 255, 0.08);
 }
 
+.room-check-item.occupied {
+    opacity: 0.5;
+    cursor: not-allowed;
+    position: relative;
+}
+
+.room-check-item.occupied:hover {
+    background: transparent;
+}
+
+.room-check-item.occupied input[type="checkbox"] {
+    cursor: not-allowed;
+}
+
+.room-check-occupied {
+    margin-left: auto;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--red);
+    background: var(--red-light);
+    padding: 2px 8px;
+    border-radius: 100px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
 .room-check-item input[type="checkbox"] {
     width: 16px;
     height: 16px;
