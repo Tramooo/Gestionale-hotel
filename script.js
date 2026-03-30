@@ -2265,7 +2265,7 @@ function printAssignments(mode) {
                     const a = assignMap[rm.id];
                     const hasData = a && a.cellValues && Object.values(a.cellValues).some(v => v !== '' && v !== 0 && v != null);
                     if (hasData && rm.type) {
-                        const typeKey = 'roomType.' + rm.type;
+                        const typeKey = 'roomType.' + rm.type.toLowerCase();
                         const translated = t(typeKey);
                         typeLabel = translated !== typeKey ? translated : rm.type;
                     }
