@@ -2262,7 +2262,9 @@ function printAssignments(mode) {
             for (const rm of floors[fk]) {
                 if (isCleaning) {
                     let typeLabel = '';
-                    if (rm.type) {
+                    const a = assignMap[rm.id];
+                    const hasData = a && a.cellValues && Object.values(a.cellValues).some(v => v !== '' && v !== 0 && v != null);
+                    if (hasData && rm.type) {
                         const typeKey = 'roomType.' + rm.type;
                         const translated = t(typeKey);
                         typeLabel = translated !== typeKey ? translated : rm.type;
