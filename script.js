@@ -2261,17 +2261,17 @@ function printAssignments(mode) {
             rows += `<tr><td colspan="${colCount}" style="background:#f0f0f0;font-weight:700;padding:6px 10px">${t('rooms.floor')} ${fk}</td></tr>`;
             for (const rm of floors[fk]) {
                 if (isCleaning) {
-                    let typeLabel = '';
                     const a = assignMap[rm.id];
-                    const hasData = a && a.cellValues && Object.values(a.cellValues).some(v => v !== '' && v !== 0 && v != null);
-                    if (hasData && rm.type) {
-                        const typeKey = 'roomType.' + rm.type.toLowerCase();
-                        const translated = t(typeKey);
-                        typeLabel = translated !== typeKey ? translated : rm.type;
+                    const vals = a ? (a.cellValues || {}) : {};
+                    const hasData = Object.values(vals).some(v => v !== '' && v !== 0 && v != null);
+                    // Use the first planner column value (usually "Utilizzo"/usage) as the type
+                    let typeLabel = '';
+                    if (hasData && plannerColumns.length > 0) {
+                        typeLabel = vals[plannerColumns[0].id] || '';
                     }
                     rows += `<tr>
                         <td style="padding:5px 10px;font-weight:600;border:1px solid #ddd">${rm.number}</td>
-                        <td style="padding:5px 10px;border:1px solid #ddd">${typeLabel}</td>
+                        <td style="padding:5px 10px;border:1px solid #ddd">${escapeHtml(String(typeLabel))}</td>
                         <td style="padding:5px 10px;border:1px solid #ddd;min-width:200px"></td>
                     </tr>`;
                 } else {
