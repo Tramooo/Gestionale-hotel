@@ -2261,8 +2261,12 @@ function printAssignments(mode) {
             rows += `<tr><td colspan="${colCount}" style="background:#f0f0f0;font-weight:700;padding:6px 10px">${t('rooms.floor')} ${fk}</td></tr>`;
             for (const rm of floors[fk]) {
                 if (isCleaning) {
-                    const typeKey = 'roomType.' + rm.type;
-                    const typeLabel = t(typeKey) !== typeKey ? t(typeKey) : rm.type;
+                    let typeLabel = '';
+                    if (rm.type) {
+                        const typeKey = 'roomType.' + rm.type;
+                        const translated = t(typeKey);
+                        typeLabel = translated !== typeKey ? translated : rm.type;
+                    }
                     rows += `<tr>
                         <td style="padding:5px 10px;font-weight:600;border:1px solid #ddd">${rm.number}</td>
                         <td style="padding:5px 10px;border:1px solid #ddd">${typeLabel}</td>
