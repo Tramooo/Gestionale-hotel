@@ -503,6 +503,8 @@ const TRANSLATIONS = {
     'assign.roomRequest': { en: 'Room request notes', it: 'Note richiesta camere' },
     'assign.roomRequestPlaceholder': { en: 'e.g. 10 double, 5 twin, 3 quad...', it: 'es. 10 doppie, 5 twin, 3 quadruple...' },
     'assign.print': { en: 'Print', it: 'Stampa' },
+    'assign.printCleaning': { en: 'Print Cleaning', it: 'Stampa Pulizie' },
+    'assign.roomType': { en: 'Type', it: 'Tipo' },
     'pin.title': { en: 'Enter PIN', it: 'Inserisci PIN' },
     'pin.placeholder': { en: 'Enter 4-digit PIN', it: 'Inserisci PIN a 4 cifre' },
     'pin.unlock': { en: 'Unlock', it: 'Sblocca' },
@@ -2225,7 +2227,7 @@ function renamePlannerColumn(el) {
     plannerColumns[idx].name = newName;
 }
 
-function printAssignments() {
+function printAssignments(mode) {
     const r = reservations.find(x => x.id === currentAssignmentReservationId);
     if (!r) return;
 
@@ -2238,41 +2240,48 @@ function printAssignments() {
     const assignMap = {};
     assignmentData.forEach(a => { assignMap[a.roomId] = a; });
 
-    // Group assigned rooms by floor
-    const assignedFloors = {};
     const floorKeys = Object.keys(floors).sort((a, b) => a - b);
-    for (const fk of floorKeys) {
-        const floorRooms = floors[fk].filter(rm => {
-            const a = assignMap[rm.id];
-            if (!a) return false;
-            const vals = a.cellValues || {};
-            return Object.values(vals).some(v => v !== '' && v !== 0 && v != null);
-        });
-        if (floorRooms.length > 0) assignedFloors[fk] = floorRooms;
+    const isCleaning = mode === 'cleaning';
+
+    let theadHtml;
+    if (isCleaning) {
+        theadHtml = `<thead><tr><th>${t('rooms.room')}</th><th>${t('assign.roomType')}</th><th>${t('assign.notes')}</th></tr></thead>`;
+    } else {
+        theadHtml = `<thead><tr><th>${t('rooms.room')}</th>${plannerColumns.map(col => `<th>${col.name}</th>`).join('')}</tr></thead>`;
     }
 
-    const assignedFloorKeys = Object.keys(assignedFloors);
-    const theadHtml = `<thead><tr><th>${t('rooms.room')}</th>${plannerColumns.map(col => `<th>${col.name}</th>`).join('')}</tr></thead>`;
+    const colCount = isCleaning ? 3 : 1 + plannerColumns.length;
 
     // Build pages with 2 floors each
     let pages = '';
-    for (let i = 0; i < assignedFloorKeys.length; i += 2) {
+    for (let i = 0; i < floorKeys.length; i += 2) {
         let rows = '';
-        for (let j = i; j < Math.min(i + 2, assignedFloorKeys.length); j++) {
-            const fk = assignedFloorKeys[j];
-            rows += `<tr><td colspan="${1 + plannerColumns.length}" style="background:#f0f0f0;font-weight:700;padding:6px 10px">${t('rooms.floor')} ${fk}</td></tr>`;
-            for (const rm of assignedFloors[fk]) {
-                const vals = (assignMap[rm.id] || {}).cellValues || {};
-                rows += `<tr>
-                    <td style="padding:5px 10px;font-weight:600;border:1px solid #ddd">${rm.number}</td>
-                    ${plannerColumns.map(col => `<td style="padding:5px 10px;border:1px solid #ddd">${vals[col.id] != null ? vals[col.id] : ''}</td>`).join('')}
-                </tr>`;
+        for (let j = i; j < Math.min(i + 2, floorKeys.length); j++) {
+            const fk = floorKeys[j];
+            rows += `<tr><td colspan="${colCount}" style="background:#f0f0f0;font-weight:700;padding:6px 10px">${t('rooms.floor')} ${fk}</td></tr>`;
+            for (const rm of floors[fk]) {
+                if (isCleaning) {
+                    const typeKey = 'roomType.' + rm.type;
+                    const typeLabel = t(typeKey) !== typeKey ? t(typeKey) : rm.type;
+                    rows += `<tr>
+                        <td style="padding:5px 10px;font-weight:600;border:1px solid #ddd">${rm.number}</td>
+                        <td style="padding:5px 10px;border:1px solid #ddd">${typeLabel}</td>
+                        <td style="padding:5px 10px;border:1px solid #ddd;min-width:200px"></td>
+                    </tr>`;
+                } else {
+                    const vals = (assignMap[rm.id] || {}).cellValues || {};
+                    rows += `<tr>
+                        <td style="padding:5px 10px;font-weight:600;border:1px solid #ddd">${rm.number}</td>
+                        ${plannerColumns.map(col => `<td style="padding:5px 10px;border:1px solid #ddd">${vals[col.id] != null ? vals[col.id] : ''}</td>`).join('')}
+                    </tr>`;
+                }
             }
         }
         pages += `<div class="page-block"><table>${theadHtml}<tbody>${rows}</tbody></table></div>`;
     }
 
-    const printHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${r.groupName}</title>
+    const title = isCleaning ? `${r.groupName} — ${t('assign.printCleaning')}` : r.groupName;
+    const printHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>
         <style>
             body { font-family: -apple-system, sans-serif; padding: 24px; color: #222; }
             table { border-collapse: collapse; width: 100%; }
