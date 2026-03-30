@@ -120,6 +120,18 @@ export default async function handler(req, res) {
     await sql`ALTER TABLE reservations ADD COLUMN IF NOT EXISTS price_per_person NUMERIC DEFAULT 0`;
     await sql`ALTER TABLE reservations ADD COLUMN IF NOT EXISTS gratuity NUMERIC DEFAULT 0`;
 
+    await sql`
+      CREATE TABLE IF NOT EXISTS reservation_files (
+        id TEXT PRIMARY KEY,
+        reservation_id TEXT REFERENCES reservations(id) ON DELETE CASCADE,
+        file_name TEXT NOT NULL,
+        file_type TEXT,
+        file_size INTEGER DEFAULT 0,
+        file_data TEXT NOT NULL,
+        uploaded_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `;
+
     res.status(200).json({ message: 'Tables created successfully' });
   } catch (err) {
     console.error('Init error:', err);
