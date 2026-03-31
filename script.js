@@ -199,6 +199,9 @@ const TRANSLATIONS = {
     'res.filterAll': { en: 'All', it: 'Tutti' },
     'res.typeGroup': { en: 'Group', it: 'Gruppo' },
     'res.typeIndividual': { en: 'Individual', it: 'Individuale' },
+    'res.newBooking': { en: 'New Reservation', it: 'Nuova Prenotazione' },
+    'res.chooserGroupDesc': { en: 'Multiple guests, room planner', it: 'Più ospiti, planner camere' },
+    'res.chooserIndDesc': { en: 'Single guest, single room', it: 'Ospite singolo, camera singola' },
 
     // Individual reservation fields
     'ind.firstName': { en: 'First Name', it: 'Nome' },
@@ -3446,16 +3449,46 @@ function onGridDragEnd() {
     const checkinDate = dayIndexToDate(startIdx);
     const checkoutDate = dayIndexToDate(endIdx + 1);
 
-    // Open new reservation modal with dates pre-filled
-    document.getElementById('reservationModalTitle').textContent = t('res.newGroupReservation');
-    document.getElementById('reservationForm').reset();
-    document.getElementById('resId').value = '';
-    setDateFieldValue('resCheckin', formatDate(checkinDate));
-    setDateFieldValue('resCheckout', formatDate(checkoutDate));
-    setDateFieldValue('resExpiration', formatDate(addDays(new Date(), 7)));
-    populateRoomChecklist([]);
-    toggleExpirationField();
-    openModal('reservationModal');
+    openBookingTypeChooser(formatDate(checkinDate), formatDate(checkoutDate));
+}
+
+function openBookingTypeChooser(checkin, checkout) {
+    const nights = nightsBetween(checkin, checkout);
+    const label = `${formatDateDisplay(checkin)} → ${formatDateDisplay(checkout)} (${nights} ${nights === 1 ? t('cal.nights') : t('cal.nightsPlural')})`;
+    document.getElementById('chooserDateLabel').textContent = label;
+    document.getElementById('bookingTypeChooser').dataset.checkin = checkin;
+    document.getElementById('bookingTypeChooser').dataset.checkout = checkout;
+    openModal('bookingTypeChooser');
+}
+
+function chooseBookingType(type) {
+    const el = document.getElementById('bookingTypeChooser');
+    const checkin = el.dataset.checkin;
+    const checkout = el.dataset.checkout;
+    closeModal('bookingTypeChooser');
+
+    if (type === 'group') {
+        document.getElementById('reservationModalTitle').textContent = t('res.newGroupReservation');
+        document.getElementById('reservationForm').reset();
+        document.getElementById('resId').value = '';
+        setDateFieldValue('resCheckin', checkin);
+        setDateFieldValue('resCheckout', checkout);
+        setDateFieldValue('resExpiration', formatDate(addDays(new Date(), 7)));
+        populateRoomChecklist([]);
+        toggleExpirationField();
+        openModal('reservationModal');
+    } else {
+        document.getElementById('indModalTitle').textContent = t('res.newIndividual') || 'Nuova Prenotazione Individuale';
+        document.getElementById('indForm').reset();
+        document.getElementById('indId').value = '';
+        setDateFieldValue('indCheckin', checkin);
+        setDateFieldValue('indCheckout', checkout);
+        document.getElementById('indStatus').value = 'confirmed';
+        document.getElementById('indTotalPrice').textContent = '€0';
+        document.getElementById('indPrice').value = 0;
+        populateIndRoomSelect(null);
+        openModal('individualModal');
+    }
 }
 
 // =============================================

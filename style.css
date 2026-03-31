@@ -1643,6 +1643,79 @@ body {
     max-width: 800px;
 }
 
+.modal-sm {
+    max-width: 400px;
+}
+
+/* Booking type chooser */
+.chooser-date-label {
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+    padding: 8px 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+}
+
+.chooser-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.chooser-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 24px 16px;
+    border: 2px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    background: var(--bg-primary);
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, transform 0.15s;
+    text-align: center;
+}
+
+.chooser-option:hover {
+    border-color: var(--accent);
+    background: var(--accent-light);
+    transform: translateY(-2px);
+}
+
+.chooser-option:active {
+    transform: scale(0.98);
+}
+
+.chooser-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--bg-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+    transition: background 0.15s;
+}
+
+.chooser-option:hover .chooser-icon {
+    background: var(--bg-secondary);
+}
+
+.chooser-label {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.chooser-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
 .modal-fullscreen {
     max-width: 95vw;
     width: 1100px;
