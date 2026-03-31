@@ -188,6 +188,26 @@ const TRANSLATIONS = {
     'months.dayHeaders': { en: ['Mo','Tu','We','Th','Fr','Sa','Su'], it: ['Lu','Ma','Me','Gi','Ve','Sa','Do'] },
     'months.short': { en: ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'], it: ['GEN','FEB','MAR','APR','MAG','GIU','LUG','AGO','SET','OTT','NOV','DIC'] },
 
+    // Navigation
+    'nav.reservations': { en: 'Reservations', it: 'Prenotazioni' },
+
+    // Reservations page
+    'res.pageTitle': { en: 'Reservations', it: 'Prenotazioni' },
+    'res.pageSubtitle': { en: 'Manage groups and individual reservations', it: 'Gestisci gruppi e prenotazioni individuali' },
+    'res.newGroup': { en: 'New Group', it: 'Nuovo Gruppo' },
+    'res.newIndividual': { en: 'New Individual', it: 'Nuova Individuale' },
+    'res.filterAll': { en: 'All', it: 'Tutti' },
+    'res.typeGroup': { en: 'Group', it: 'Gruppo' },
+    'res.typeIndividual': { en: 'Individual', it: 'Individuale' },
+
+    // Individual reservation fields
+    'ind.firstName': { en: 'First Name', it: 'Nome' },
+    'ind.lastName': { en: 'Last Name', it: 'Cognome' },
+    'ind.phone': { en: 'Phone', it: 'Telefono' },
+    'ind.email': { en: 'Email', it: 'Email' },
+    'ind.room': { en: 'Room', it: 'Camera' },
+    'ind.pricePerNight': { en: 'Price/Night (€)', it: 'Prezzo/Notte (€)' },
+
     // Reservations
     'res.newGroupReservation': { en: 'New Group Reservation', it: 'Nuova Prenotazione Gruppo' },
     'res.editReservation': { en: 'Edit Reservation', it: 'Modifica Prenotazione' },
@@ -881,8 +901,9 @@ function renderReservations() {
 
     if (search) {
         filtered = filtered.filter(r =>
-            r.groupName.toLowerCase().includes(search) ||
-            r.organizer.toLowerCase().includes(search) ||
+            (r.groupName || '').toLowerCase().includes(search) ||
+            (r.organizer || '').toLowerCase().includes(search) ||
+            (r.phone || '').toLowerCase().includes(search) ||
             (r.email || '').toLowerCase().includes(search)
         );
     }
@@ -903,12 +924,19 @@ function renderReservations() {
     list.innerHTML = filtered.map(r => {
         const nights = nightsBetween(r.checkin, r.checkout);
         const statusLabel = r.status.replace('-', ' ');
+        const isIndividual = r.resType === 'individual';
+        const subtitle = isIndividual
+            ? (r.organizer || r.phone || r.email || '')
+            : (r.organizer || '');
+        const typeBadge = isIndividual
+            ? `<span class="res-type-badge individual">${t('res.typeIndividual')}</span>`
+            : `<span class="res-type-badge group">${t('res.typeGroup')}</span>`;
         return `
             <div class="reservation-card" onclick="openReservationDetail('${r.id}')">
                 <div class="res-color-bar ${r.status}"></div>
                 <div class="res-info">
-                    <div class="res-group-name">${escapeHtml(r.groupName)}</div>
-                    <div class="res-organizer">${escapeHtml(r.organizer)}</div>
+                    <div class="res-group-name">${escapeHtml(r.groupName)}${typeBadge}</div>
+                    <div class="res-organizer">${escapeHtml(subtitle)}</div>
                 </div>
                 <div class="res-meta">
                     <div class="res-meta-item">
@@ -1167,6 +1195,10 @@ function selectDatePickerDay(btn, dateStr) {
         const selectedRooms = getSelectedRoomIds();
         populateRoomChecklist(selectedRooms, resId);
     }
+    if (targetId === 'indCheckin' || targetId === 'indCheckout') {
+        calcIndividualPrice();
+        populateIndRoomSelect(document.getElementById('indId').value || null);
+    }
 }
 
 function setDatePickerDisplay(wrapper, dateStr) {
@@ -1224,6 +1256,158 @@ function openEditReservation(id) {
 
     closeModal('reservationDetailModal');
     openModal('reservationModal');
+}
+
+// ---- Individual Reservation ----
+
+function populateIndRoomSelect(excludeResId) {
+    const checkin = document.getElementById('indCheckin').value;
+    const checkout = document.getElementById('indCheckout').value;
+    const select = document.getElementById('indRoomId');
+    const currentVal = select.value;
+
+    const occupied = {};
+    if (checkin && checkout) {
+        reservations.forEach(res => {
+            if (res.id === excludeResId) return;
+            if (res.status === 'cancelled') return;
+            if (res.checkin < checkout && res.checkout > checkin) {
+                const rIds = res.roomIds && res.roomIds.length > 0
+                    ? res.roomIds
+                    : guests.filter(g => g.reservationId === res.id && g.roomId).map(g => g.roomId);
+                rIds.forEach(id => { occupied[id] = res.groupName; });
+            }
+        });
+    }
+
+    const floors = {};
+    rooms.forEach(rm => {
+        if (!floors[rm.floor]) floors[rm.floor] = [];
+        floors[rm.floor].push(rm);
+    });
+
+    let html = '<option value="">— Seleziona camera —</option>';
+    Object.keys(floors).sort((a, b) => a - b).forEach(floor => {
+        html += `<optgroup label="${t('rooms.floor')} ${floor}">`;
+        floors[floor].sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true })).forEach(rm => {
+            const typeKey = 'roomType.' + rm.type;
+            const typeLabel = t(typeKey) !== typeKey ? t(typeKey) : rm.type;
+            if (occupied[rm.id]) {
+                html += `<option value="${rm.id}" disabled>Camera ${escapeHtml(rm.number)} – ${typeLabel} (occupata: ${escapeHtml(occupied[rm.id])})</option>`;
+            } else {
+                html += `<option value="${rm.id}">Camera ${escapeHtml(rm.number)} – ${typeLabel} (${rm.capacity} posti)</option>`;
+            }
+        });
+        html += '</optgroup>';
+    });
+    select.innerHTML = html;
+    if (currentVal) select.value = currentVal;
+}
+
+function calcIndividualPrice() {
+    const checkin = document.getElementById('indCheckin').value;
+    const checkout = document.getElementById('indCheckout').value;
+    const ppn = parseFloat(document.getElementById('indPricePerNight').value) || 0;
+    const nights = (checkin && checkout) ? nightsBetween(checkin, checkout) : 0;
+    const total = ppn * nights;
+    document.getElementById('indTotalPrice').textContent = '€' + total.toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    document.getElementById('indPrice').value = total;
+}
+
+function openNewIndividualModal() {
+    document.getElementById('indModalTitle').textContent = t('res.newIndividual') || 'Nuova Prenotazione Individuale';
+    document.getElementById('indForm').reset();
+    document.getElementById('indId').value = '';
+    setDateFieldValue('indCheckin', formatDate(new Date()));
+    setDateFieldValue('indCheckout', formatDate(addDays(new Date(), 1)));
+    document.getElementById('indStatus').value = 'confirmed';
+    document.getElementById('indTotalPrice').textContent = '€0';
+    document.getElementById('indPrice').value = 0;
+    populateIndRoomSelect(null);
+    openModal('individualModal');
+}
+
+function openEditIndividualReservation(id) {
+    const r = reservations.find(x => x.id === id);
+    if (!r) return;
+
+    document.getElementById('indModalTitle').textContent = t('res.editReservation') || 'Modifica Prenotazione';
+    document.getElementById('indId').value = r.id;
+
+    const nameParts = (r.groupName || '').trim().split(/\s+/);
+    document.getElementById('indFirstName').value = nameParts[0] || '';
+    document.getElementById('indLastName').value = nameParts.slice(1).join(' ') || '';
+    document.getElementById('indPhone').value = r.phone || r.organizer || '';
+    document.getElementById('indEmail').value = r.email || '';
+    setDateFieldValue('indCheckin', r.checkin);
+    setDateFieldValue('indCheckout', r.checkout);
+    document.getElementById('indStatus').value = r.status;
+    document.getElementById('indPricePerNight').value = r.pricePerPerson || '';
+    document.getElementById('indNotes').value = r.notes || '';
+
+    populateIndRoomSelect(r.id);
+    if (r.roomIds && r.roomIds.length > 0) {
+        document.getElementById('indRoomId').value = r.roomIds[0];
+    }
+    calcIndividualPrice();
+    closeModal('reservationDetailModal');
+    openModal('individualModal');
+}
+
+async function saveIndividualReservation(e) {
+    e.preventDefault();
+    const id = document.getElementById('indId').value;
+    const firstName = document.getElementById('indFirstName').value.trim();
+    const lastName = document.getElementById('indLastName').value.trim();
+    const roomId = document.getElementById('indRoomId').value;
+    const checkin = document.getElementById('indCheckin').value;
+    const checkout = document.getElementById('indCheckout').value;
+
+    if (!roomId) { showToast(t('toast.selectRoom'), 'error'); return; }
+    if (new Date(checkout) <= new Date(checkin)) { showToast(t('toast.checkoutAfterCheckin'), 'error'); return; }
+
+    const data = {
+        groupName: `${firstName} ${lastName}`.trim(),
+        organizer: document.getElementById('indPhone').value.trim(),
+        phone: document.getElementById('indPhone').value.trim(),
+        email: document.getElementById('indEmail').value.trim(),
+        checkin,
+        checkout,
+        guestCount: 1,
+        roomCount: 1,
+        roomIds: [roomId],
+        status: document.getElementById('indStatus').value,
+        expiration: '',
+        pricePerPerson: parseFloat(document.getElementById('indPricePerNight').value) || 0,
+        gratuity: 0,
+        price: parseFloat(document.getElementById('indPrice').value) || 0,
+        notes: document.getElementById('indNotes').value.trim(),
+        resType: 'individual'
+    };
+
+    try {
+        if (id) {
+            const idx = reservations.findIndex(r => r.id === id);
+            if (idx !== -1) reservations[idx] = { ...reservations[idx], ...data };
+            await apiPut(API.reservations, { ...data, id });
+            showToast(t('toast.resUpdated'));
+        } else {
+            const newRes = { id: generateId(), ...data, createdAt: new Date().toISOString() };
+            reservations.push(newRes);
+            await apiPost(API.reservations, newRes);
+            showToast(t('toast.resCreated'));
+        }
+    } catch (err) {
+        console.error(err);
+        showToast(t('toast.resSaveFail'), 'error');
+        return;
+    }
+
+    closeModal('individualModal');
+    renderDashboard();
+    renderReservations();
+    refreshCalendar();
+    computeRoomStatuses();
 }
 
 async function saveReservation(e) {
@@ -1315,14 +1499,15 @@ function openReservationDetail(id) {
     const body = document.getElementById('reservationDetailBody');
     body.innerHTML = `
         <div class="detail-toolbar">
-            <button class="btn btn-secondary btn-sm" onclick="openEditReservation('${r.id}')">
+            <button class="btn btn-secondary btn-sm" onclick="${r.resType === 'individual' ? `openEditIndividualReservation('${r.id}')` : `openEditReservation('${r.id}')`}">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 ${t('detail.edit')}
             </button>
+            ${r.resType !== 'individual' ? `
             <button class="btn btn-secondary btn-sm" onclick="openRoomAssignment('${r.id}')">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
                 ${t('detail.roomPlanner')}
-            </button>
+            </button>` : ''}
             <button class="btn btn-secondary btn-sm" onclick="openGuestsList('${r.id}')">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 ${t('detail.manageGuests')}
@@ -1335,6 +1520,16 @@ function openReservationDetail(id) {
 
         <div class="detail-info-card">
             <div class="detail-info-grid">
+                ${r.resType === 'individual' && (r.phone || r.organizer) ? `
+                <div class="detail-info-item">
+                    <span class="detail-info-label">${t('ind.phone')}</span>
+                    <span class="detail-info-value">${escapeHtml(r.phone || r.organizer)}</span>
+                </div>` : ''}
+                ${r.resType === 'individual' && r.email ? `
+                <div class="detail-info-item">
+                    <span class="detail-info-label">${t('ind.email')}</span>
+                    <span class="detail-info-value">${escapeHtml(r.email)}</span>
+                </div>` : ''}
                 <div class="detail-info-item">
                     <span class="detail-info-label">${t('res.checkin')}</span>
                     <span class="detail-info-value">${formatDateDisplay(r.checkin)}</span>
@@ -1343,33 +1538,40 @@ function openReservationDetail(id) {
                     <span class="detail-info-label">${t('res.checkout')}</span>
                     <span class="detail-info-value">${formatDateDisplay(r.checkout)}</span>
                 </div>
-                <div class="detail-info-item">
+                ${r.resType === 'individual' && r.roomIds && r.roomIds.length > 0 ? (() => {
+                    const rm = rooms.find(x => x.id === r.roomIds[0]);
+                    return rm ? `<div class="detail-info-item">
+                        <span class="detail-info-label">${t('ind.room')}</span>
+                        <span class="detail-info-value">Camera ${escapeHtml(rm.number)}</span>
+                    </div>` : '';
+                })() : `<div class="detail-info-item">
                     <span class="detail-info-label">${t('res.rooms')}</span>
                     <span class="detail-info-value">${r.roomCount}</span>
-                </div>
+                </div>`}
                 <div class="detail-info-item">
                     <span class="detail-info-label">${t('res.nights')}</span>
                     <span class="detail-info-value">${nights}</span>
                 </div>
+                ${r.resType !== 'individual' ? `
                 <div class="detail-info-item">
                     <span class="detail-info-label">${t('res.guests')}</span>
                     <span class="detail-info-value">${r.guestCount || 0}</span>
-                </div>
+                </div>` : ''}
                 <div class="detail-info-item">
-                    <span class="detail-info-label">${t('res.pricePerPerson')}</span>
+                    <span class="detail-info-label">${r.resType === 'individual' ? t('ind.pricePerNight') : t('res.pricePerPerson')}</span>
                     <span class="detail-info-value">&euro;${(r.pricePerPerson || 0).toLocaleString()}</span>
                 </div>
-                ${r.gratuity ? `<div class="detail-info-item">
+                ${r.resType !== 'individual' && r.gratuity ? `<div class="detail-info-item">
                     <span class="detail-info-label">${t('res.gratuity')}</span>
                     <span class="detail-info-value">${r.gratuity} (${r.gratuity > 0 ? Math.floor(r.guestCount / r.gratuity) : 0} ${t('res.freeGuests')})</span>
                 </div>` : ''}
-                <div class="detail-info-item">
+                ${r.resType !== 'individual' ? `<div class="detail-info-item">
                     <span class="detail-info-label">Presenze</span>
                     <span class="detail-info-value">${(() => { const gc = r.guestCount || 0; const fg = r.gratuity > 0 ? Math.floor(gc / r.gratuity) : 0; return Math.max(0, gc - fg) * nights; })()}</span>
-                </div>
+                </div>` : ''}
                 <div class="detail-info-item detail-info-price">
                     <span class="detail-info-label">${t('res.totalPrice')}</span>
-                    <span class="detail-info-value">&euro;${(r.price || 0).toLocaleString()}</span>
+                    <span class="detail-info-value">&euro;${calcReservationRevenue(r).toLocaleString()}</span>
                 </div>
                 ${r.status === 'pending' && r.expiration ? `<div class="detail-info-item">
                     <span class="detail-info-label">${t('detail.expires')}</span>

@@ -22,6 +22,10 @@
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
                 <span data-i18n="nav.dashboard">Dashboard</span>
             </a>
+            <a href="#" class="nav-item" data-page="reservations">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                <span data-i18n="nav.reservations">Prenotazioni</span>
+            </a>
             <a href="#" class="nav-item" data-page="calendar">
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                 <span data-i18n="nav.calendar">Calendario</span>
@@ -55,6 +59,10 @@
         <a href="#" class="tab-item active" data-page="dashboard">
             <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
             <span data-i18n="nav.dashboard">Dashboard</span>
+        </a>
+        <a href="#" class="tab-item" data-page="reservations">
+            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            <span data-i18n="nav.reservations">Prenotazioni</span>
         </a>
         <a href="#" class="tab-item" data-page="calendar">
             <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -159,6 +167,43 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </section>
+
+        <!-- ======================== PRENOTAZIONI ======================== -->
+        <section class="page" id="page-reservations">
+            <header class="page-header">
+                <div>
+                    <h1 class="page-title" data-i18n="res.pageTitle">Prenotazioni</h1>
+                    <p class="page-subtitle" data-i18n="res.pageSubtitle">Gestisci gruppi e prenotazioni individuali</p>
+                </div>
+                <div style="display:flex;gap:10px">
+                    <button class="btn btn-secondary" onclick="openNewReservationModal()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        <span data-i18n="res.newGroup">Nuovo Gruppo</span>
+                    </button>
+                    <button class="btn btn-primary" onclick="openNewIndividualModal()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        <span data-i18n="res.newIndividual">Nuova Individuale</span>
+                    </button>
+                </div>
+            </header>
+            <div class="filters-bar">
+                <div class="search-box">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" placeholder="Cerca..." id="searchReservations" oninput="filterReservations()">
+                </div>
+                <div class="filter-chips">
+                    <button class="chip active" data-filter="all" onclick="setReservationFilter('all', this)" data-i18n="res.filterAll">Tutti</button>
+                    <button class="chip" data-filter="pending" onclick="setReservationFilter('pending', this)" data-i18n="res.pending">In Attesa</button>
+                    <button class="chip" data-filter="confirmed" onclick="setReservationFilter('confirmed', this)" data-i18n="res.confirmed">Confermata</button>
+                    <button class="chip" data-filter="checked-in" onclick="setReservationFilter('checked-in', this)">Checked-in</button>
+                    <button class="chip" data-filter="checked-out" onclick="setReservationFilter('checked-out', this)">Checked-out</button>
+                    <button class="chip" data-filter="cancelled" onclick="setReservationFilter('cancelled', this)" data-i18n="res.cancelled">Cancellata</button>
+                </div>
+            </div>
+            <div class="reservations-list" id="reservationsList">
+                <!-- Populated by JS -->
             </div>
         </section>
 
@@ -579,6 +624,110 @@
                     </div>
                     <div class="modal-actions">
                         <button type="button" class="btn btn-ghost" onclick="closeModal('reservationModal')" data-i18n="common.cancel">Annulla</button>
+                        <button type="submit" class="btn btn-primary" data-i18n="res.saveReservation">Salva Prenotazione</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Individual Reservation Modal -->
+    <div class="modal-overlay" id="individualModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="indModalTitle">Nuova Prenotazione Individuale</h2>
+                <button class="modal-close" onclick="closeModal('individualModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="indForm" onsubmit="saveIndividualReservation(event)">
+                    <input type="hidden" id="indId">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label data-i18n="ind.firstName">Nome</label>
+                            <input type="text" id="indFirstName" placeholder="Mario" required>
+                        </div>
+                        <div class="form-group">
+                            <label data-i18n="ind.lastName">Cognome</label>
+                            <input type="text" id="indLastName" placeholder="Rossi" required>
+                        </div>
+                        <div class="form-group">
+                            <label data-i18n="ind.phone">Telefono</label>
+                            <input type="tel" id="indPhone" placeholder="+39 333 000000">
+                        </div>
+                        <div class="form-group">
+                            <label data-i18n="ind.email">Email</label>
+                            <input type="email" id="indEmail" placeholder="email@esempio.it">
+                        </div>
+                        <div class="form-group">
+                            <label data-i18n="res.checkin">Check-in</label>
+                            <input type="hidden" id="indCheckin" required>
+                            <div class="mini-cal-wrapper" data-target="indCheckin">
+                                <div class="mini-cal-input" onclick="toggleDatePicker(this)">
+                                    <span class="mini-cal-display" data-i18n="res.selectDate">Seleziona data...</span>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                </div>
+                                <div class="mini-cal-dropdown">
+                                    <div class="mini-cal-header">
+                                        <button type="button" class="mini-cal-nav" onclick="datePickerNav(this,-1)">&lsaquo;</button>
+                                        <span class="mini-cal-month-label"></span>
+                                        <button type="button" class="mini-cal-nav" onclick="datePickerNav(this,1)">&rsaquo;</button>
+                                    </div>
+                                    <div class="mini-cal-days-header"><span>Lu</span><span>Ma</span><span>Me</span><span>Gi</span><span>Ve</span><span>Sa</span><span>Do</span></div>
+                                    <div class="mini-cal-grid"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label data-i18n="res.checkout">Check-out</label>
+                            <input type="hidden" id="indCheckout" required>
+                            <div class="mini-cal-wrapper" data-target="indCheckout">
+                                <div class="mini-cal-input" onclick="toggleDatePicker(this)">
+                                    <span class="mini-cal-display" data-i18n="res.selectDate">Seleziona data...</span>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                </div>
+                                <div class="mini-cal-dropdown">
+                                    <div class="mini-cal-header">
+                                        <button type="button" class="mini-cal-nav" onclick="datePickerNav(this,-1)">&lsaquo;</button>
+                                        <span class="mini-cal-month-label"></span>
+                                        <button type="button" class="mini-cal-nav" onclick="datePickerNav(this,1)">&rsaquo;</button>
+                                    </div>
+                                    <div class="mini-cal-days-header"><span>Lu</span><span>Ma</span><span>Me</span><span>Gi</span><span>Ve</span><span>Sa</span><span>Do</span></div>
+                                    <div class="mini-cal-grid"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label data-i18n="ind.room">Camera</label>
+                            <select id="indRoomId" required>
+                                <option value="">— Seleziona camera —</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label data-i18n="res.status">Stato</label>
+                            <select id="indStatus">
+                                <option value="pending" data-i18n="res.pending">In Attesa</option>
+                                <option value="confirmed" data-i18n="res.confirmed">Confermata</option>
+                                <option value="checked-in">Checked-in</option>
+                                <option value="checked-out">Checked-out</option>
+                                <option value="cancelled" data-i18n="res.cancelled">Cancellata</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label data-i18n="ind.pricePerNight">Prezzo/Notte (&euro;)</label>
+                            <input type="number" id="indPricePerNight" min="0" step="0.01" placeholder="0.00" oninput="calcIndividualPrice()">
+                        </div>
+                        <div class="form-group">
+                            <label data-i18n="res.totalPrice">Totale</label>
+                            <div class="res-calc-total" id="indTotalPrice">&euro;0</div>
+                            <input type="hidden" id="indPrice">
+                        </div>
+                        <div class="form-group full">
+                            <label data-i18n="res.notes">Note</label>
+                            <textarea id="indNotes" rows="3" placeholder="Richieste speciali..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-ghost" onclick="closeModal('individualModal')" data-i18n="common.cancel">Annulla</button>
                         <button type="submit" class="btn btn-primary" data-i18n="res.saveReservation">Salva Prenotazione</button>
                     </div>
                 </form>

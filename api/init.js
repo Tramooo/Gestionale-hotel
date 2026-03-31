@@ -119,6 +119,8 @@ export default async function handler(req, res) {
     await sql`ALTER TABLE reservations ADD COLUMN IF NOT EXISTS room_notes TEXT`;
     await sql`ALTER TABLE reservations ADD COLUMN IF NOT EXISTS price_per_person NUMERIC DEFAULT 0`;
     await sql`ALTER TABLE reservations ADD COLUMN IF NOT EXISTS gratuity NUMERIC DEFAULT 0`;
+    await sql`ALTER TABLE reservations ADD COLUMN IF NOT EXISTS res_type TEXT DEFAULT 'group'`;
+    await sql`ALTER TABLE reservations ADD COLUMN IF NOT EXISTS phone TEXT`;
 
     await sql`
       CREATE TABLE IF NOT EXISTS reservation_files (
