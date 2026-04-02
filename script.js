@@ -1877,7 +1877,6 @@ function printMenu(resId) {
     </style>
     </head><body>
     <div class="print-header">
-        <div class="print-group">${escapeHtml(r.groupName)}</div>
         <div class="print-dates">${formatDateDisplay(r.checkin)} — ${formatDateDisplay(r.checkout)} &nbsp;·&nbsp; ${nightsBetween(r.checkin, r.checkout)} notti &nbsp;·&nbsp; ${r.guestCount || 0} ospiti</div>
         <div class="print-plan">${planLabels[plan] || plan}</div>
     </div>
