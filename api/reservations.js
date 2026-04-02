@@ -27,6 +27,7 @@ export default async function handler(req, res) {
         resType: r.res_type || 'group',
         phone: r.phone || '',
         mealPlan: r.meal_plan || 'BB',
+        intolerances: JSON.parse(r.intolerances || '[]'),
         createdAt: r.created_at
       }));
       return res.status(200).json(reservations);
@@ -36,9 +37,10 @@ export default async function handler(req, res) {
       const r = req.body;
       const roomIds = JSON.stringify(r.roomIds || []);
       const expiration = r.expiration || null;
+      const intolerances = JSON.stringify(r.intolerances || []);
       await sql`
-        INSERT INTO reservations (id, group_name, organizer, email, checkin, checkout, guest_count, room_count, room_ids, status, expiration, price, price_per_person, gratuity, notes, room_notes, res_type, phone, meal_plan, created_at)
-        VALUES (${r.id}, ${r.groupName}, ${r.organizer}, ${r.email}, ${r.checkin}, ${r.checkout}, ${r.guestCount}, ${r.roomCount}, ${roomIds}, ${r.status}, ${expiration}, ${r.price}, ${r.pricePerPerson || 0}, ${r.gratuity || 0}, ${r.notes}, ${r.roomNotes || null}, ${r.resType || 'group'}, ${r.phone || null}, ${r.mealPlan || 'BB'}, ${r.createdAt})
+        INSERT INTO reservations (id, group_name, organizer, email, checkin, checkout, guest_count, room_count, room_ids, status, expiration, price, price_per_person, gratuity, notes, room_notes, res_type, phone, meal_plan, intolerances, created_at)
+        VALUES (${r.id}, ${r.groupName}, ${r.organizer}, ${r.email}, ${r.checkin}, ${r.checkout}, ${r.guestCount}, ${r.roomCount}, ${roomIds}, ${r.status}, ${expiration}, ${r.price}, ${r.pricePerPerson || 0}, ${r.gratuity || 0}, ${r.notes}, ${r.roomNotes || null}, ${r.resType || 'group'}, ${r.phone || null}, ${r.mealPlan || 'BB'}, ${intolerances}, ${r.createdAt})
       `;
       return res.status(201).json({ success: true });
     }
@@ -51,7 +53,8 @@ export default async function handler(req, res) {
         UPDATE reservations SET group_name=${r.groupName}, organizer=${r.organizer}, email=${r.email},
         checkin=${r.checkin}, checkout=${r.checkout}, guest_count=${r.guestCount}, room_count=${r.roomCount},
         room_ids=${roomIds}, status=${r.status}, expiration=${expiration}, price=${r.price}, price_per_person=${r.pricePerPerson || 0}, gratuity=${r.gratuity || 0}, notes=${r.notes}, room_notes=${r.roomNotes || null},
-        res_type=${r.resType || 'group'}, phone=${r.phone || null}, meal_plan=${r.mealPlan || 'BB'}
+        res_type=${r.resType || 'group'}, phone=${r.phone || null}, meal_plan=${r.mealPlan || 'BB'},
+        intolerances=${JSON.stringify(r.intolerances || [])}
         WHERE id=${r.id}
       `;
       return res.status(200).json({ success: true });

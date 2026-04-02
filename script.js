@@ -1603,6 +1603,10 @@ function openReservationDetail(id) {
                 <div class="detail-menu-title-row">
                     <span class="detail-info-label">Menu</span>
                     <span class="meal-plan-badge meal-plan-${r.mealPlan || 'BB'}">${r.mealPlan || 'BB'}</span>
+                    <button class="btn btn-sm btn-secondary" style="margin-left:auto" onclick="printMenu('${r.id}')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                        Stampa Menu
+                    </button>
                 </div>
             </div>
             <div id="menuContainer" class="menu-container">
@@ -1651,6 +1655,7 @@ async function loadReservationMenus(r) {
     if (!container) return;
     try {
         const menus = await apiGet(`${API.menus}?reservationId=${r.id}`);
+        _lastMenus = menus;
         renderMenuSection(r, menus);
     } catch (err) {
         container.innerHTML = '<div class="menu-error">Errore caricamento menu</div>';
@@ -1662,17 +1667,37 @@ function getMealDays(r) {
     if (!r.checkin || !r.checkout) return days;
     const plan = r.mealPlan || 'BB';
     if (plan === 'BB') return days;
-    let d = new Date(r.checkin);
-    const end = new Date(r.checkout);
-    while (d < end) {
-        const dateStr = formatDate(d);
-        if (plan === 'HB' || plan === 'FBC') {
-            days.push({ date: dateStr, mealType: 'dinner' });
-        } else if (plan === 'FB') {
-            days.push({ date: dateStr, mealType: 'lunch' });
-            days.push({ date: dateStr, mealType: 'dinner' });
+
+    const checkinMs = new Date(r.checkin).getTime();
+    const checkoutMs = new Date(r.checkout).getTime();
+
+    if (plan === 'FB') {
+        // First day: dinner only (just arrived)
+        // Middle days: lunch + dinner
+        // Departure day (checkout): lunch only
+        let cur = new Date(r.checkin);
+        while (cur.getTime() <= checkoutMs) {
+            const dateStr = formatDate(cur);
+            const isFirst = cur.getTime() === checkinMs;
+            const isLast = cur.getTime() === checkoutMs;
+            if (isFirst) {
+                days.push({ date: dateStr, mealType: 'dinner' });
+            } else if (isLast) {
+                days.push({ date: dateStr, mealType: 'lunch' });
+            } else {
+                days.push({ date: dateStr, mealType: 'lunch' });
+                days.push({ date: dateStr, mealType: 'dinner' });
+            }
+            cur.setDate(cur.getDate() + 1);
         }
-        d.setDate(d.getDate() + 1);
+    } else {
+        // HB / FBC: dinner each night from checkin to day before checkout
+        let d = new Date(r.checkin);
+        const end = new Date(r.checkout);
+        while (d < end) {
+            days.push({ date: formatDate(d), mealType: 'dinner' });
+            d.setDate(d.getDate() + 1);
+        }
     }
     return days;
 }
@@ -1681,15 +1706,39 @@ function renderMenuSection(r, menus) {
     const container = document.getElementById('menuContainer');
     if (!container) return;
     const plan = r.mealPlan || 'BB';
+
+    const intolerances = r.intolerances || [];
+    const intolHtml = `
+        <div class="menu-intolerances">
+            <div class="menu-intol-header">
+                <span class="menu-intol-title">Intolleranze / Esigenze Alimentari</span>
+                <button class="btn btn-sm btn-secondary" onclick="addIntoleranceRow('${r.id}')">+ Aggiungi</button>
+            </div>
+            <div id="intolList" class="intol-list">
+                ${intolerances.length === 0 ? '<div class="menu-bb-note" style="margin:0">Nessuna intolleranza registrata</div>' :
+                    intolerances.map((it, i) => `
+                    <div class="intol-row" data-idx="${i}">
+                        <input class="form-control intol-count" type="number" min="1" value="${it.count || 1}" placeholder="N"
+                            onblur="saveIntolerances('${r.id}')" style="width:60px">
+                        <input class="form-control intol-note" type="text" value="${escapeHtml(it.note || '')}" placeholder="es. celiaco, no maiale…"
+                            onblur="saveIntolerances('${r.id}')">
+                        <button class="btn btn-ghost btn-sm intol-del-btn" onclick="removeIntoleranceRow(this,'${r.id}')">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                    </div>`).join('')}
+            </div>
+        </div>`;
+
     if (plan === 'BB') {
-        container.innerHTML = '<div class="menu-bb-note">Solo colazione — nessun menu da inserire</div>';
+        container.innerHTML = intolHtml + '<div class="menu-bb-note">Solo colazione — nessun menu da inserire</div>';
         return;
     }
+
     const days = getMealDays(r);
     const menuMap = {};
     menus.forEach(m => { menuMap[`${m.date}_${m.mealType}`] = m; });
 
-    let html = '';
+    let html = intolHtml;
     let lastDate = '';
     days.forEach(({ date, mealType }) => {
         if (date !== lastDate) {
@@ -1717,7 +1766,131 @@ function renderMenuSection(r, menus) {
         html += '</div></div>';
     });
     if (lastDate) html += '</div>';
-    container.innerHTML = html || '<div class="menu-bb-note">Nessun giorno da mostrare</div>';
+    container.innerHTML = html;
+}
+
+function addIntoleranceRow(resId) {
+    const r = reservations.find(x => x.id === resId);
+    if (!r) return;
+    if (!r.intolerances) r.intolerances = [];
+    r.intolerances.push({ count: 1, note: '' });
+    const menus = [];
+    document.querySelectorAll('.menu-input').forEach(inp => {
+        // preserve existing menus by re-rendering without reload
+    });
+    renderMenuSection(r, _lastMenus || []);
+}
+
+function removeIntoleranceRow(btn, resId) {
+    const row = btn.closest('.intol-row');
+    const idx = parseInt(row.dataset.idx);
+    const r = reservations.find(x => x.id === resId);
+    if (!r || !r.intolerances) return;
+    r.intolerances.splice(idx, 1);
+    saveIntolerances(resId);
+    renderMenuSection(r, _lastMenus || []);
+}
+
+async function saveIntolerances(resId) {
+    const r = reservations.find(x => x.id === resId);
+    if (!r) return;
+    const rows = document.querySelectorAll('#intolList .intol-row');
+    const list = [];
+    rows.forEach(row => {
+        const count = parseInt(row.querySelector('.intol-count').value) || 1;
+        const note = row.querySelector('.intol-note').value.trim();
+        if (note) list.push({ count, note });
+    });
+    r.intolerances = list;
+    try {
+        await apiPut(API.reservations, { ...r, id: resId });
+    } catch (err) {
+        console.error('Intolerances save error', err);
+    }
+}
+
+let _lastMenus = [];
+
+function printMenu(resId) {
+    const r = reservations.find(x => x.id === resId);
+    if (!r) return;
+    const menus = _lastMenus;
+    const plan = r.mealPlan || 'BB';
+    const days = getMealDays(r);
+    const menuMap = {};
+    menus.forEach(m => { menuMap[`${m.date}_${m.mealType}`] = m; });
+    const intolerances = r.intolerances || [];
+
+    const planLabels = { BB: 'BB – Solo Colazione', HB: 'HB – Colazione & Cena', FB: 'FB – Colazione, Pranzo & Cena', FBC: 'FBC – Colazione, Pranzo al Sacco & Cena' };
+
+    let daysHtml = '';
+    let lastDate = '';
+    days.forEach(({ date, mealType }) => {
+        if (date !== lastDate) {
+            if (lastDate) daysHtml += '</div>';
+            daysHtml += `<div class="print-day"><div class="print-day-header">${formatDateDisplay(date)}</div>`;
+            lastDate = date;
+        }
+        const m = menuMap[`${date}_${mealType}`] || {};
+        const mealLabel = mealType === 'lunch' ? 'Pranzo' : 'Cena';
+        const fields = [['Primo', m.primo], ['Secondo', m.secondo], ['Contorno', m.contorno], ['Dessert', m.dessert]];
+        daysHtml += `<div class="print-meal">
+            <div class="print-meal-type">${mealLabel}</div>
+            <table class="print-meal-table">
+                ${fields.map(([label, val]) => `<tr><td class="print-field-label">${label}</td><td class="print-field-val">${escapeHtml(val || '—')}</td></tr>`).join('')}
+            </table>
+        </div>`;
+    });
+    if (lastDate) daysHtml += '</div>';
+
+    const intolHtml = intolerances.length > 0 ? `
+        <div class="print-intol">
+            <div class="print-section-title">Intolleranze / Esigenze Alimentari</div>
+            <ul class="print-intol-list">
+                ${intolerances.map(it => `<li><strong>${it.count}</strong> × ${escapeHtml(it.note)}</li>`).join('')}
+            </ul>
+        </div>` : '';
+
+    const html = `<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8">
+    <title>Menu – ${escapeHtml(r.groupName)}</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Georgia', serif; color: #1a1a1a; background: #fff; padding: 40px; max-width: 800px; margin: 0 auto; }
+        .print-header { text-align: center; margin-bottom: 36px; padding-bottom: 24px; border-bottom: 2px solid #1a1a1a; }
+        .print-hotel { font-size: 13px; letter-spacing: 0.15em; text-transform: uppercase; color: #666; margin-bottom: 8px; }
+        .print-group { font-size: 28px; font-weight: bold; margin-bottom: 6px; }
+        .print-dates { font-size: 14px; color: #555; margin-bottom: 4px; }
+        .print-plan { display: inline-block; margin-top: 10px; font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; background: #f0f0f0; padding: 4px 14px; border-radius: 20px; color: #333; }
+        .print-intol { margin-bottom: 32px; padding: 16px 20px; background: #fff8f0; border-left: 4px solid #e8a020; border-radius: 4px; }
+        .print-section-title { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #888; margin-bottom: 10px; }
+        .print-intol-list { padding-left: 18px; }
+        .print-intol-list li { font-size: 14px; margin-bottom: 4px; }
+        .print-day { margin-bottom: 28px; break-inside: avoid; }
+        .print-day-header { font-size: 13px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #888; border-bottom: 1px solid #ddd; padding-bottom: 6px; margin-bottom: 12px; }
+        .print-meal { margin-bottom: 16px; padding-left: 12px; border-left: 3px solid #1a1a1a; }
+        .print-meal-type { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #1a1a1a; margin-bottom: 8px; }
+        .print-meal-table { width: 100%; border-collapse: collapse; }
+        .print-field-label { font-size: 12px; color: #888; width: 90px; padding: 3px 0; vertical-align: top; }
+        .print-field-val { font-size: 14px; color: #1a1a1a; padding: 3px 0; }
+        .print-footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #ddd; text-align: center; font-size: 11px; color: #aaa; }
+        @media print { body { padding: 20px; } }
+    </style>
+    </head><body>
+    <div class="print-header">
+        <div class="print-group">${escapeHtml(r.groupName)}</div>
+        <div class="print-dates">${formatDateDisplay(r.checkin)} — ${formatDateDisplay(r.checkout)} &nbsp;·&nbsp; ${nightsBetween(r.checkin, r.checkout)} notti &nbsp;·&nbsp; ${r.guestCount || 0} ospiti</div>
+        <div class="print-plan">${planLabels[plan] || plan}</div>
+    </div>
+    ${intolHtml}
+    ${daysHtml || '<p style="color:#888;text-align:center">Nessun menu da visualizzare</p>'}
+    <div class="print-footer">Stampato il ${new Date().toLocaleDateString('it-IT')}</div>
+    </body></html>`;
+
+    const w = window.open('', '_blank');
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => w.print(), 400);
 }
 
 async function saveMenuField(input) {
