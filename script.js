@@ -1253,6 +1253,7 @@ function openEditReservation(id) {
     document.getElementById('resGratuity').value = r.gratuity || '';
     document.getElementById('resNotes').value = r.notes || '';
     document.getElementById('resMealPlan').value = r.mealPlan || 'BB';
+    document.getElementById('resVeggieBuffet').checked = r.veggieBuffet || false;
     calcReservationPrice();
     toggleExpirationField();
 
@@ -1434,7 +1435,8 @@ async function saveReservation(e) {
         gratuity: parseInt(document.getElementById('resGratuity').value) || 0,
         price: parseFloat(document.getElementById('resPrice').value) || 0,
         notes: document.getElementById('resNotes').value.trim(),
-        mealPlan: document.getElementById('resMealPlan').value
+        mealPlan: document.getElementById('resMealPlan').value,
+        veggieBuffet: document.getElementById('resVeggieBuffet').checked
     };
 
     if (new Date(data.checkout) <= new Date(data.checkin)) {
@@ -1755,6 +1757,12 @@ function renderMenuSection(r, menus) {
         html += `<div class="menu-meal">
             <div class="menu-meal-type">${mealLabel}</div>
             <div class="menu-meal-fields">`;
+        if (r.veggieBuffet) {
+            html += `<div class="menu-field menu-field-full">
+                <label class="menu-field-label">Antipasto</label>
+                <div class="menu-veggie-badge">Buffet di verdure</div>
+            </div>`;
+        }
         fields.forEach(f => {
             html += `<div class="menu-field">
                 <label class="menu-field-label">${f.charAt(0).toUpperCase() + f.slice(1)}</label>
@@ -1834,9 +1842,11 @@ function printMenu(resId) {
         const m = menuMap[`${date}_${mealType}`] || {};
         const mealLabel = mealType === 'lunch' ? 'Pranzo' : 'Cena';
         const fields = [['Primo', m.primo], ['Secondo', m.secondo], ['Contorno', m.contorno], ['Dessert', m.dessert]];
+        const veggieRow = r.veggieBuffet ? `<tr><td class="print-field-label">Antipasto</td><td class="print-field-val print-veggie">Buffet di verdure</td></tr>` : '';
         daysHtml += `<div class="print-meal">
             <div class="print-meal-type">${mealLabel}</div>
             <table class="print-meal-table">
+                ${veggieRow}
                 ${fields.map(([label, val]) => `<tr><td class="print-field-label">${label}</td><td class="print-field-val">${escapeHtml(val || '—')}</td></tr>`).join('')}
             </table>
         </div>`;
@@ -1872,6 +1882,7 @@ function printMenu(resId) {
         .print-meal-table { width: 100%; border-collapse: collapse; }
         .print-field-label { font-size: 12px; color: #888; width: 90px; padding: 3px 0; vertical-align: top; }
         .print-field-val { font-size: 14px; color: #1a1a1a; padding: 3px 0; }
+        .print-veggie { color: #27ae60; font-style: italic; }
         .print-footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #ddd; text-align: center; font-size: 11px; color: #aaa; }
         @page { margin: 0; }
         @media print { body { padding: 20px; } }

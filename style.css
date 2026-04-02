@@ -2743,6 +2743,20 @@ select.cell-input option {
     flex-shrink: 0;
 }
 
+.menu-field-full {
+    grid-column: 1 / -1;
+}
+
+.menu-veggie-badge {
+    font-size: 12px;
+    font-weight: 600;
+    color: #27ae60;
+    background: #eafaf1;
+    border-radius: var(--radius-sm);
+    padding: 5px 10px;
+    display: inline-block;
+}
+
 /* File Import */
 .file-import-drop {
     display: flex;
