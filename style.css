@@ -2580,6 +2580,110 @@ select.cell-input option {
     align-self: flex-end;
 }
 
+/* Menu Section */
+.detail-menu-section {
+    margin: 0 20px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.detail-menu-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.meal-plan-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 100px;
+    letter-spacing: 0.04em;
+    background: var(--accent-light);
+    color: var(--accent);
+}
+
+.meal-plan-HB { background: #e8f4fd; color: #2980b9; }
+.meal-plan-FB { background: #eafaf1; color: #27ae60; }
+.meal-plan-FBC { background: #fef9e7; color: #d4a017; }
+.meal-plan-BB { background: var(--bg-tertiary); color: var(--text-secondary); }
+
+.menu-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.menu-bb-note, .menu-loading, .menu-error {
+    font-size: 13px;
+    color: var(--text-secondary);
+    padding: 16px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    text-align: center;
+}
+
+.menu-day {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+
+.menu-day-header {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: var(--bg-tertiary);
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border-light);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.menu-meal {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.menu-meal:last-child {
+    border-bottom: none;
+}
+
+.menu-meal-type {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.menu-meal-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.menu-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.menu-field-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.menu-input {
+    font-size: 13px;
+    padding: 6px 10px;
+    height: auto;
+}
+
 /* File Import */
 .file-import-drop {
     display: flex;

@@ -13,7 +13,8 @@ const API = {
     plannerConfig: '/api/planner-config',
     alloggiati: '/api/alloggiati',
     employees: '/api/employees',
-    files: '/api/files'
+    files: '/api/files',
+    menus: '/api/menus'
 };
 
 async function apiGet(url) {
@@ -227,6 +228,7 @@ const TRANSLATIONS = {
     'res.totalPrice': { en: 'Total Price', it: 'Prezzo Totale' },
     'res.pricePerPerson': { en: 'Price/Person (\u20AC)', it: 'Prezzo/Persona (\u20AC)' },
     'res.gratuity': { en: 'Gratuity', it: 'Gratuità' },
+    'res.mealPlan': { en: 'Meal Plan', it: 'Piano Pasti' },
     'res.guests': { en: 'Guests', it: 'Ospiti' },
     'res.freeGuests': { en: 'free guests', it: 'ospiti gratuiti' },
     'res.notes': { en: 'Notes', it: 'Note' },
@@ -1250,6 +1252,7 @@ function openEditReservation(id) {
     document.getElementById('resPricePerPerson').value = r.pricePerPerson || '';
     document.getElementById('resGratuity').value = r.gratuity || '';
     document.getElementById('resNotes').value = r.notes || '';
+    document.getElementById('resMealPlan').value = r.mealPlan || 'BB';
     calcReservationPrice();
     toggleExpirationField();
 
@@ -1430,7 +1433,8 @@ async function saveReservation(e) {
         pricePerPerson: parseFloat(document.getElementById('resPricePerPerson').value) || 0,
         gratuity: parseInt(document.getElementById('resGratuity').value) || 0,
         price: parseFloat(document.getElementById('resPrice').value) || 0,
-        notes: document.getElementById('resNotes').value.trim()
+        notes: document.getElementById('resNotes').value.trim(),
+        mealPlan: document.getElementById('resMealPlan').value
     };
 
     if (new Date(data.checkout) <= new Date(data.checkin)) {
@@ -1569,6 +1573,10 @@ function openReservationDetail(id) {
                     <span class="detail-info-value">${r.gratuity} (${r.gratuity > 0 ? Math.floor(r.guestCount / r.gratuity) : 0} ${t('res.freeGuests')})</span>
                 </div>` : ''}
                 ${r.resType !== 'individual' ? `<div class="detail-info-item">
+                    <span class="detail-info-label">Piano Pasti</span>
+                    <span class="detail-info-value"><span class="meal-plan-badge meal-plan-${r.mealPlan || 'BB'}">${r.mealPlan || 'BB'}</span></span>
+                </div>` : ''}
+                ${r.resType !== 'individual' ? `<div class="detail-info-item">
                     <span class="detail-info-label">Presenze</span>
                     <span class="detail-info-value">${(() => { const gc = r.guestCount || 0; const fg = r.gratuity > 0 ? Math.floor(gc / r.gratuity) : 0; return Math.max(0, gc - fg) * nights; })()}</span>
                 </div>` : ''}
@@ -1589,6 +1597,19 @@ function openReservationDetail(id) {
             <button class="btn btn-sm btn-primary" onclick="saveDetailNotes('${r.id}')">${t('detail.saveNotes')}</button>
         </div>
 
+        ${r.resType !== 'individual' ? `
+        <div class="detail-menu-section">
+            <div class="detail-menu-header">
+                <div class="detail-menu-title-row">
+                    <span class="detail-info-label">Menu</span>
+                    <span class="meal-plan-badge meal-plan-${r.mealPlan || 'BB'}">${r.mealPlan || 'BB'}</span>
+                </div>
+            </div>
+            <div id="menuContainer" class="menu-container">
+                <div class="menu-loading">Caricamento menu...</div>
+            </div>
+        </div>` : ''}
+
         <div class="detail-files-section">
             <div class="detail-files-header">
                 <span class="detail-info-label">${t('detail.files')}</span>
@@ -1606,6 +1627,7 @@ function openReservationDetail(id) {
 
     openModal('reservationDetailModal');
     loadReservationFiles(r.id);
+    if (r.resType !== 'individual') loadReservationMenus(r);
 }
 
 async function saveDetailNotes(id) {
@@ -1623,6 +1645,103 @@ async function saveDetailNotes(id) {
 }
 
 // ---- Reservation Files ----
+
+async function loadReservationMenus(r) {
+    const container = document.getElementById('menuContainer');
+    if (!container) return;
+    try {
+        const menus = await apiGet(`${API.menus}?reservationId=${r.id}`);
+        renderMenuSection(r, menus);
+    } catch (err) {
+        container.innerHTML = '<div class="menu-error">Errore caricamento menu</div>';
+    }
+}
+
+function getMealDays(r) {
+    const days = [];
+    if (!r.checkin || !r.checkout) return days;
+    const plan = r.mealPlan || 'BB';
+    if (plan === 'BB') return days;
+    let d = new Date(r.checkin);
+    const end = new Date(r.checkout);
+    while (d < end) {
+        const dateStr = formatDate(d);
+        if (plan === 'HB' || plan === 'FBC') {
+            days.push({ date: dateStr, mealType: 'dinner' });
+        } else if (plan === 'FB') {
+            days.push({ date: dateStr, mealType: 'lunch' });
+            days.push({ date: dateStr, mealType: 'dinner' });
+        }
+        d.setDate(d.getDate() + 1);
+    }
+    return days;
+}
+
+function renderMenuSection(r, menus) {
+    const container = document.getElementById('menuContainer');
+    if (!container) return;
+    const plan = r.mealPlan || 'BB';
+    if (plan === 'BB') {
+        container.innerHTML = '<div class="menu-bb-note">Solo colazione — nessun menu da inserire</div>';
+        return;
+    }
+    const days = getMealDays(r);
+    const menuMap = {};
+    menus.forEach(m => { menuMap[`${m.date}_${m.mealType}`] = m; });
+
+    let html = '';
+    let lastDate = '';
+    days.forEach(({ date, mealType }) => {
+        if (date !== lastDate) {
+            if (lastDate) html += '</div>';
+            html += `<div class="menu-day">
+                <div class="menu-day-header">${formatDateDisplay(date)}</div>`;
+            lastDate = date;
+        }
+        const key = `${date}_${mealType}`;
+        const m = menuMap[key] || {};
+        const mid = m.id || '';
+        const mealLabel = mealType === 'lunch' ? 'Pranzo' : 'Cena';
+        const fields = ['primo', 'secondo', 'contorno', 'dessert'];
+        html += `<div class="menu-meal">
+            <div class="menu-meal-type">${mealLabel}</div>
+            <div class="menu-meal-fields">`;
+        fields.forEach(f => {
+            html += `<div class="menu-field">
+                <label class="menu-field-label">${f.charAt(0).toUpperCase() + f.slice(1)}</label>
+                <input class="form-control menu-input" type="text" value="${escapeHtml(m[f] || '')}"
+                    data-resid="${r.id}" data-date="${date}" data-mealtype="${mealType}" data-field="${f}" data-mid="${mid}"
+                    onblur="saveMenuField(this)" placeholder="—">
+            </div>`;
+        });
+        html += '</div></div>';
+    });
+    if (lastDate) html += '</div>';
+    container.innerHTML = html || '<div class="menu-bb-note">Nessun giorno da mostrare</div>';
+}
+
+async function saveMenuField(input) {
+    const { resid, date, mealtype, field } = input.dataset;
+    const value = input.value.trim();
+    // collect all 4 fields for this meal slot
+    const allInputs = document.querySelectorAll(
+        `.menu-input[data-resid="${resid}"][data-date="${date}"][data-mealtype="${mealtype}"]`
+    );
+    const entry = { reservationId: resid, date, mealType: mealtype, primo: '', secondo: '', contorno: '', dessert: '' };
+    allInputs.forEach(inp => { entry[inp.dataset.field] = inp.value.trim(); });
+    // generate id if new
+    let mid = input.dataset.mid;
+    if (!mid) {
+        mid = generateId();
+        allInputs.forEach(inp => { inp.dataset.mid = mid; });
+    }
+    entry.id = mid;
+    try {
+        await apiPost(API.menus, entry);
+    } catch (err) {
+        console.error('Menu save error', err);
+    }
+}
 
 async function loadReservationFiles(reservationId) {
     try {

@@ -122,6 +122,22 @@ export default async function handler(req, res) {
     await sql`ALTER TABLE reservations ADD COLUMN IF NOT EXISTS res_type TEXT DEFAULT 'group'`;
     await sql`ALTER TABLE reservations ADD COLUMN IF NOT EXISTS phone TEXT`;
 
+    await sql`ALTER TABLE reservations ADD COLUMN IF NOT EXISTS meal_plan TEXT DEFAULT 'BB'`;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS menus (
+        id TEXT PRIMARY KEY,
+        reservation_id TEXT REFERENCES reservations(id) ON DELETE CASCADE,
+        menu_date DATE NOT NULL,
+        meal_type TEXT NOT NULL,
+        primo TEXT DEFAULT '',
+        secondo TEXT DEFAULT '',
+        contorno TEXT DEFAULT '',
+        dessert TEXT DEFAULT '',
+        UNIQUE(reservation_id, menu_date, meal_type)
+      )
+    `;
+
     await sql`
       CREATE TABLE IF NOT EXISTS reservation_files (
         id TEXT PRIMARY KEY,
