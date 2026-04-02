@@ -1873,6 +1873,7 @@ function printMenu(resId) {
         .print-field-label { font-size: 12px; color: #888; width: 90px; padding: 3px 0; vertical-align: top; }
         .print-field-val { font-size: 14px; color: #1a1a1a; padding: 3px 0; }
         .print-footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #ddd; text-align: center; font-size: 11px; color: #aaa; }
+        @page { margin: 0; }
         @media print { body { padding: 20px; } }
     </style>
     </head><body>
