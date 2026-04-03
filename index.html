@@ -1335,6 +1335,23 @@
         </div>
     </div>
 
+    <!-- File Preview Lightbox -->
+    <div id="filePreviewOverlay" class="file-preview-overlay" style="display:none" onclick="if(event.target===this)closeFilePreview()">
+        <div class="file-preview-box">
+            <div class="file-preview-header">
+                <span id="filePreviewName" class="file-preview-name"></span>
+                <div style="display:flex;gap:8px;align-items:center">
+                    <a id="filePreviewDownload" class="btn btn-secondary btn-sm" href="#" download>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Scarica
+                    </a>
+                    <button class="modal-close" onclick="closeFilePreview()">&times;</button>
+                </div>
+            </div>
+            <div id="filePreviewContent" class="file-preview-content"></div>
+        </div>
+    </div>
+
     <!-- Global Loading Overlay -->
     <div id="loadingOverlay" class="loading-overlay" style="display:none">
         <div class="loading-box">

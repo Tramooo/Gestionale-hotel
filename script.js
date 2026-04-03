@@ -3981,9 +3981,9 @@ function renderComplianceEmpGrid() {
                     </div>
                     <div class="comp-cert-actions">
                         <span class="comp-cert-badge comp-badge-${s}">${label}</span>
-                        ${cert.fileData ? `<a href="${cert.fileData}" download="${cert.fileName || 'documento'}" class="btn btn-ghost btn-sm" title="Scarica documento">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                        </a>` : ''}
+                        ${cert.fileData ? `<button class="btn btn-ghost btn-sm" title="Anteprima documento" onclick="openFilePreview(${JSON.stringify(cert.fileData)}, ${JSON.stringify(cert.fileName || 'documento')})">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>` : ''}
                         <button class="btn btn-ghost btn-sm" onclick="openCompCertModal('${cert.id}', '${emp.id}')">
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                         </button>
@@ -4021,9 +4021,9 @@ function renderComplianceDocList() {
             </div>
             <div class="comp-cert-actions">
                 <span class="comp-cert-badge comp-badge-${s}">${label}</span>
-                ${doc.fileData ? `<a href="${doc.fileData}" download="${doc.fileName || 'documento'}" class="btn btn-ghost btn-sm" title="Scarica documento">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                </a>` : ''}
+                ${doc.fileData ? `<button class="btn btn-ghost btn-sm" title="Anteprima documento" onclick="openFilePreview(${JSON.stringify(doc.fileData)}, ${JSON.stringify(doc.fileName || 'documento')})">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>` : ''}
                 <button class="btn btn-ghost btn-sm" onclick="openCompDocModal('${doc.id}')">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 </button>
@@ -4194,6 +4194,35 @@ async function deleteCompDoc(id) {
     complianceDocs = complianceDocs.filter(d => d.id !== id);
     renderCompliance();
     showToast('Documento eliminato');
+}
+
+// ---- File Preview ----
+
+function openFilePreview(fileData, fileName) {
+    const overlay = document.getElementById('filePreviewOverlay');
+    const content = document.getElementById('filePreviewContent');
+    const nameEl = document.getElementById('filePreviewName');
+    const dlBtn = document.getElementById('filePreviewDownload');
+
+    nameEl.textContent = fileName;
+    dlBtn.href = fileData;
+    dlBtn.download = fileName;
+
+    const isPdf = fileData.startsWith('data:application/pdf') || fileName.toLowerCase().endsWith('.pdf');
+    if (isPdf) {
+        content.innerHTML = `<iframe src="${fileData}" class="file-preview-iframe"></iframe>`;
+    } else {
+        content.innerHTML = `<img src="${fileData}" class="file-preview-img" alt="${escapeHtml(fileName)}">`;
+    }
+
+    overlay.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeFilePreview() {
+    document.getElementById('filePreviewOverlay').style.display = 'none';
+    document.getElementById('filePreviewContent').innerHTML = '';
+    document.body.style.overflow = '';
 }
 
 // ---- PDF Export ----
