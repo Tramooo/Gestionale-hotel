@@ -2074,7 +2074,7 @@ function openGuestsList(reservationId) {
     const resGuests = guests.filter(g => g.reservationId === reservationId);
 
     // Check if group mode (any guest has type 17 or 19)
-    const hasGroupTypes = resGuests.some(g => g.guestType === '17' || g.guestType === '19');
+    const hasGroupTypes = resGuests.some(g => g.guestType === '17' || g.guestType === '18');
     const isGroup = hasGroupTypes || resGuests.length > 1;
 
     // Count total errors
@@ -2094,7 +2094,7 @@ function openGuestsList(reservationId) {
                 const room = g.roomId ? rooms.find(rm => rm.id === g.roomId) : null;
                 const missing = getGuestMissingFields(g);
                 const isLeader = g.guestType === '17';
-                const guestTypeLabel = g.guestType === '17' ? t('guest.leader') : g.guestType === '19' ? t('guest.member') : '';
+                const guestTypeLabel = g.guestType === '17' ? t('guest.leader') : g.guestType === '18' ? t('guest.member') : '';
                 guestListHtml += `
                     <div class="detail-guest-item ${missing.length > 0 ? 'guest-has-errors' : ''}">
                         <div class="guest-avatar">${getInitials((g.firstName || '') + ' ' + (g.lastName || ''))}</div>
@@ -2194,7 +2194,7 @@ async function setAllGuestsType(reservationId, mode) {
         const leaders = resGuests.filter(g => g.guestType === '17');
         const leaderId = leaders.length === 1 ? leaders[0].id : resGuests[0].id;
         for (const g of resGuests) {
-            g.guestType = g.id === leaderId ? '17' : '19';
+            g.guestType = g.id === leaderId ? '17' : '18';
         }
     }
 
@@ -2208,7 +2208,7 @@ async function setAllGuestsType(reservationId, mode) {
 async function setGuestAsLeader(guestId, reservationId) {
     const resGuests = guests.filter(g => g.reservationId === reservationId);
     for (const g of resGuests) {
-        g.guestType = g.id === guestId ? '17' : '19';
+        g.guestType = g.id === guestId ? '17' : '18';
     }
     try {
         await Promise.all(resGuests.map(g => apiPut(API.guests, g)));
@@ -4936,9 +4936,9 @@ async function executeGuestFileImport() {
     closeModal('fileImportModal');
     showToast(`Imported ${success} guest(s)${errors ? ', ' + errors + ' failed' : ''}`);
 
-    // Normalize group types: ensure only the first guest is leader (17), rest are members (19)
+    // Normalize group types: ensure only the first guest is leader (17), rest are members (18)
     const resGuests = guests.filter(g => g.reservationId === reservationId);
-    const isGroup = resGuests.some(g => g.guestType === '17' || g.guestType === '19');
+    const isGroup = resGuests.some(g => g.guestType === '17' || g.guestType === '18');
     if (isGroup || resGuests.length > 1) {
         let leaderAssigned = false;
         for (const g of resGuests) {
@@ -4946,7 +4946,7 @@ async function executeGuestFileImport() {
                 g.guestType = '17';
                 leaderAssigned = true;
             } else {
-                g.guestType = '19';
+                g.guestType = '18';
             }
         }
         try {
