@@ -787,6 +787,18 @@ document.addEventListener('click', (e) => {
 
 // ---- TOAST ----
 
+function showLoading(message = 'Caricamento...') {
+    const el = document.getElementById('loadingOverlay');
+    if (!el) return;
+    document.getElementById('loadingMessage').textContent = message;
+    el.style.display = 'flex';
+}
+
+function hideLoading() {
+    const el = document.getElementById('loadingOverlay');
+    if (el) el.style.display = 'none';
+}
+
 function showToast(message, type = 'success') {
     const container = document.getElementById('toastContainer');
     const toast = document.createElement('div');
@@ -2429,10 +2441,12 @@ async function alloggiatiTest(reservationId) {
 async function alloggiatiSend(reservationId) {
     if (!confirm(t('confirm.sendSchedule'))) return;
     const container = document.getElementById('alloggiatiResults');
-    container.innerHTML = '<p>Sending to Alloggiati Web...</p>';
+    container.innerHTML = '';
+    showLoading('Invio schedine alla Polizia...');
     try {
         const token = await getAlloggiatiToken();
         const data = await apiPost(API.alloggiati + '?action=send', { reservationId, token });
+        hideLoading();
         renderAlloggiatiResults(container, data, 'send');
         if (data.success && data.validCount === data.totalCount) {
             showToast(t('toast.schedineOk'));
@@ -2440,6 +2454,7 @@ async function alloggiatiSend(reservationId) {
             showToast(`${data.validCount}/${data.totalCount} schedine accepted`, 'error');
         }
     } catch (err) {
+        hideLoading();
         container.innerHTML = `<p style="color:var(--red)">Error: ${err.message}</p>`;
     }
 }
@@ -4126,6 +4141,7 @@ async function executeCsvImport() {
 
     if (!confirm(t('confirm.importReservations', { n: toImport.length }))) return;
 
+    showLoading(`Importazione prenotazioni (0 / ${toImport.length})...`);
     let success = 0;
     let errors = 0;
 
@@ -4139,8 +4155,11 @@ async function executeCsvImport() {
             console.error('Import error:', err);
             errors++;
         }
+        document.getElementById('loadingMessage').textContent =
+            `Importazione prenotazioni (${success + errors} / ${toImport.length})...`;
     }
 
+    hideLoading();
     closeModal('csvImportModal');
     showToast(`Imported ${success} reservations${errors ? ', ' + errors + ' failed' : ''}`);
     renderDashboard();
@@ -4977,6 +4996,7 @@ async function executeGuestFileImport() {
 
     if (!confirm(t('confirm.importGuests', { n: toImport.length }))) return;
 
+    showLoading(`Importazione ospiti (0 / ${toImport.length})...`);
     let success = 0, errors = 0;
 
     for (const data of toImport) {
@@ -4994,6 +5014,8 @@ async function executeGuestFileImport() {
             console.error('Guest import error:', err);
             errors++;
         }
+        document.getElementById('loadingMessage').textContent =
+            `Importazione ospiti (${success + errors} / ${toImport.length})...`;
     }
 
     closeModal('fileImportModal');
@@ -5017,6 +5039,7 @@ async function executeGuestFileImport() {
         } catch (err) { console.error('Guest type normalization error:', err); }
     }
 
+    hideLoading();
     // Refresh guests list
     openGuestsList(reservationId);
     renderDashboard();
@@ -5774,7 +5797,9 @@ applyTheme(getTheme());
         btn.classList.toggle('active', btn.dataset.langVal === currentLang);
         btn.addEventListener('click', () => setLanguage(btn.dataset.langVal));
     });
+    showLoading('Caricamento dati...');
     await loadAllData();
+    hideLoading();
     renderDashboard();
     renderCalendar();
 })();
