@@ -2296,8 +2296,26 @@ function setupAlloggiatiSearchField(searchId, hiddenId, listSource) {
     const resolveCode = () => {
         const list = listSource === 'stati' ? alloggiatiStati : alloggiatiLuoghi;
         const code = findCodeFromLabel(list, searchEl.value);
-        // If no match found, treat the typed value as a raw code (fallback)
-        document.getElementById(hiddenId).value = code || searchEl.value.trim();
+        if (code) {
+            document.getElementById(hiddenId).value = code;
+        } else if (listSource === 'stati') {
+            // For country fields: only accept if it's a valid 9-digit code or empty — never accept free text
+            const raw = searchEl.value.trim();
+            if (/^\d{9}$/.test(raw)) {
+                document.getElementById(hiddenId).value = raw;
+            } else if (raw === '') {
+                document.getElementById(hiddenId).value = '';
+            } else {
+                // Not a valid country — clear the field and warn
+                searchEl.value = '';
+                document.getElementById(hiddenId).value = '';
+                searchEl.placeholder = 'Seleziona una nazione valida';
+                searchEl.classList.add('input-error');
+                setTimeout(() => { searchEl.classList.remove('input-error'); searchEl.placeholder = ''; }, 2500);
+            }
+        } else {
+            document.getElementById(hiddenId).value = searchEl.value.trim();
+        }
     };
 
     searchEl.addEventListener('change', resolveCode);
@@ -4873,7 +4891,6 @@ const COUNTRY_NAME_TO_CODE = {
 // If the value looks like an Italian comune (not a country name/code), returns ITALIA code.
 function normalizeBirthCountry(val, birthComune) {
     if (!val) {
-        // No country given: if there's a comune, assume Italy
         return birthComune ? '100000100' : '';
     }
     const v = val.trim();
@@ -4882,11 +4899,13 @@ function normalizeBirthCountry(val, birthComune) {
     // Known country name
     const code = COUNTRY_NAME_TO_CODE[v.toLowerCase()];
     if (code) return code;
-    // Value looks like an Italian comune (same as birthComune, or short text with no spaces that isn't a country)
-    // If it exactly matches birthComune it was likely mis-assigned
-    if (birthComune && v.toLowerCase() === birthComune.toLowerCase()) return '100000100';
-    // Anything else: return as-is (user can fix manually)
-    return v;
+    // Try matching against loaded alloggiatiStati list if available
+    if (alloggiatiStati) {
+        const match = alloggiatiStati.find(s => s.label.toLowerCase() === v.toLowerCase());
+        if (match) return match.code;
+    }
+    // Value is not a known country — assume it's an Italian comune
+    return '100000100';
 }
 
 function normalizeGuestType(val) {
