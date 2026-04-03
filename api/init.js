@@ -115,6 +115,8 @@ export default async function handler(req, res) {
 
     await sql`ALTER TABLE work_entries ADD COLUMN IF NOT EXISTS start_time TEXT`;
     await sql`ALTER TABLE work_entries ADD COLUMN IF NOT EXISTS end_time TEXT`;
+    await sql`ALTER TABLE work_entries ADD COLUMN IF NOT EXISTS start_time_2 TEXT`;
+    await sql`ALTER TABLE work_entries ADD COLUMN IF NOT EXISTS end_time_2 TEXT`;
 
     await sql`
       CREATE TABLE IF NOT EXISTS employee_month_overrides (

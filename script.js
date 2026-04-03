@@ -5855,7 +5855,11 @@ function renderEmployees() {
             if (entry) cls += ' emp-tbl-worked';
 
             if (effPay.payType === 'hourly') {
-                const display = entry ? (entry.hours % 1 === 0 ? entry.hours.toString() : entry.hours.toFixed(1)) : '';
+                let display = '';
+                if (entry) {
+                    const hStr = entry.hours % 1 === 0 ? entry.hours.toString() : entry.hours.toFixed(1);
+                    display = entry.startTime2 ? `<span class="emp-tbl-2shifts">${hStr}</span>` : hStr;
+                }
                 row += `<td class="${cls}" data-emp="${emp.id}" data-date="${dateStr}" onclick="openTimePopover('${emp.id}','${dateStr}',this)">${display}</td>`;
             } else {
                 const display = entry ? '\u2713' : '';
@@ -5912,14 +5916,18 @@ function openTimePopover(empId, dateStr, cellEl) {
     closeTimePopover();
 
     const existing = workEntries.find(w => w.employeeId === empId && w.workDate === dateStr);
-    const startVal = (existing && existing.startTime) || '08:00';
-    const endVal = (existing && existing.endTime) || '16:00';
+    const startVal  = (existing && existing.startTime)  || '08:00';
+    const endVal    = (existing && existing.endTime)    || '16:00';
+    const start2Val = (existing && existing.startTime2) || '';
+    const end2Val   = (existing && existing.endTime2)   || '';
+    const hasShift2 = !!(existing && existing.startTime2);
 
     const pop = document.createElement('div');
     pop.id = 'empTimePopover';
     pop.className = 'emp-time-popover';
     pop.innerHTML = `
         <div class="emp-time-popover-inner">
+            <div class="emp-time-shift-label">Turno 1</div>
             <div class="emp-time-row">
                 <label>${t('emp.startTime')}</label>
                 <input type="time" id="empPopStart" value="${startVal}">
@@ -5928,7 +5936,22 @@ function openTimePopover(empId, dateStr, cellEl) {
                 <label>${t('emp.endTime')}</label>
                 <input type="time" id="empPopEnd" value="${endVal}">
             </div>
-            <div class="emp-time-calc" id="empPopCalc"></div>
+            <div id="empPopShift2" style="${hasShift2 ? '' : 'display:none'}">
+                <div class="emp-time-shift-label" style="margin-top:8px">Turno 2</div>
+                <div class="emp-time-row">
+                    <label>${t('emp.startTime')}</label>
+                    <input type="time" id="empPopStart2" value="${start2Val}">
+                </div>
+                <div class="emp-time-row">
+                    <label>${t('emp.endTime')}</label>
+                    <input type="time" id="empPopEnd2" value="${end2Val}">
+                </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+                <div class="emp-time-calc" id="empPopCalc"></div>
+                <button id="empPopAddShift2" class="btn btn-ghost btn-sm" style="font-size:11px;padding:2px 6px;${hasShift2 ? 'display:none' : ''}" onclick="toggleShift2Popover()">+ Turno 2</button>
+                <button id="empPopRemoveShift2" class="btn btn-ghost btn-sm" style="font-size:11px;padding:2px 6px;color:var(--red);${hasShift2 ? '' : 'display:none'}" onclick="toggleShift2Popover()">- Turno 2</button>
+            </div>
             <div class="emp-time-actions">
                 <button class="btn btn-primary btn-sm" onclick="saveTimePopover('${empId}','${dateStr}')">${t('emp.save')}</button>
                 ${existing ? `<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteTimePopover('${empId}','${dateStr}')">${t('emp.delete')}</button>` : ''}
@@ -5939,7 +5962,7 @@ function openTimePopover(empId, dateStr, cellEl) {
 
     // Position near cell
     const rect = cellEl.getBoundingClientRect();
-    const popW = 200, popH = 180;
+    const popW = 210, popH = hasShift2 ? 300 : 200;
     let left = rect.left + rect.width / 2 - popW / 2;
     let top = rect.bottom + 6;
     if (left < 8) left = 8;
@@ -5948,26 +5971,49 @@ function openTimePopover(empId, dateStr, cellEl) {
     pop.style.left = left + 'px';
     pop.style.top = top + 'px';
 
-    // Live calc
+    // Live calc — total of both shifts
     function updateCalc() {
-        const s = document.getElementById('empPopStart').value;
-        const e = document.getElementById('empPopEnd').value;
-        const calc = document.getElementById('empPopCalc');
-        if (s && e) {
-            const hours = calcHoursFromTimes(s, e);
-            calc.textContent = hours.toFixed(1) + 'h';
-        } else {
-            calc.textContent = '';
-        }
+        let totalH = 0;
+        const s1 = document.getElementById('empPopStart').value;
+        const e1 = document.getElementById('empPopEnd').value;
+        if (s1 && e1) totalH += calcHoursFromTimes(s1, e1);
+        const s2 = document.getElementById('empPopStart2')?.value;
+        const e2 = document.getElementById('empPopEnd2')?.value;
+        if (s2 && e2) totalH += calcHoursFromTimes(s2, e2);
+        document.getElementById('empPopCalc').textContent = totalH > 0 ? totalH.toFixed(1) + 'h' : '';
     }
-    document.getElementById('empPopStart').addEventListener('input', updateCalc);
-    document.getElementById('empPopEnd').addEventListener('input', updateCalc);
+    ['empPopStart','empPopEnd','empPopStart2','empPopEnd2'].forEach(id => {
+        document.getElementById(id)?.addEventListener('input', updateCalc);
+    });
     updateCalc();
 
     // Close on outside click (deferred)
     setTimeout(() => {
         document.addEventListener('mousedown', _timePopoverOutsideClick);
     }, 10);
+}
+
+function toggleShift2Popover() {
+    const section = document.getElementById('empPopShift2');
+    const addBtn  = document.getElementById('empPopAddShift2');
+    const remBtn  = document.getElementById('empPopRemoveShift2');
+    const visible = section.style.display !== 'none';
+    section.style.display = visible ? 'none' : '';
+    addBtn.style.display  = visible ? '' : 'none';
+    remBtn.style.display  = visible ? 'none' : '';
+    if (visible) {
+        // Clear shift 2 values when hiding
+        const s2 = document.getElementById('empPopStart2');
+        const e2 = document.getElementById('empPopEnd2');
+        if (s2) s2.value = '';
+        if (e2) e2.value = '';
+    }
+    // Recalculate total
+    let totalH = 0;
+    const s1 = document.getElementById('empPopStart').value;
+    const e1 = document.getElementById('empPopEnd').value;
+    if (s1 && e1) totalH += calcHoursFromTimes(s1, e1);
+    document.getElementById('empPopCalc').textContent = totalH > 0 ? totalH.toFixed(1) + 'h' : '';
 }
 
 function _timePopoverOutsideClick(e) {
@@ -6093,19 +6139,26 @@ function calcHoursFromTimes(start, end) {
 }
 
 async function saveTimePopover(empId, dateStr) {
-    const startTime = document.getElementById('empPopStart').value;
-    const endTime = document.getElementById('empPopEnd').value;
+    const startTime  = document.getElementById('empPopStart').value;
+    const endTime    = document.getElementById('empPopEnd').value;
     if (!startTime || !endTime) return;
-    const hours = calcHoursFromTimes(startTime, endTime);
+
+    const startTime2 = document.getElementById('empPopStart2')?.value || null;
+    const endTime2   = document.getElementById('empPopEnd2')?.value   || null;
+
+    let hours = calcHoursFromTimes(startTime, endTime);
+    if (startTime2 && endTime2) hours += calcHoursFromTimes(startTime2, endTime2);
 
     const existing = workEntries.find(w => w.employeeId === empId && w.workDate === dateStr);
     if (existing) {
-        existing.hours = hours;
-        existing.startTime = startTime;
-        existing.endTime = endTime;
+        existing.hours      = hours;
+        existing.startTime  = startTime;
+        existing.endTime    = endTime;
+        existing.startTime2 = startTime2 || null;
+        existing.endTime2   = endTime2   || null;
         try { await apiPut(API.employees + '?type=work', existing); } catch (err) { console.error(err); }
     } else {
-        const data = { id: generateId(), employeeId: empId, workDate: dateStr, hours, notes: '', startTime, endTime };
+        const data = { id: generateId(), employeeId: empId, workDate: dateStr, hours, notes: '', startTime, endTime, startTime2: startTime2 || null, endTime2: endTime2 || null };
         try {
             await apiPost(API.employees + '?type=work', data);
             workEntries.push(data);

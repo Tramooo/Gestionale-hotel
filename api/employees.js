@@ -28,6 +28,8 @@ export default async function handler(req, res) {
           notes: w.notes,
           startTime: w.start_time || null,
           endTime: w.end_time || null,
+          startTime2: w.start_time_2 || null,
+          endTime2: w.end_time_2 || null,
         })),
         monthOverrides: monthOverrides.map(o => ({
           id: o.id,
@@ -45,8 +47,8 @@ export default async function handler(req, res) {
       if (type === 'work') {
         const w = req.body;
         await sql`
-          INSERT INTO work_entries (id, employee_id, work_date, hours, notes, start_time, end_time)
-          VALUES (${w.id}, ${w.employeeId}, ${w.workDate}, ${w.hours || 0}, ${w.notes || null}, ${w.startTime || null}, ${w.endTime || null})
+          INSERT INTO work_entries (id, employee_id, work_date, hours, notes, start_time, end_time, start_time_2, end_time_2)
+          VALUES (${w.id}, ${w.employeeId}, ${w.workDate}, ${w.hours || 0}, ${w.notes || null}, ${w.startTime || null}, ${w.endTime || null}, ${w.startTime2 || null}, ${w.endTime2 || null})
         `;
         return res.status(201).json({ success: true });
       }
@@ -76,7 +78,8 @@ export default async function handler(req, res) {
         const w = req.body;
         await sql`
           UPDATE work_entries SET employee_id=${w.employeeId}, work_date=${w.workDate},
-          hours=${w.hours || 0}, notes=${w.notes || null}, start_time=${w.startTime || null}, end_time=${w.endTime || null}
+          hours=${w.hours || 0}, notes=${w.notes || null}, start_time=${w.startTime || null}, end_time=${w.endTime || null},
+          start_time_2=${w.startTime2 || null}, end_time_2=${w.endTime2 || null}
           WHERE id=${w.id}
         `;
         return res.status(200).json({ success: true });

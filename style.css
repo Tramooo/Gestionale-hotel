@@ -4123,7 +4123,31 @@ select.cell-input option {
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-lg);
     padding: 14px;
-    width: 200px;
+    width: 210px;
+}
+
+.emp-time-shift-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text-tertiary);
+    margin-bottom: 6px;
+}
+
+/* Small dot indicator on table cell when 2 shifts logged */
+.emp-tbl-2shifts {
+    position: relative;
+}
+.emp-tbl-2shifts::after {
+    content: '';
+    display: inline-block;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--accent);
+    vertical-align: super;
+    margin-left: 1px;
 }
 
 .emp-time-row {
