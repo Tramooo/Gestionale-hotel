@@ -2190,11 +2190,11 @@ async function setAllGuestsType(reservationId, mode) {
     if (mode === 'single') {
         for (const g of resGuests) { g.guestType = '16'; }
     } else {
-        // First guest becomes leader, rest become members
-        const hasLeader = resGuests.some(g => g.guestType === '17');
-        if (!hasLeader && resGuests.length > 0) resGuests[0].guestType = '17';
+        // Exactly one leader: keep existing leader if there's exactly one, else use first guest
+        const leaders = resGuests.filter(g => g.guestType === '17');
+        const leaderId = leaders.length === 1 ? leaders[0].id : resGuests[0].id;
         for (const g of resGuests) {
-            if (g.guestType !== '17') g.guestType = '19';
+            g.guestType = g.id === leaderId ? '17' : '19';
         }
     }
 
@@ -4935,6 +4935,24 @@ async function executeGuestFileImport() {
 
     closeModal('fileImportModal');
     showToast(`Imported ${success} guest(s)${errors ? ', ' + errors + ' failed' : ''}`);
+
+    // Normalize group types: ensure only the first guest is leader (17), rest are members (19)
+    const resGuests = guests.filter(g => g.reservationId === reservationId);
+    const isGroup = resGuests.some(g => g.guestType === '17' || g.guestType === '19');
+    if (isGroup || resGuests.length > 1) {
+        let leaderAssigned = false;
+        for (const g of resGuests) {
+            if (!leaderAssigned && (g.guestType === '17' || g.guestType === '16')) {
+                g.guestType = '17';
+                leaderAssigned = true;
+            } else {
+                g.guestType = '19';
+            }
+        }
+        try {
+            await Promise.all(resGuests.map(g => apiPut(API.guests, g)));
+        } catch (err) { console.error('Guest type normalization error:', err); }
+    }
 
     // Refresh guests list
     openGuestsList(reservationId);
