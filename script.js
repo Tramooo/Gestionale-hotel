@@ -26,7 +26,8 @@ const CERT_TYPES = {
     antincendio_medio:    'Antincendio rischio medio',
     primo_soccorso:       'Primo soccorso',
     haccp:                'HACCP (manipolazione alimenti)',
-    privacy_gdpr:         'Privacy / GDPR – Nomina incaricato'
+    privacy_gdpr:         'Privacy / GDPR – Nomina incaricato',
+    spp_datore:           'DL SPP – Datore di lavoro (D.Lgs. 81/08)'
 };
 
 const DOC_TYPES = {
