@@ -4521,7 +4521,7 @@ function mapXlsxGuestRow(row, mapping) {
         birthDate: parseImportDate(get('birthDate')) || '',
         birthComune: get('birthComune'),
         birthProvince: get('birthProvince').toUpperCase().substring(0, 2),
-        birthCountry: get('birthCountry'),
+        birthCountry: normalizeBirthCountry(get('birthCountry'), get('birthComune')),
         citizenship: get('citizenship'),
         docType: normalizeDocType(get('docType')),
         docNumber: get('docNumber'),
@@ -4728,13 +4728,15 @@ function tryParseAsTable(text) {
         const firstName = get('firstName');
         const lastName = get('lastName');
         if (!firstName && !lastName) continue;
+        const csvBirthComune = get('birthComune');
+        const csvBirthCountry = normalizeBirthCountry(get('birthCountry'), csvBirthComune);
         results.push({
             firstName, lastName,
             sex: normalizeSex(get('sex')),
             birthDate: parseImportDate(get('birthDate')) || '',
-            birthComune: get('birthComune'),
+            birthComune: csvBirthComune,
             birthProvince: get('birthProvince').toUpperCase().substring(0, 2),
-            birthCountry: get('birthCountry'),
+            birthCountry: csvBirthCountry,
             citizenship: get('citizenship'),
             docType: normalizeDocType(get('docType')),
             docNumber: get('docNumber'),
@@ -4799,6 +4801,7 @@ function parseGuestBlock(block) {
     guest.docType = normalizeDocType(guest.docType);
     guest.guestType = normalizeGuestType(guest.guestType);
     guest.birthProvince = guest.birthProvince.toUpperCase().substring(0, 2);
+    guest.birthCountry = normalizeBirthCountry(guest.birthCountry, guest.birthComune);
 
     return guest;
 }
@@ -4843,6 +4846,47 @@ function normalizeDocType(val) {
     // If it's already a valid code, return as-is
     if (['IDENT', 'PASOR', 'PATEN', 'PNAUZ', 'PORDF'].includes(val.trim().toUpperCase())) return val.trim().toUpperCase();
     return val;
+}
+
+const COUNTRY_NAME_TO_CODE = {
+    'italia': '100000100', 'italy': '100000100',
+    'germania': '100000214', 'germany': '100000214',
+    'francia': '100000212', 'france': '100000212',
+    'spagna': '100000239', 'spain': '100000239',
+    'regno unito': '100000219', 'united kingdom': '100000219',
+    'svizzera': '100000241', 'switzerland': '100000241',
+    'austria': '100000203',
+    'stati uniti': '100000536', 'usa': '100000536',
+    'romania': '100000235', 'polonia': '100000233', 'poland': '100000233',
+    'paesi bassi': '100000232', 'netherlands': '100000232', 'olanda': '100000232',
+    'belgio': '100000206', 'belgium': '100000206',
+    'portogallo': '100000234', 'portugal': '100000234',
+    'croazia': '100000250', 'croatia': '100000250',
+    'albania': '100000201', 'grecia': '100000220', 'greece': '100000220',
+    'russia': '100000236', 'ucraina': '100000246', 'ukraine': '100000246',
+    'cina': '100000358', 'china': '100000358',
+    'brasile': '100000351', 'brazil': '100000351',
+    'argentina': '100000347', 'australia': '100000302',
+};
+
+// Returns a country code given a raw value from import.
+// If the value looks like an Italian comune (not a country name/code), returns ITALIA code.
+function normalizeBirthCountry(val, birthComune) {
+    if (!val) {
+        // No country given: if there's a comune, assume Italy
+        return birthComune ? '100000100' : '';
+    }
+    const v = val.trim();
+    // Already a 9-digit alloggiati code
+    if (/^\d{9}$/.test(v)) return v;
+    // Known country name
+    const code = COUNTRY_NAME_TO_CODE[v.toLowerCase()];
+    if (code) return code;
+    // Value looks like an Italian comune (same as birthComune, or short text with no spaces that isn't a country)
+    // If it exactly matches birthComune it was likely mis-assigned
+    if (birthComune && v.toLowerCase() === birthComune.toLowerCase()) return '100000100';
+    // Anything else: return as-is (user can fix manually)
+    return v;
 }
 
 function normalizeGuestType(val) {
