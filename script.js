@@ -2310,6 +2310,14 @@ function setupAlloggiatiSearchField(searchId, hiddenId, listSource) {
         const code = findCodeFromLabel(list, searchEl.value);
         if (code) {
             document.getElementById(hiddenId).value = code;
+            // Auto-populate province from comune label, e.g. "San Benedetto del Tronto (AP)" → "AP"
+            if (searchId === 'guestBirthComuneSearch') {
+                const provEl = document.getElementById('guestBirthProvince');
+                if (provEl) {
+                    const m = searchEl.value.match(/\(([A-Z]{2})\)\s*$/);
+                    provEl.value = m ? m[1] : '';
+                }
+            }
         } else if (listSource === 'stati') {
             // For country fields: only accept if it's a valid 9-digit code or empty — never accept free text
             const raw = searchEl.value.trim();
