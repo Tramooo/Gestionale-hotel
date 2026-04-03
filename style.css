@@ -2591,6 +2591,200 @@ select.cell-input option {
     align-self: flex-end;
 }
 
+/* =============================================
+   COMPLIANCE / SAFETY MODULE
+   ============================================= */
+
+.compliance-summary { margin-bottom: 24px; }
+
+.compliance-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+}
+
+.comp-stat-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    text-align: center;
+    box-shadow: var(--shadow-sm);
+}
+
+.comp-stat-value {
+    font-size: 32px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary);
+    line-height: 1;
+    margin-bottom: 6px;
+}
+
+.comp-stat-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.comp-stat-expired .comp-stat-value { color: var(--red); }
+.comp-stat-expired { border-color: var(--red-light); background: var(--red-light); }
+.comp-stat-expiring .comp-stat-value { color: var(--orange); }
+.comp-stat-expiring { border-color: var(--orange-light); background: var(--orange-light); }
+.comp-stat-valid .comp-stat-value { color: var(--green); }
+
+/* Tabs */
+.compliance-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border-light);
+    padding-bottom: 0;
+}
+
+.comp-tab {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    margin-bottom: -1px;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.comp-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+}
+
+.comp-tab:hover:not(.active) { color: var(--text-primary); }
+
+/* Employee cards */
+.comp-emp-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    padding: 16px 20px;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow-sm);
+}
+
+.comp-emp-card.comp-emp-alert {
+    border-left: 3px solid var(--red);
+}
+
+.comp-emp-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+
+.comp-emp-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.comp-emp-role {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+.comp-no-certs {
+    font-size: 13px;
+    color: var(--text-tertiary);
+    font-style: italic;
+    padding: 4px 0;
+}
+
+.comp-cert-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.comp-cert-row, .comp-doc-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    background: var(--bg-primary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-light);
+}
+
+.comp-cert-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex: 1;
+    min-width: 0;
+}
+
+.comp-cert-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.comp-cert-dates {
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+.comp-cert-notes {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    font-style: italic;
+}
+
+.comp-cert-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+/* Status badges */
+.comp-cert-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 100px;
+    white-space: nowrap;
+}
+
+.comp-badge-valid    { background: var(--green-light); color: var(--green); }
+.comp-badge-expiring { background: var(--orange-light); color: var(--orange); }
+.comp-badge-expired  { background: var(--red-light); color: var(--red); }
+.comp-badge-no-expiry { background: var(--bg-tertiary); color: var(--text-secondary); }
+
+/* Property doc list */
+.comp-doc-list { display: flex; flex-direction: column; gap: 10px; }
+
+/* Empty state */
+.comp-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-light);
+}
+
+@media (max-width: 768px) {
+    .compliance-stats { grid-template-columns: repeat(2, 1fr); }
+    .comp-cert-row, .comp-doc-row { flex-direction: column; align-items: flex-start; }
+    .comp-cert-actions { width: 100%; justify-content: flex-end; }
+}
+
 /* Menu Section */
 .detail-menu-section {
     margin: 20px 20px 20px;

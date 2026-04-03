@@ -14,8 +14,35 @@ const API = {
     alloggiati: '/api/alloggiati',
     employees: '/api/employees',
     files: '/api/files',
-    menus: '/api/menus'
+    menus: '/api/menus',
+    compliance: '/api/compliance'
 };
+
+// ---- Compliance constants ----
+const CERT_TYPES = {
+    sicurezza_generale:   'Formazione sicurezza generale (D.Lgs. 81/08)',
+    formazione_specifica: 'Formazione specifica settore turistico-ricettivo',
+    antincendio_basso:    'Antincendio rischio basso',
+    antincendio_medio:    'Antincendio rischio medio',
+    primo_soccorso:       'Primo soccorso',
+    haccp:                'HACCP (manipolazione alimenti)',
+    privacy_gdpr:         'Privacy / GDPR – Nomina incaricato'
+};
+
+const DOC_TYPES = {
+    agibilita:               'Certificato di agibilità',
+    cpi:                     'CPI / SCIA antincendio',
+    autorizzazione_sanitaria:'Autorizzazione sanitaria',
+    classificazione:         'Classificazione regionale (stelle)',
+    licenza_esercizio:       'Licenza di esercizio (Comune)',
+    verifica_elettrico:      'Verifica impianto elettrico',
+    verifica_caldaia:        'Verifica caldaia / impianto termico',
+    verifica_ascensore:      'Verifica ascensore',
+    estintori:               'Controllo estintori'
+};
+
+// No-expiry cert types
+const NO_EXPIRY_CERTS = new Set(['privacy_gdpr', 'agibilita', 'autorizzazione_sanitaria', 'classificazione', 'licenza_esercizio']);
 
 async function apiGet(url) {
     const res = await fetch(url);
@@ -49,17 +76,21 @@ async function loadAllData() {
         // Ensure all tables and columns exist
         try { await apiPost(API.init, {}); } catch (e) {}
 
-        const [resData, roomData, guestData, empData] = await Promise.all([
+        const [resData, roomData, guestData, empData, certsData, docsData] = await Promise.all([
             apiGet(API.reservations),
             apiGet(API.rooms),
             apiGet(API.guests),
-            apiGet(API.employees).catch(() => ({ employees: [], workEntries: [] }))
+            apiGet(API.employees).catch(() => ({ employees: [], workEntries: [] })),
+            apiGet(API.compliance + '?target=certs').catch(() => []),
+            apiGet(API.compliance + '?target=docs').catch(() => [])
         ]);
         reservations = resData;
         rooms = roomData;
         guests = guestData;
         employees = empData.employees || [];
         workEntries = empData.workEntries || [];
+        complianceCerts = certsData;
+        complianceDocs = docsData;
         computeRoomStatuses();
     } catch (err) {
         console.error('Failed to load data from database:', err);
@@ -101,6 +132,12 @@ let currentAssignmentReservationId = null;
 let assignmentData = []; // current working copy of room assignments
 let employees = [];
 let workEntries = [];
+let complianceCerts = [];
+let complianceDocs = [];
+let _compCertFileData = '';
+let _compCertFileName = '';
+let _compDocFileData = '';
+let _compDocFileName = '';
 let empViewMonth = new Date(); // currently viewed month for employee pay
 
 // ---- i18n ----
@@ -683,6 +720,7 @@ function navigateTo(page) {
         case 'rooms': renderRooms(); break;
         case 'guests': renderGuests(); break;
         case 'management': renderManagement(); break;
+        case 'compliance': renderCompliance(); break;
     }
 }
 
@@ -3838,6 +3876,410 @@ function chooseBookingType(type) {
 // =============================================
 // SECURITY
 // =============================================
+
+// =============================================
+// COMPLIANCE / SAFETY MODULE
+// =============================================
+
+function certStatus(expiryDate) {
+    if (!expiryDate) return 'no-expiry';
+    const today = new Date(); today.setHours(0,0,0,0);
+    const exp = new Date(expiryDate); exp.setHours(0,0,0,0);
+    const diff = Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
+    if (diff < 0) return 'expired';
+    if (diff <= 30) return 'expiring';
+    return 'valid';
+}
+
+function certStatusLabel(status) {
+    return { expired: 'Scaduto', expiring: 'In Scadenza', valid: 'Valido', 'no-expiry': 'Permanente' }[status] || '';
+}
+
+function renderCompliance() {
+    renderComplianceSummary();
+    renderComplianceEmpGrid();
+    renderComplianceDocList();
+}
+
+function renderComplianceSummary() {
+    const today = new Date(); today.setHours(0,0,0,0);
+    let expired = 0, expiring = 0, valid = 0;
+    [...complianceCerts, ...complianceDocs].forEach(c => {
+        const s = certStatus(c.expiryDate);
+        if (s === 'expired') expired++;
+        else if (s === 'expiring') expiring++;
+        else if (s === 'valid') valid++;
+    });
+    document.getElementById('complianceSummary').innerHTML = `
+        <div class="compliance-stats">
+            <div class="comp-stat-card">
+                <div class="comp-stat-value">${employees.length}</div>
+                <div class="comp-stat-label">Dipendenti</div>
+            </div>
+            <div class="comp-stat-card comp-stat-expired">
+                <div class="comp-stat-value">${expired}</div>
+                <div class="comp-stat-label">Scaduti</div>
+            </div>
+            <div class="comp-stat-card comp-stat-expiring">
+                <div class="comp-stat-value">${expiring}</div>
+                <div class="comp-stat-label">In Scadenza (&le;30gg)</div>
+            </div>
+            <div class="comp-stat-card comp-stat-valid">
+                <div class="comp-stat-value">${valid}</div>
+                <div class="comp-stat-label">Validi</div>
+            </div>
+        </div>`;
+}
+
+function switchComplianceTab(tab) {
+    document.querySelectorAll('.comp-tab').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('compTabDipendenti').style.display = tab === 'dipendenti' ? '' : 'none';
+    document.getElementById('compTabStruttura').style.display = tab === 'struttura' ? '' : 'none';
+}
+
+function renderComplianceEmpGrid() {
+    const container = document.getElementById('complianceEmpGrid');
+    if (!container) return;
+    if (employees.length === 0) {
+        container.innerHTML = '<div class="comp-empty">Nessun dipendente trovato. Aggiungi dipendenti dalla sezione Gestione.</div>';
+        return;
+    }
+
+    let html = '';
+    employees.forEach(emp => {
+        const empCerts = complianceCerts.filter(c => c.employeeId === emp.id);
+        const empName = `${emp.firstName} ${emp.lastName}`;
+        const hasAlert = empCerts.some(c => { const s = certStatus(c.expiryDate); return s === 'expired' || s === 'expiring'; });
+
+        html += `<div class="comp-emp-card ${hasAlert ? 'comp-emp-alert' : ''}">
+            <div class="comp-emp-header">
+                <div>
+                    <div class="comp-emp-name">${escapeHtml(empName)}</div>
+                    <div class="comp-emp-role">${escapeHtml(emp.role || '')}</div>
+                </div>
+                <button class="btn btn-sm btn-primary" onclick="openCompCertModal(null, '${emp.id}')">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Aggiungi
+                </button>
+            </div>`;
+
+        if (empCerts.length === 0) {
+            html += `<div class="comp-no-certs">Nessun certificato registrato</div>`;
+        } else {
+            html += `<div class="comp-cert-list">`;
+            empCerts.forEach(cert => {
+                const s = certStatus(cert.expiryDate);
+                const label = certStatusLabel(s);
+                const expStr = cert.expiryDate ? formatDateDisplay(cert.expiryDate) : '—';
+                const issuedStr = cert.issuedDate ? formatDateDisplay(cert.issuedDate) : '—';
+                html += `<div class="comp-cert-row">
+                    <div class="comp-cert-info">
+                        <span class="comp-cert-name">${escapeHtml(CERT_TYPES[cert.certType] || cert.certType)}</span>
+                        <span class="comp-cert-dates">Rilascio: ${issuedStr} · Scadenza: ${expStr}</span>
+                        ${cert.notes ? `<span class="comp-cert-notes">${escapeHtml(cert.notes)}</span>` : ''}
+                    </div>
+                    <div class="comp-cert-actions">
+                        <span class="comp-cert-badge comp-badge-${s}">${label}</span>
+                        ${cert.fileData ? `<a href="${cert.fileData}" download="${cert.fileName || 'documento'}" class="btn btn-ghost btn-sm" title="Scarica documento">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        </a>` : ''}
+                        <button class="btn btn-ghost btn-sm" onclick="openCompCertModal('${cert.id}', '${emp.id}')">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </button>
+                        <button class="btn btn-ghost btn-sm" onclick="deleteCompCert('${cert.id}')">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        </button>
+                    </div>
+                </div>`;
+            });
+            html += `</div>`;
+        }
+        html += `</div>`;
+    });
+    container.innerHTML = html;
+}
+
+function renderComplianceDocList() {
+    const container = document.getElementById('complianceDocList');
+    if (!container) return;
+    if (complianceDocs.length === 0) {
+        container.innerHTML = '<div class="comp-empty">Nessun documento di struttura registrato.</div>';
+        return;
+    }
+    let html = '<div class="comp-doc-list">';
+    complianceDocs.forEach(doc => {
+        const s = certStatus(doc.expiryDate);
+        const label = certStatusLabel(s);
+        const expStr = doc.expiryDate ? formatDateDisplay(doc.expiryDate) : '—';
+        const issuedStr = doc.issuedDate ? formatDateDisplay(doc.issuedDate) : '—';
+        html += `<div class="comp-doc-row">
+            <div class="comp-cert-info">
+                <span class="comp-cert-name">${escapeHtml(DOC_TYPES[doc.docType] || doc.docType)}</span>
+                <span class="comp-cert-dates">Rilascio: ${issuedStr} · Scadenza: ${expStr}</span>
+                ${doc.notes ? `<span class="comp-cert-notes">${escapeHtml(doc.notes)}</span>` : ''}
+            </div>
+            <div class="comp-cert-actions">
+                <span class="comp-cert-badge comp-badge-${s}">${label}</span>
+                ${doc.fileData ? `<a href="${doc.fileData}" download="${doc.fileName || 'documento'}" class="btn btn-ghost btn-sm" title="Scarica documento">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </a>` : ''}
+                <button class="btn btn-ghost btn-sm" onclick="openCompDocModal('${doc.id}')">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button class="btn btn-ghost btn-sm" onclick="deleteCompDoc('${doc.id}')">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+            </div>
+        </div>`;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// ---- Cert Modal ----
+
+function openCompCertModal(certId, employeeId) {
+    _compCertFileData = '';
+    _compCertFileName = '';
+    const form = document.getElementById('compCertForm');
+    form.reset();
+    document.getElementById('compCertFileName').textContent = '';
+
+    if (certId) {
+        const cert = complianceCerts.find(c => c.id === certId);
+        if (!cert) return;
+        document.getElementById('compCertModalTitle').textContent = 'Modifica Certificato';
+        document.getElementById('compCertId').value = cert.id;
+        document.getElementById('compCertEmployeeId').value = cert.employeeId;
+        document.getElementById('compCertType').value = cert.certType;
+        if (cert.issuedDate) setDateFieldValue('compCertIssued', cert.issuedDate);
+        if (cert.expiryDate) setDateFieldValue('compCertExpiry', cert.expiryDate);
+        document.getElementById('compCertNotes').value = cert.notes || '';
+        _compCertFileData = cert.fileData || '';
+        _compCertFileName = cert.fileName || '';
+        if (cert.fileName) document.getElementById('compCertFileName').textContent = cert.fileName;
+    } else {
+        document.getElementById('compCertModalTitle').textContent = 'Aggiungi Certificato';
+        document.getElementById('compCertId').value = '';
+        document.getElementById('compCertEmployeeId').value = employeeId;
+    }
+    openModal('compCertModal');
+}
+
+function handleCompCertFile(input) {
+    const file = input.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { showToast('File troppo grande (max 5MB)', 'error'); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+        _compCertFileData = e.target.result;
+        _compCertFileName = file.name;
+        document.getElementById('compCertFileName').textContent = file.name;
+    };
+    reader.readAsDataURL(file);
+}
+
+async function saveCompCert(e) {
+    e.preventDefault();
+    const id = document.getElementById('compCertId').value;
+    const data = {
+        employeeId: document.getElementById('compCertEmployeeId').value,
+        certType: document.getElementById('compCertType').value,
+        issuedDate: document.getElementById('compCertIssued').value || null,
+        expiryDate: document.getElementById('compCertExpiry').value || null,
+        notes: document.getElementById('compCertNotes').value.trim(),
+        fileData: _compCertFileData,
+        fileName: _compCertFileName
+    };
+    try {
+        if (id) {
+            await apiPut(API.compliance + '?target=certs', { ...data, id });
+            const idx = complianceCerts.findIndex(c => c.id === id);
+            if (idx !== -1) complianceCerts[idx] = { ...complianceCerts[idx], ...data };
+        } else {
+            const newCert = { id: generateId(), ...data, createdAt: new Date().toISOString() };
+            await apiPost(API.compliance + '?target=certs', newCert);
+            complianceCerts.push(newCert);
+        }
+        closeModal('compCertModal');
+        renderCompliance();
+        showToast('Certificato salvato');
+    } catch (err) {
+        showToast('Errore salvataggio certificato', 'error');
+    }
+}
+
+async function deleteCompCert(id) {
+    if (!confirm('Eliminare questo certificato?')) return;
+    await apiDelete(API.compliance + '?target=certs', id);
+    complianceCerts = complianceCerts.filter(c => c.id !== id);
+    renderCompliance();
+    showToast('Certificato eliminato');
+}
+
+// ---- Doc Modal ----
+
+function openCompDocModal(docId) {
+    _compDocFileData = '';
+    _compDocFileName = '';
+    const form = document.getElementById('compDocForm');
+    form.reset();
+    document.getElementById('compDocFileName').textContent = '';
+
+    if (docId) {
+        const doc = complianceDocs.find(d => d.id === docId);
+        if (!doc) return;
+        document.getElementById('compDocModalTitle').textContent = 'Modifica Documento';
+        document.getElementById('compDocId').value = doc.id;
+        document.getElementById('compDocType').value = doc.docType;
+        if (doc.issuedDate) setDateFieldValue('compDocIssued', doc.issuedDate);
+        if (doc.expiryDate) setDateFieldValue('compDocExpiry', doc.expiryDate);
+        document.getElementById('compDocNotes').value = doc.notes || '';
+        _compDocFileData = doc.fileData || '';
+        _compDocFileName = doc.fileName || '';
+        if (doc.fileName) document.getElementById('compDocFileName').textContent = doc.fileName;
+    } else {
+        document.getElementById('compDocModalTitle').textContent = 'Aggiungi Documento';
+        document.getElementById('compDocId').value = '';
+    }
+    openModal('compDocModal');
+}
+
+function handleCompDocFile(input) {
+    const file = input.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { showToast('File troppo grande (max 5MB)', 'error'); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+        _compDocFileData = e.target.result;
+        _compDocFileName = file.name;
+        document.getElementById('compDocFileName').textContent = file.name;
+    };
+    reader.readAsDataURL(file);
+}
+
+async function saveCompDoc(e) {
+    e.preventDefault();
+    const id = document.getElementById('compDocId').value;
+    const data = {
+        docType: document.getElementById('compDocType').value,
+        issuedDate: document.getElementById('compDocIssued').value || null,
+        expiryDate: document.getElementById('compDocExpiry').value || null,
+        notes: document.getElementById('compDocNotes').value.trim(),
+        fileData: _compDocFileData,
+        fileName: _compDocFileName
+    };
+    try {
+        if (id) {
+            await apiPut(API.compliance + '?target=docs', { ...data, id });
+            const idx = complianceDocs.findIndex(d => d.id === id);
+            if (idx !== -1) complianceDocs[idx] = { ...complianceDocs[idx], ...data };
+        } else {
+            const newDoc = { id: generateId(), ...data, createdAt: new Date().toISOString() };
+            await apiPost(API.compliance + '?target=docs', newDoc);
+            complianceDocs.push(newDoc);
+        }
+        closeModal('compDocModal');
+        renderCompliance();
+        showToast('Documento salvato');
+    } catch (err) {
+        showToast('Errore salvataggio documento', 'error');
+    }
+}
+
+async function deleteCompDoc(id) {
+    if (!confirm('Eliminare questo documento?')) return;
+    await apiDelete(API.compliance + '?target=docs', id);
+    complianceDocs = complianceDocs.filter(d => d.id !== id);
+    renderCompliance();
+    showToast('Documento eliminato');
+}
+
+// ---- PDF Export ----
+
+function exportCompliancePDF() {
+    const today = new Date().toLocaleDateString('it-IT');
+    const todayStr = formatDate(new Date());
+
+    const statusBadge = s => ({
+        expired: '<span style="color:#c0392b;font-weight:700">● Scaduto</span>',
+        expiring: '<span style="color:#e67e22;font-weight:700">● In Scadenza</span>',
+        valid:    '<span style="color:#27ae60;font-weight:700">● Valido</span>',
+        'no-expiry': '<span style="color:#555">● Permanente</span>'
+    }[s] || '');
+
+    let empRows = '';
+    employees.forEach(emp => {
+        const empCerts = complianceCerts.filter(c => c.employeeId === emp.id);
+        if (empCerts.length === 0) {
+            empRows += `<tr><td>${escapeHtml(emp.lastName)} ${escapeHtml(emp.firstName)}</td><td>${escapeHtml(emp.role||'')}</td><td colspan="4" style="color:#aaa;font-style:italic">Nessun certificato registrato</td></tr>`;
+        } else {
+            empCerts.forEach((cert, i) => {
+                const s = certStatus(cert.expiryDate);
+                empRows += `<tr>
+                    ${i === 0 ? `<td rowspan="${empCerts.length}">${escapeHtml(emp.lastName)} ${escapeHtml(emp.firstName)}</td><td rowspan="${empCerts.length}">${escapeHtml(emp.role||'')}</td>` : ''}
+                    <td>${escapeHtml(CERT_TYPES[cert.certType] || cert.certType)}</td>
+                    <td>${cert.issuedDate ? new Date(cert.issuedDate).toLocaleDateString('it-IT') : '—'}</td>
+                    <td>${cert.expiryDate ? new Date(cert.expiryDate).toLocaleDateString('it-IT') : '—'}</td>
+                    <td>${statusBadge(s)}</td>
+                </tr>`;
+            });
+        }
+    });
+
+    let docRows = complianceDocs.map(doc => {
+        const s = certStatus(doc.expiryDate);
+        return `<tr>
+            <td>${escapeHtml(DOC_TYPES[doc.docType] || doc.docType)}</td>
+            <td>${doc.issuedDate ? new Date(doc.issuedDate).toLocaleDateString('it-IT') : '—'}</td>
+            <td>${doc.expiryDate ? new Date(doc.expiryDate).toLocaleDateString('it-IT') : '—'}</td>
+            <td>${statusBadge(s)}</td>
+            <td>${escapeHtml(doc.notes || '')}</td>
+        </tr>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8">
+    <title>Report Sicurezza & Compliance</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; color: #1a1a1a; padding: 40px; font-size: 13px; }
+        h1 { font-size: 22px; margin-bottom: 4px; }
+        .subtitle { color: #666; font-size: 12px; margin-bottom: 32px; }
+        h2 { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #555; margin: 28px 0 10px; border-bottom: 1px solid #ddd; padding-bottom: 6px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+        th { background: #f5f5f5; font-weight: 700; text-align: left; padding: 8px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+        td { padding: 7px 10px; border-bottom: 1px solid #eee; vertical-align: top; }
+        tr:last-child td { border-bottom: none; }
+        .footer { margin-top: 40px; padding-top: 12px; border-top: 1px solid #ddd; font-size: 11px; color: #aaa; text-align: right; }
+        @page { margin: 20px; }
+        @media print { body { padding: 0; } }
+    </style>
+    </head><body>
+    <h1>Report Sicurezza & Compliance</h1>
+    <div class="subtitle">Generato il ${today} · Dati aggiornati a oggi</div>
+
+    <h2>Certificati Dipendenti</h2>
+    <table>
+        <thead><tr><th>Cognome Nome</th><th>Ruolo</th><th>Certificato</th><th>Rilascio</th><th>Scadenza</th><th>Stato</th></tr></thead>
+        <tbody>${empRows || '<tr><td colspan="6" style="color:#aaa">Nessun dipendente</td></tr>'}</tbody>
+    </table>
+
+    <h2>Documenti di Struttura</h2>
+    <table>
+        <thead><tr><th>Documento</th><th>Rilascio</th><th>Scadenza</th><th>Stato</th><th>Note</th></tr></thead>
+        <tbody>${docRows || '<tr><td colspan="5" style="color:#aaa">Nessun documento</td></tr>'}</tbody>
+    </table>
+
+    <div class="footer">Report generato dal gestionale alberghiero · ${today}</div>
+    </body></html>`;
+
+    const w = window.open('', '_blank');
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => w.print(), 400);
+}
 
 function escapeHtml(str) {
     if (!str) return '';

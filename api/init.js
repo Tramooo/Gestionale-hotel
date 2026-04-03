@@ -152,6 +152,35 @@ export default async function handler(req, res) {
       )
     `;
 
+    await sql`ALTER TABLE employees ADD COLUMN IF NOT EXISTS hire_date DATE`;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS compliance_certs (
+        id TEXT PRIMARY KEY,
+        employee_id TEXT REFERENCES employees(id) ON DELETE CASCADE,
+        cert_type TEXT NOT NULL,
+        issued_date DATE,
+        expiry_date DATE,
+        notes TEXT DEFAULT '',
+        file_data TEXT DEFAULT '',
+        file_name TEXT DEFAULT '',
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS compliance_docs (
+        id TEXT PRIMARY KEY,
+        doc_type TEXT NOT NULL,
+        issued_date DATE,
+        expiry_date DATE,
+        notes TEXT DEFAULT '',
+        file_data TEXT DEFAULT '',
+        file_name TEXT DEFAULT '',
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `;
+
     res.status(200).json({ message: 'Tables created successfully' });
   } catch (err) {
     console.error('Init error:', err);

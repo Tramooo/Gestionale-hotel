@@ -38,6 +38,10 @@
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
                 <span data-i18n="nav.management">Gestione</span>
             </a>
+            <a href="#" class="nav-item" data-page="compliance">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                <span>Sicurezza</span>
+            </a>
         </nav>
         <div class="sidebar-footer">
             <button class="settings-btn" onclick="openModal('settingsModal')" data-i18n-title="nav.settings">
@@ -75,6 +79,10 @@
         <a href="#" class="tab-item" data-page="management">
             <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
             <span data-i18n="nav.management">Gestione</span>
+        </a>
+        <a href="#" class="tab-item" data-page="compliance">
+            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            <span>Sicurezza</span>
         </a>
     </nav>
 
@@ -317,6 +325,45 @@
         </section>
 
         <!-- ======================== MANAGEMENT ======================== -->
+        <!-- Compliance / Safety Page -->
+        <section class="page" id="page-compliance">
+            <header class="page-header">
+                <div>
+                    <h1 class="page-title">Sicurezza & Compliance</h1>
+                    <p class="page-subtitle">Certificati, formazione e documenti di struttura</p>
+                </div>
+                <button class="btn btn-secondary" onclick="exportCompliancePDF()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                    Esporta PDF
+                </button>
+            </header>
+
+            <!-- Summary cards -->
+            <div id="complianceSummary" class="compliance-summary"></div>
+
+            <!-- Tabs -->
+            <div class="compliance-tabs">
+                <button class="comp-tab active" onclick="switchComplianceTab('dipendenti')">Dipendenti</button>
+                <button class="comp-tab" onclick="switchComplianceTab('struttura')">Struttura</button>
+            </div>
+
+            <!-- Dipendenti tab -->
+            <div id="compTabDipendenti" class="comp-tab-content">
+                <div id="complianceEmpGrid"></div>
+            </div>
+
+            <!-- Struttura tab -->
+            <div id="compTabStruttura" class="comp-tab-content" style="display:none">
+                <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+                    <button class="btn btn-primary" onclick="openCompDocModal(null)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Aggiungi Documento
+                    </button>
+                </div>
+                <div id="complianceDocList"></div>
+            </div>
+        </section>
+
         <section class="page" id="page-management">
             <header class="page-header">
                 <div>
@@ -1179,6 +1226,115 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js"></script>
     <script src="script.js?v=20260325"></script>
+    <!-- Compliance Cert Modal -->
+    <div class="modal-overlay" id="compCertModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="compCertModalTitle">Certificato</h2>
+                <button class="modal-close" onclick="closeModal('compCertModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="compCertForm" onsubmit="saveCompCert(event)">
+                    <input type="hidden" id="compCertId">
+                    <input type="hidden" id="compCertEmployeeId">
+                    <div class="form-grid">
+                        <div class="form-group full">
+                            <label>Tipo Certificato</label>
+                            <select id="compCertType" required>
+                                <option value="">Seleziona...</option>
+                                <optgroup label="Formazione">
+                                    <option value="sicurezza_generale">Formazione sicurezza generale (D.Lgs. 81/08)</option>
+                                    <option value="formazione_specifica">Formazione specifica settore turistico-ricettivo (DL 159/2025)</option>
+                                    <option value="antincendio_basso">Antincendio rischio basso</option>
+                                    <option value="antincendio_medio">Antincendio rischio medio</option>
+                                    <option value="primo_soccorso">Primo soccorso</option>
+                                </optgroup>
+                                <optgroup label="Altro">
+                                    <option value="haccp">HACCP (manipolazione alimenti)</option>
+                                    <option value="privacy_gdpr">Privacy / GDPR – Nomina incaricato</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Data Rilascio</label>
+                            <input type="date" id="compCertIssued">
+                        </div>
+                        <div class="form-group">
+                            <label>Data Scadenza</label>
+                            <input type="date" id="compCertExpiry">
+                        </div>
+                        <div class="form-group full">
+                            <label>Note</label>
+                            <textarea id="compCertNotes" rows="2" placeholder="Note opzionali..."></textarea>
+                        </div>
+                        <div class="form-group full">
+                            <label>Documento (foto/scan) — opzionale</label>
+                            <input type="file" id="compCertFile" accept="image/*,application/pdf" onchange="handleCompCertFile(this)">
+                            <span id="compCertFileName" style="font-size:12px;color:var(--text-secondary);margin-top:4px"></span>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal('compCertModal')">Annulla</button>
+                        <button type="submit" class="btn btn-primary">Salva</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Compliance Doc Modal -->
+    <div class="modal-overlay" id="compDocModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="compDocModalTitle">Documento di Struttura</h2>
+                <button class="modal-close" onclick="closeModal('compDocModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="compDocForm" onsubmit="saveCompDoc(event)">
+                    <input type="hidden" id="compDocId">
+                    <div class="form-grid">
+                        <div class="form-group full">
+                            <label>Tipo Documento</label>
+                            <select id="compDocType" required>
+                                <option value="">Seleziona...</option>
+                                <option value="agibilita">Certificato di agibilità</option>
+                                <option value="cpi">Certificato prevenzione incendi (CPI) / SCIA antincendio</option>
+                                <option value="autorizzazione_sanitaria">Autorizzazione sanitaria</option>
+                                <option value="classificazione">Classificazione regionale (stelle)</option>
+                                <option value="licenza_esercizio">Licenza di esercizio (Comune)</option>
+                                <option value="verifica_elettrico">Verifica impianto elettrico</option>
+                                <option value="verifica_caldaia">Verifica caldaia / impianto termico</option>
+                                <option value="verifica_ascensore">Verifica ascensore</option>
+                                <option value="estintori">Controllo estintori (annuale)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Data Rilascio</label>
+                            <input type="date" id="compDocIssued">
+                        </div>
+                        <div class="form-group">
+                            <label>Data Scadenza</label>
+                            <input type="date" id="compDocExpiry">
+                        </div>
+                        <div class="form-group full">
+                            <label>Note</label>
+                            <textarea id="compDocNotes" rows="2" placeholder="Note opzionali..."></textarea>
+                        </div>
+                        <div class="form-group full">
+                            <label>Documento (foto/scan) — opzionale</label>
+                            <input type="file" id="compDocFile" accept="image/*,application/pdf" onchange="handleCompDocFile(this)">
+                            <span id="compDocFileName" style="font-size:12px;color:var(--text-secondary);margin-top:4px"></span>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal('compDocModal')">Annulla</button>
+                        <button type="submit" class="btn btn-primary">Salva</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Global Loading Overlay -->
     <div id="loadingOverlay" class="loading-overlay" style="display:none">
         <div class="loading-box">
