@@ -3066,7 +3066,9 @@ select.cell-input option {
     flex-direction: column;
     align-items: center;
     gap: 16px;
-    min-width: 200px;
+    width: 260px;
+    height: 130px;
+    justify-content: center;
 }
 
 .loading-spinner {
@@ -3087,6 +3089,10 @@ select.cell-input option {
     font-weight: 500;
     color: var(--text-secondary);
     text-align: center;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .toast {

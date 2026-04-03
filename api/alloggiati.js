@@ -112,7 +112,8 @@ function buildRecord(guest, checkinDate, checkoutDate) {
   const arrivalDate = fmtDate(checkinDate);
   const birthDate = fmtDate(guest.birthDate);
   const guestType = guest.guestType || '16';
-  const isFamily = guestType === '19' || guestType === '20';
+  // Document fields are blank for: group members (18), family head (19), family member (20)
+  const noDoc = guestType === '18' || guestType === '19' || guestType === '20';
 
   let record = '';
   record += padNum(guestType, 2);               // 0-1:   Tipo Alloggiato (2)
@@ -127,7 +128,7 @@ function buildRecord(guest, checkinDate, checkoutDate) {
   record += pad(resolveCountryCode(guest.birthCountry), 9);  // 116-124: Stato Nascita (9)
   record += pad(resolveCountryCode(guest.citizenship), 9);   // 125-133: Cittadinanza (9)
 
-  if (isFamily) {
+  if (noDoc) {
     record += pad('', 5);                         // 134-138: Tipo Documento (blank)
     record += pad('', 20);                        // 139-158: Numero Documento (blank)
     record += pad('', 9);                         // 159-167: Luogo Rilascio (blank)
