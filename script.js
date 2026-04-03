@@ -71,10 +71,42 @@ async function apiDelete(url, id) {
     return res.json();
 }
 
+const CACHE_KEY = 'gs_data_cache';
+const CACHE_TTL = 60 * 1000; // 60 seconds
+
+function saveDataCache() {
+    try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({
+            ts: Date.now(),
+            reservations, rooms, guests, employees, workEntries, complianceCerts, complianceDocs
+        }));
+    } catch (e) {} // ignore quota errors
+}
+
+function loadDataCache() {
+    try {
+        const raw = localStorage.getItem(CACHE_KEY);
+        if (!raw) return false;
+        const cache = JSON.parse(raw);
+        if (Date.now() - cache.ts > CACHE_TTL) return false;
+        reservations   = cache.reservations   || [];
+        rooms          = cache.rooms          || [];
+        guests         = cache.guests         || [];
+        employees      = cache.employees      || [];
+        workEntries    = cache.workEntries    || [];
+        complianceCerts = cache.complianceCerts || [];
+        complianceDocs  = cache.complianceDocs  || [];
+        computeRoomStatuses();
+        return true;
+    } catch (e) { return false; }
+}
+
 async function loadAllData() {
     try {
-        // Ensure all tables and columns exist
-        try { await apiPost(API.init, {}); } catch (e) {}
+        // Run /api/init only once per session
+        if (!sessionStorage.getItem('gs_init_done')) {
+            try { await apiPost(API.init, {}); sessionStorage.setItem('gs_init_done', '1'); } catch (e) {}
+        }
 
         const [resData, roomData, guestData, empData, certsData, docsData] = await Promise.all([
             apiGet(API.reservations),
@@ -84,14 +116,15 @@ async function loadAllData() {
             apiGet(API.compliance + '?target=certs').catch(() => []),
             apiGet(API.compliance + '?target=docs').catch(() => [])
         ]);
-        reservations = resData;
-        rooms = roomData;
-        guests = guestData;
-        employees = empData.employees || [];
-        workEntries = empData.workEntries || [];
+        reservations    = resData;
+        rooms           = roomData;
+        guests          = guestData;
+        employees       = empData.employees  || [];
+        workEntries     = empData.workEntries || [];
         complianceCerts = certsData;
-        complianceDocs = docsData;
+        complianceDocs  = docsData;
         computeRoomStatuses();
+        saveDataCache();
     } catch (err) {
         console.error('Failed to load data from database:', err);
         showToast(t('toast.dbError'), 'error');
@@ -2276,6 +2309,16 @@ let alloggiatiStati = null;  // cached: [{code, name}]
 
 async function loadAlloggiatiTables() {
     if (alloggiatiLuoghi && alloggiatiStati) return;
+    // Try sessionStorage cache first (avoids re-downloading large CSV every page open)
+    try {
+        const cached = sessionStorage.getItem('gs_alloggiati_tables');
+        if (cached) {
+            const { luoghi, stati } = JSON.parse(cached);
+            alloggiatiLuoghi = luoghi;
+            alloggiatiStati = stati;
+            return;
+        }
+    } catch (e) {}
     try {
         const token = await getAlloggiatiToken();
         const data = await apiGet(API.alloggiati + '?action=tabella&token=' + encodeURIComponent(token) + '&tipo=Luoghi');
@@ -2308,6 +2351,9 @@ async function loadAlloggiatiTables() {
 
         alloggiatiLuoghi = luoghi;
         alloggiatiStati = stati.length > 0 ? stati : luoghi;
+
+        // Cache for this session so we don't re-download on every guest open
+        try { sessionStorage.setItem('gs_alloggiati_tables', JSON.stringify({ luoghi: alloggiatiLuoghi, stati: alloggiatiStati })); } catch (e) {}
 
         // Populate countries datalist — just show country name
         const countriesList = document.getElementById('countriesList');
@@ -6276,9 +6322,23 @@ applyTheme(getTheme());
         btn.classList.toggle('active', btn.dataset.langVal === currentLang);
         btn.addEventListener('click', () => setLanguage(btn.dataset.langVal));
     });
-    showLoading('Caricamento dati...');
-    await loadAllData();
-    hideLoading();
-    renderDashboard();
-    renderCalendar();
+    const hasCached = loadDataCache();
+    if (hasCached) {
+        // Show UI immediately with cached data
+        renderDashboard();
+        renderCalendar();
+        // Refresh in background silently
+        loadAllData().then(() => {
+            const current = document.querySelector('.nav-item.active, .tab-item.active');
+            const page = current ? current.dataset.page : 'dashboard';
+            if (page === 'dashboard') renderDashboard();
+            else if (page === 'calendar') renderCalendar();
+        });
+    } else {
+        showLoading('Caricamento dati...');
+        await loadAllData();
+        hideLoading();
+        renderDashboard();
+        renderCalendar();
+    }
 })();
