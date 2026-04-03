@@ -116,6 +116,17 @@ export default async function handler(req, res) {
     await sql`ALTER TABLE work_entries ADD COLUMN IF NOT EXISTS start_time TEXT`;
     await sql`ALTER TABLE work_entries ADD COLUMN IF NOT EXISTS end_time TEXT`;
 
+    await sql`
+      CREATE TABLE IF NOT EXISTS employee_month_overrides (
+        id TEXT PRIMARY KEY,
+        employee_id TEXT REFERENCES employees(id) ON DELETE CASCADE,
+        year_month TEXT NOT NULL,
+        pay_type TEXT NOT NULL,
+        pay_rate NUMERIC DEFAULT 0,
+        UNIQUE(employee_id, year_month)
+      )
+    `;
+
     await sql`ALTER TABLE reservations ADD COLUMN IF NOT EXISTS room_notes TEXT`;
     await sql`ALTER TABLE reservations ADD COLUMN IF NOT EXISTS price_per_person NUMERIC DEFAULT 0`;
     await sql`ALTER TABLE reservations ADD COLUMN IF NOT EXISTS gratuity NUMERIC DEFAULT 0`;

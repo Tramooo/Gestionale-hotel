@@ -4018,6 +4018,36 @@ select.cell-input option {
     font-weight: 500;
 }
 
+.emp-table tbody td.emp-tbl-type-btn {
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.15s, color 0.15s;
+}
+
+.emp-table tbody td.emp-tbl-type-btn:hover {
+    background: var(--accent-light);
+    color: var(--accent);
+}
+
+.emp-table tbody td.emp-tbl-type-override {
+    color: var(--accent);
+    font-weight: 700;
+    position: relative;
+}
+
+.emp-table tbody td.emp-tbl-type-override::after {
+    content: '';
+    display: block;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--accent);
+    position: absolute;
+    bottom: 3px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
 /* ---- Day cells ---- */
 .emp-table tbody td.emp-tbl-cell {
     cursor: pointer;

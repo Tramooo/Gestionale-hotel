@@ -120,8 +120,9 @@ async function loadAllData() {
         reservations    = resData;
         rooms           = roomData;
         guests          = guestData;
-        employees       = empData.employees  || [];
-        workEntries     = empData.workEntries || [];
+        employees        = empData.employees      || [];
+        workEntries      = empData.workEntries    || [];
+        monthPayOverrides = empData.monthOverrides || [];
         complianceCerts = certsData;
         complianceDocs  = docsData;
         computeRoomStatuses();
@@ -166,6 +167,7 @@ let currentAssignmentReservationId = null;
 let assignmentData = []; // current working copy of room assignments
 let employees = [];
 let workEntries = [];
+let monthPayOverrides = [];
 let complianceCerts = [];
 let complianceDocs = [];
 let _compCertFileData = '';
@@ -5632,12 +5634,21 @@ function getEmployeeMonthStats(empId, year, month) {
     return { daysWorked, totalHours, entries };
 }
 
-function calcEstimatedPay(emp, daysWorked, totalHours) {
-    if (emp.payType === 'hourly') {
-        return totalHours * emp.payRate;
+// Returns effective {payType, payRate} for an employee in a given month (YYYY-MM),
+// using a month-level override if one exists, otherwise the employee's default.
+function getEmpMonthPay(emp, yearMonth) {
+    const override = monthPayOverrides.find(o => o.employeeId === emp.id && o.yearMonth === yearMonth);
+    if (override) return { payType: override.payType, payRate: override.payRate };
+    return { payType: emp.payType, payRate: emp.payRate };
+}
+
+function calcEstimatedPay(emp, daysWorked, totalHours, yearMonth) {
+    const { payType, payRate } = yearMonth ? getEmpMonthPay(emp, yearMonth) : emp;
+    if (payType === 'hourly') {
+        return totalHours * payRate;
     }
     // monthly: daily rate = monthly pay / 30, then multiply by days worked
-    return (emp.payRate / 30) * daysWorked;
+    return (payRate / 30) * daysWorked;
 }
 
 function calcReservationRevenue(r) {
@@ -5693,23 +5704,28 @@ function renderManagement() {
     const presenzeEl = document.getElementById('stat-total-presenze');
     if (presenzeEl) presenzeEl.textContent = totalPresenze.toLocaleString();
 
-    // Employee total cost (all time from work entries)
+    // Employee total cost (all time from work entries, respecting per-month overrides)
     let totalEmpCostAll = 0;
     employees.forEach(emp => {
         const empEntries = workEntries.filter(w => w.employeeId === emp.id);
-        if (emp.payType === 'hourly') {
-            totalEmpCostAll += empEntries.reduce((sum, w) => sum + (w.hours || 0), 0) * emp.payRate;
-        } else {
-            // Group entries by month, cost per month = (days/30) * monthlyRate
-            const months = {};
-            empEntries.forEach(w => {
-                const m = w.workDate ? w.workDate.substring(0, 7) : null;
-                if (m) months[m] = (months[m] || 0) + 1;
-            });
-            Object.values(months).forEach(days => {
-                totalEmpCostAll += (days / 30) * emp.payRate;
-            });
-        }
+        // Group entries by month then apply effective pay type for each month
+        const byMonth = {};
+        empEntries.forEach(w => {
+            const m = w.workDate ? w.workDate.substring(0, 7) : null;
+            if (m) {
+                if (!byMonth[m]) byMonth[m] = { days: 0, hours: 0 };
+                byMonth[m].days++;
+                byMonth[m].hours += w.hours || 0;
+            }
+        });
+        Object.entries(byMonth).forEach(([m, { days, hours }]) => {
+            const { payType, payRate } = getEmpMonthPay(emp, m);
+            if (payType === 'hourly') {
+                totalEmpCostAll += hours * payRate;
+            } else {
+                totalEmpCostAll += (days / 30) * payRate;
+            }
+        });
     });
 
     const empCostEl = document.getElementById('stat-emp-cost');
@@ -5723,9 +5739,10 @@ function renderManagement() {
     if (breakdownEl) {
         const empCosts = [];
         let totalMonthCost = 0;
+        const breakdownMonthStr = `${empYear}-${String(empMonth + 1).padStart(2, '0')}`;
         employees.forEach(emp => {
             const stats = getEmployeeMonthStats(emp.id, empYear, empMonth);
-            const cost = calcEstimatedPay(emp, stats.daysWorked, stats.totalHours);
+            const cost = calcEstimatedPay(emp, stats.daysWorked, stats.totalHours, breakdownMonthStr);
             totalMonthCost += cost;
             if (cost > 0 || stats.daysWorked > 0) {
                 empCosts.push({ emp, cost, stats });
@@ -5737,9 +5754,10 @@ function renderManagement() {
             const monthNames = t('months.full');
             const monthLabel = `${monthNames[empMonth]} ${empYear}`;
             let rows = empCosts.map(({ emp, cost, stats }) => {
-                const detail = emp.payType === 'hourly'
-                    ? `${stats.totalHours % 1 === 0 ? stats.totalHours : stats.totalHours.toFixed(1)}h \u00D7 \u20AC${emp.payRate.toFixed(2)}/h`
-                    : `${stats.daysWorked}g / 30 \u00D7 \u20AC${emp.payRate.toFixed(0)}`;
+                const effPay = getEmpMonthPay(emp, breakdownMonthStr);
+                const detail = effPay.payType === 'hourly'
+                    ? `${stats.totalHours % 1 === 0 ? stats.totalHours : stats.totalHours.toFixed(1)}h \u00D7 \u20AC${effPay.payRate.toFixed(2)}/h`
+                    : `${stats.daysWorked}g / 30 \u00D7 \u20AC${effPay.payRate.toFixed(0)}`;
                 return `<tr>
                     <td style="padding:8px 12px;font-weight:500">${escapeHtml(emp.lastName)} ${escapeHtml(emp.firstName)}</td>
                     <td style="padding:8px 12px;color:var(--text-secondary);font-size:13px">${detail}</td>
@@ -5812,14 +5830,18 @@ function renderEmployees() {
     let bodyRows = '';
     filtered.forEach(emp => {
         const stats = getEmployeeMonthStats(emp.id, year, month);
-        const estimated = calcEstimatedPay(emp, stats.daysWorked, stats.totalHours);
+        const effPay = getEmpMonthPay(emp, monthStr);
+        const estimated = calcEstimatedPay(emp, stats.daysWorked, stats.totalHours, monthStr);
         const entryMap = {};
         stats.entries.forEach(w => { entryMap[w.workDate] = w; });
 
-        const typeLabel = emp.payType === 'hourly' ? '\u20AC/h' : '\u20AC/m';
+        const isOverridden = monthPayOverrides.some(o => o.employeeId === emp.id && o.yearMonth === monthStr);
+        const typeLabel = effPay.payType === 'hourly' ? '\u20AC/h' : '\u20AC/m';
+        const typeCls = 'emp-tbl-type emp-tbl-type-btn' + (isOverridden ? ' emp-tbl-type-override' : '');
+        const typeTitle = isOverridden ? 'Override attivo — clicca per modificare' : 'Clicca per cambiare tipo paga questo mese';
         const roleStr = emp.role ? `<span class="emp-tbl-role">${escapeHtml(emp.role)}</span>` : '';
         let row = `<td class="emp-tbl-sticky emp-tbl-name" onclick="openEditEmployee('${emp.id}')"><span class="emp-tbl-empname">${escapeHtml(emp.lastName)} ${escapeHtml(emp.firstName)}</span>${roleStr}</td>`;
-        row += `<td class="emp-tbl-type">${typeLabel}</td>`;
+        row += `<td class="${typeCls}" title="${typeTitle}" onclick="openPayTypePopover('${emp.id}','${monthStr}',this)">${typeLabel}</td>`;
 
         for (let d = 1; d <= dim; d++) {
             const dateStr = `${monthStr}-${String(d).padStart(2, '0')}`;
@@ -5832,7 +5854,7 @@ function renderEmployees() {
             if (isToday) cls += ' emp-tbl-today';
             if (entry) cls += ' emp-tbl-worked';
 
-            if (emp.payType === 'hourly') {
+            if (effPay.payType === 'hourly') {
                 const display = entry ? (entry.hours % 1 === 0 ? entry.hours.toString() : entry.hours.toFixed(1)) : '';
                 row += `<td class="${cls}" data-emp="${emp.id}" data-date="${dateStr}" onclick="openTimePopover('${emp.id}','${dateStr}',this)">${display}</td>`;
             } else {
@@ -5841,7 +5863,7 @@ function renderEmployees() {
             }
         }
 
-        const totalDisplay = emp.payType === 'hourly'
+        const totalDisplay = effPay.payType === 'hourly'
             ? (stats.totalHours % 1 === 0 ? stats.totalHours + 'h' : stats.totalHours.toFixed(1) + 'h')
             : stats.daysWorked + 'g';
         row += `<td class="emp-tbl-total">${totalDisplay}</td>`;
@@ -5959,6 +5981,107 @@ function closeTimePopover() {
     const pop = document.getElementById('empTimePopover');
     if (pop) pop.remove();
     document.removeEventListener('mousedown', _timePopoverOutsideClick);
+}
+
+// Pay type override popover — lets you switch hourly/monthly for one specific month
+function openPayTypePopover(empId, yearMonth, cellEl) {
+    closePayTypePopover();
+    closeTimePopover();
+    const emp = employees.find(e => e.id === empId);
+    if (!emp) return;
+
+    const override = monthPayOverrides.find(o => o.employeeId === empId && o.yearMonth === yearMonth);
+    const effPay = getEmpMonthPay(emp, yearMonth);
+
+    const pop = document.createElement('div');
+    pop.id = 'empPayTypePopover';
+    pop.className = 'emp-time-popover';
+    pop.innerHTML = `
+        <div class="emp-time-popover-inner">
+            <div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Tipo paga — ${yearMonth}</div>
+            <div class="emp-time-row">
+                <label>Tipo</label>
+                <select id="payTypePopSelect" style="font-size:13px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;background:var(--bg-secondary);color:var(--text-primary)">
+                    <option value="monthly" ${effPay.payType === 'monthly' ? 'selected' : ''}>Mensile (€/mese)</option>
+                    <option value="hourly" ${effPay.payType === 'hourly' ? 'selected' : ''}>Oraria (€/ora)</option>
+                </select>
+            </div>
+            <div class="emp-time-row">
+                <label id="payTypePopRateLabel">${effPay.payType === 'hourly' ? 'Tariffa (€/h)' : 'Stipendio (€)'}</label>
+                <input type="number" id="payTypePopRate" value="${effPay.payRate}" min="0" step="0.01" style="width:80px">
+            </div>
+            ${override ? `<div style="font-size:11px;color:var(--text-secondary);margin-bottom:6px">Default: ${emp.payType === 'hourly' ? '€/h' : '€/mese'} · €${emp.payRate.toFixed(2)}</div>` : ''}
+            <div class="emp-time-actions">
+                <button class="btn btn-primary btn-sm" onclick="savePayTypeOverride('${empId}','${yearMonth}')">Salva</button>
+                ${override ? `<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deletePayTypeOverride('${override.id}','${empId}','${yearMonth}')">Ripristina default</button>` : ''}
+            </div>
+        </div>
+    `;
+    document.body.appendChild(pop);
+
+    // Update rate label when type changes
+    document.getElementById('payTypePopSelect').addEventListener('change', function () {
+        document.getElementById('payTypePopRateLabel').textContent = this.value === 'hourly' ? 'Tariffa (€/h)' : 'Stipendio (€)';
+    });
+
+    // Position near cell
+    const rect = cellEl.getBoundingClientRect();
+    const popW = 220, popH = 200;
+    let left = rect.left + rect.width / 2 - popW / 2;
+    let top = rect.bottom + 6;
+    if (left < 8) left = 8;
+    if (left + popW > window.innerWidth - 8) left = window.innerWidth - popW - 8;
+    if (top + popH > window.innerHeight - 8) top = rect.top - popH - 6;
+    pop.style.left = left + 'px';
+    pop.style.top = top + 'px';
+
+    setTimeout(() => {
+        document.addEventListener('mousedown', _payTypePopoverOutsideClick);
+    }, 10);
+}
+
+function _payTypePopoverOutsideClick(e) {
+    const pop = document.getElementById('empPayTypePopover');
+    if (pop && !pop.contains(e.target)) closePayTypePopover();
+}
+
+function closePayTypePopover() {
+    const pop = document.getElementById('empPayTypePopover');
+    if (pop) pop.remove();
+    document.removeEventListener('mousedown', _payTypePopoverOutsideClick);
+}
+
+async function savePayTypeOverride(empId, yearMonth) {
+    const payType = document.getElementById('payTypePopSelect').value;
+    const payRate = parseFloat(document.getElementById('payTypePopRate').value) || 0;
+    closePayTypePopover();
+
+    const existing = monthPayOverrides.find(o => o.employeeId === empId && o.yearMonth === yearMonth);
+    const data = { id: existing ? existing.id : generateId(), employeeId: empId, yearMonth, payType, payRate };
+
+    try {
+        await apiPost(API.employees + '?type=monthOverride', data);
+        if (existing) {
+            existing.payType = payType;
+            existing.payRate = payRate;
+        } else {
+            monthPayOverrides.push(data);
+        }
+    } catch (err) { console.error(err); }
+
+    renderEmployees();
+    renderManagement();
+}
+
+async function deletePayTypeOverride(overrideId, empId, yearMonth) {
+    closePayTypePopover();
+    try {
+        await fetch(`${API.employees}?id=${overrideId}&type=monthOverride`, { method: 'DELETE' });
+        monthPayOverrides = monthPayOverrides.filter(o => !(o.employeeId === empId && o.yearMonth === yearMonth));
+    } catch (err) { console.error(err); }
+
+    renderEmployees();
+    renderManagement();
 }
 
 function calcHoursFromTimes(start, end) {
@@ -6091,14 +6214,17 @@ function openEmployeeDetail(empId) {
     const month = empViewMonth.getMonth();
     const monthNames = t('months.full');
     const dim = getDaysInMonth(year, month);
+    const detailMonthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
     const stats = getEmployeeMonthStats(empId, year, month);
-    const estimated = calcEstimatedPay(emp, stats.daysWorked, stats.totalHours);
+    const effPay = getEmpMonthPay(emp, detailMonthStr);
+    const estimated = calcEstimatedPay(emp, stats.daysWorked, stats.totalHours, detailMonthStr);
 
     document.getElementById('empDetailName').textContent = `${emp.lastName} ${emp.firstName}`;
 
-    const payInfo = emp.payType === 'hourly'
-        ? `${t('emp.hourlyPay')}: \u20AC${emp.payRate.toFixed(2)}/h`
-        : `${t('emp.monthlyPay')}: \u20AC${emp.payRate.toFixed(2)}`;
+    const isOverridden = monthPayOverrides.some(o => o.employeeId === empId && o.yearMonth === detailMonthStr);
+    const payInfo = effPay.payType === 'hourly'
+        ? `${t('emp.hourlyPay')}: \u20AC${effPay.payRate.toFixed(2)}/h${isOverridden ? ' \u26A0\uFE0F' : ''}`
+        : `${t('emp.monthlyPay')}: \u20AC${effPay.payRate.toFixed(2)}${isOverridden ? ' \u26A0\uFE0F' : ''}`;
 
     // Build calendar grid
     const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
@@ -6128,7 +6254,7 @@ function openEmployeeDetail(empId) {
         if (isWeekend) cls += ' weekend';
         if (entry) cls += ' worked';
 
-        if (emp.payType === 'hourly') {
+        if (effPay.payType === 'hourly') {
             calCells += `<div class="${cls}" onclick="empCalDayClick('${empId}','${dateStr}')">
                 <span class="emp-cal-day">${d}</span>
                 ${entry ? `<span class="emp-cal-hours">${entry.hours}h</span>` : ''}
@@ -6175,7 +6301,7 @@ function openEmployeeDetail(empId) {
             <div class="emp-cal-grid">
                 ${calCells}
             </div>
-            ${emp.payType === 'hourly' ? `<p style="font-size:11px;color:var(--text-secondary);margin-top:8px">${t('emp.calHintHourly')}</p>` :
+            ${effPay.payType === 'hourly' ? `<p style="font-size:11px;color:var(--text-secondary);margin-top:8px">${t('emp.calHintHourly')}</p>` :
             `<p style="font-size:11px;color:var(--text-secondary);margin-top:8px">${t('emp.calHintMonthly')}</p>`}
         </div>
     `;

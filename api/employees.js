@@ -7,6 +7,7 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
       const employees = await sql`SELECT * FROM employees ORDER BY last_name, first_name`;
       const workEntries = await sql`SELECT * FROM work_entries ORDER BY work_date DESC`;
+      const monthOverrides = await sql`SELECT * FROM employee_month_overrides ORDER BY year_month DESC`;
       return res.status(200).json({
         employees: employees.map(e => ({
           id: e.id,
@@ -27,6 +28,13 @@ export default async function handler(req, res) {
           notes: w.notes,
           startTime: w.start_time || null,
           endTime: w.end_time || null,
+        })),
+        monthOverrides: monthOverrides.map(o => ({
+          id: o.id,
+          employeeId: o.employee_id,
+          yearMonth: o.year_month,
+          payType: o.pay_type,
+          payRate: parseFloat(o.pay_rate) || 0,
         }))
       });
     }
@@ -39,6 +47,16 @@ export default async function handler(req, res) {
         await sql`
           INSERT INTO work_entries (id, employee_id, work_date, hours, notes, start_time, end_time)
           VALUES (${w.id}, ${w.employeeId}, ${w.workDate}, ${w.hours || 0}, ${w.notes || null}, ${w.startTime || null}, ${w.endTime || null})
+        `;
+        return res.status(201).json({ success: true });
+      }
+
+      if (type === 'monthOverride') {
+        const o = req.body;
+        await sql`
+          INSERT INTO employee_month_overrides (id, employee_id, year_month, pay_type, pay_rate)
+          VALUES (${o.id}, ${o.employeeId}, ${o.yearMonth}, ${o.payType}, ${o.payRate || 0})
+          ON CONFLICT (employee_id, year_month) DO UPDATE SET pay_type=${o.payType}, pay_rate=${o.payRate || 0}, id=${o.id}
         `;
         return res.status(201).json({ success: true });
       }
@@ -78,6 +96,8 @@ export default async function handler(req, res) {
       const { id, type } = req.query;
       if (type === 'work') {
         await sql`DELETE FROM work_entries WHERE id = ${id}`;
+      } else if (type === 'monthOverride') {
+        await sql`DELETE FROM employee_month_overrides WHERE id = ${id}`;
       } else {
         await sql`DELETE FROM employees WHERE id = ${id}`;
       }
