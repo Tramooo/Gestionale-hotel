@@ -296,6 +296,9 @@ export default async function handler(req, res) {
         totalCount: records.length,
         details: dettaglio.map((d, i) => ({
           guestName: guestsData[i] ? `${guestsData[i].firstName} ${guestsData[i].lastName}` : `Row ${i + 1}`,
+          guestType: guestsData[i]?.guestType,
+          docType: guestsData[i]?.docType,
+          record: action === 'test' ? records[i] : undefined,
           ...d
         })),
         overallResult: esito

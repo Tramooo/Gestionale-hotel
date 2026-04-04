@@ -2500,8 +2500,12 @@ function renderAlloggiatiResults(container, data, mode) {
             html += '<div class="alloggiati-records">';
             data.details.forEach(d => {
                 const ok = d.esito;
+                const typeLabel = d.guestType === '17' ? 'Capo' : d.guestType === '18' ? 'Membro' : d.guestType === '19' ? 'CapoFam' : d.guestType === '20' ? 'Fam' : 'Singolo';
+                const debugTag = mode === 'test'
+                    ? `<span style="font-size:10px;color:var(--text-tertiary);margin-left:4px">[${typeLabel}${d.docType ? ' · ' + d.docType : ''}]</span>`
+                    : '';
                 html += `<div class="alloggiati-record-item ${ok ? 'success' : 'error'}">
-                    <span>${d.guestName}</span>
+                    <span>${d.guestName}${debugTag}</span>
                     <span style="color:${ok ? 'var(--green)' : 'var(--red)'}">${ok ? 'OK' : d.errorDesc + (d.errorDetail ? ': ' + d.errorDetail : '')}</span>
                 </div>`;
             });
