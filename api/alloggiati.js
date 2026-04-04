@@ -234,6 +234,11 @@ export default async function handler(req, res) {
         };
       });
 
+      // Alloggiati requires capogruppo (17) or capofamiglia (19) to come BEFORE their members (18/20).
+      // Sort: leaders first, then members, then singles — preserving relative order within each group.
+      const typeOrder = { '17': 0, '19': 0, '18': 1, '20': 1, '16': 2 };
+      guestsData.sort((a, b) => (typeOrder[a.guestType] ?? 2) - (typeOrder[b.guestType] ?? 2));
+
       // Build fixed-width records
       const records = guestsData.map(g =>
         buildRecord(g, reservation.checkin, reservation.checkout)
