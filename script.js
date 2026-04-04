@@ -2522,12 +2522,88 @@ async function alloggiatiPreview(reservationId) {
     }
 }
 
+// Resolve guest fields to valid Alloggiati codes before test/send.
+// Uses the already-loaded alloggiatiLuoghi table so no extra API call is needed.
+async function resolveGuestsForAlloggiati(reservationId) {
+    await loadAlloggiatiTables();
+    const resGuests = guests.filter(g => g.reservationId === reservationId);
+
+    const VALID_DOC = new Set(['IDENT', 'PASOR', 'PATEN', 'PNAUZ', 'PORDF']);
+    const DOC_MAP = {
+        'ci': 'IDENT', "carta d'identita": 'IDENT', "carta d'identità": 'IDENT',
+        'carta identita': 'IDENT', 'carta identità': 'IDENT', 'carta di identità': 'IDENT',
+        'identity card': 'IDENT', 'id card': 'IDENT', 'cni': 'IDENT',
+        'passaporto': 'PASOR', 'passport': 'PASOR', 'pp': 'PASOR',
+        'patente': 'PATEN', 'driving licence': 'PATEN', 'driving license': 'PATEN',
+        'patente nautica': 'PNAUZ', 'porto d\'armi': 'PORDF', 'porto darmi': 'PORDF',
+    };
+    const ITALY_CODE = '100000100';
+
+    function resolveComune(val) {
+        if (!val || !alloggiatiLuoghi) return { code: '', prov: '' };
+        // Already numeric → it's a code
+        if (/^\d/.test(val.trim())) {
+            const entry = alloggiatiLuoghi.find(l => l.code === val.trim());
+            return { code: val.trim(), prov: entry ? entry.prov : '' };
+        }
+        // Try exact name match, then partial
+        const lower = val.toLowerCase().trim();
+        let entry = alloggiatiLuoghi.find(l => l.name.toLowerCase() === lower);
+        if (!entry) entry = alloggiatiLuoghi.find(l => l.label.toLowerCase() === lower);
+        if (!entry) entry = alloggiatiLuoghi.find(l => l.name.toLowerCase().startsWith(lower));
+        return entry ? { code: entry.code, prov: entry.prov } : { code: val, prov: '' };
+    }
+
+    return resGuests.map(g => {
+        // Resolve birthComune and birthProvince
+        const isForeign = g.birthCountry && g.birthCountry !== ITALY_CODE &&
+            !['italia', 'italy'].includes((g.birthCountry || '').toLowerCase());
+        let birthComune = '';
+        let birthProvince = '';
+        if (!isForeign) {
+            const resolved = resolveComune(g.birthComune);
+            birthComune = resolved.code;
+            birthProvince = g.birthProvince || resolved.prov || '';
+        } else {
+            birthProvince = 'EE';
+        }
+
+        // Resolve docIssuedPlace the same way as comune
+        const resolvedDoc = resolveComune(g.docIssuedPlace);
+        const docIssuedPlace = resolvedDoc.code;
+
+        // Resolve docType
+        let docType = (g.docType || '').trim();
+        if (docType && !VALID_DOC.has(docType)) {
+            const mapped = DOC_MAP[docType.toLowerCase()];
+            if (mapped) docType = mapped;
+        }
+
+        return {
+            id: g.id,
+            firstName: g.firstName,
+            lastName: g.lastName,
+            sex: g.sex,
+            birthDate: g.birthDate,
+            birthComune,
+            birthProvince,
+            birthCountry: g.birthCountry,
+            citizenship: g.citizenship,
+            docType,
+            docNumber: g.docNumber,
+            docIssuedPlace,
+            guestType: g.guestType,
+        };
+    });
+}
+
 async function alloggiatiTest(reservationId) {
     const container = document.getElementById('alloggiatiResults');
     container.innerHTML = '<p>Getting token & testing...</p>';
     try {
         const token = await getAlloggiatiToken();
-        const data = await apiPost(API.alloggiati + '?action=test', { reservationId, token });
+        const resolvedGuests = await resolveGuestsForAlloggiati(reservationId);
+        const data = await apiPost(API.alloggiati + '?action=test', { reservationId, token, resolvedGuests });
         renderAlloggiatiResults(container, data, 'test');
     } catch (err) {
         container.innerHTML = `<p style="color:var(--red)">Error: ${err.message}</p>`;
@@ -2541,7 +2617,8 @@ async function alloggiatiSend(reservationId) {
     showLoading('Invio schedine alla Polizia...');
     try {
         const token = await getAlloggiatiToken();
-        const data = await apiPost(API.alloggiati + '?action=send', { reservationId, token });
+        const resolvedGuests = await resolveGuestsForAlloggiati(reservationId);
+        const data = await apiPost(API.alloggiati + '?action=send', { reservationId, token, resolvedGuests });
         hideLoading();
         renderAlloggiatiResults(container, data, 'send');
         if (data.success && data.validCount === data.totalCount) {
@@ -3256,6 +3333,13 @@ function openEditGuestModal(guestId) {
         setSearch('guestBirthCountrySearch', g.birthCountry, alloggiatiStati);
         setSearch('guestBirthComuneSearch', g.birthComune, alloggiatiLuoghi);
         setSearch('guestDocIssuedPlaceSearch', g.docIssuedPlace, alloggiatiLuoghi);
+
+        // Auto-fill province if missing, derived from the luoghi entry
+        const provEl = document.getElementById('guestBirthProvince');
+        if (provEl && !provEl.value && alloggiatiLuoghi) {
+            const entry = alloggiatiLuoghi.find(l => l.code === g.birthComune);
+            if (entry && entry.prov) provEl.value = entry.prov;
+        }
     }).catch(() => {
         // If tables fail to load, show raw codes
         document.getElementById('guestCitizenshipSearch').value = g.citizenship || '';

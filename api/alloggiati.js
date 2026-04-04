@@ -177,7 +177,7 @@ export default async function handler(req, res) {
 
     // ---- Build records from reservation guests ----
     if (action === 'build' || action === 'test' || action === 'send') {
-      const { reservationId, token } = req.method === 'POST' ? req.body : req.query;
+      const { reservationId, token, resolvedGuests } = req.method === 'POST' ? req.body : req.query;
 
       if (!reservationId) {
         return res.status(400).json({ error: 'reservationId is required' });
@@ -199,7 +199,7 @@ export default async function handler(req, res) {
       }
 
       // Map DB rows to camelCase
-      const guestsData = guestRows.map(g => ({
+      const dbGuests = guestRows.map(g => ({
         id: g.id,
         firstName: g.first_name,
         lastName: g.last_name,
@@ -214,6 +214,25 @@ export default async function handler(req, res) {
         docIssuedPlace: g.doc_issued_place,
         guestType: g.guest_type || '16'
       }));
+
+      // If client sent resolved guest data, merge it with DB data.
+      // DB is authoritative for identity fields; client provides resolved Alloggiati codes.
+      const resolvedMap = {};
+      if (Array.isArray(resolvedGuests)) {
+        resolvedGuests.forEach(g => { resolvedMap[g.id] = g; });
+      }
+      const guestsData = dbGuests.map(g => {
+        const r = resolvedMap[g.id];
+        if (!r) return g;
+        return {
+          ...g,
+          birthComune: r.birthComune ?? g.birthComune,
+          birthProvince: r.birthProvince ?? g.birthProvince,
+          docType: r.docType ?? g.docType,
+          docIssuedPlace: r.docIssuedPlace ?? g.docIssuedPlace,
+          guestType: r.guestType ?? g.guestType,
+        };
+      });
 
       // Build fixed-width records
       const records = guestsData.map(g =>
