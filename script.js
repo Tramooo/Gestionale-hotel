@@ -2147,9 +2147,9 @@ function getGuestMissingFields(g) {
     if (!g.birthDate) missing.push(t('field.birthDate'));
     if (!g.birthComune) missing.push(t('field.birthComune'));
     if (!g.citizenship) missing.push(t('field.citizenship'));
-    // Document required only for capogruppo (17) and single guests (16)
-    if ((g.guestType === '16' || g.guestType === '17') && !g.docNumber) missing.push(t('field.docNumber'));
-    if ((g.guestType === '16' || g.guestType === '17') && !g.docType) missing.push(t('field.docType'));
+    // Document required for: Singolo (16), CapoFamiglia (17), CapoGruppo (18)
+    if ((g.guestType === '16' || g.guestType === '17' || g.guestType === '18') && !g.docNumber) missing.push(t('field.docNumber'));
+    if ((g.guestType === '16' || g.guestType === '17' || g.guestType === '18') && !g.docType) missing.push(t('field.docType'));
     return missing;
 }
 
@@ -2159,7 +2159,7 @@ function openGuestsList(reservationId) {
 
     const resGuests = guests.filter(g => g.reservationId === reservationId);
 
-    // Check if group mode (any guest has type 17 or 19)
+    // Check if group/family mode (any leader type present: 17=CapoFam, 18=CapoGruppo)
     const hasGroupTypes = resGuests.some(g => g.guestType === '17' || g.guestType === '18');
     const isGroup = hasGroupTypes || resGuests.length > 1;
 
@@ -2179,8 +2179,8 @@ function openGuestsList(reservationId) {
             try {
                 const room = g.roomId ? rooms.find(rm => rm.id === g.roomId) : null;
                 const missing = getGuestMissingFields(g);
-                const isLeader = g.guestType === '17';
-                const guestTypeLabel = g.guestType === '17' ? t('guest.leader') : g.guestType === '18' ? t('guest.member') : '';
+                const isLeader = g.guestType === '17' || g.guestType === '18';
+                const guestTypeLabel = g.guestType === '17' ? 'Capofamiglia' : g.guestType === '18' ? 'Capogruppo' : g.guestType === '19' ? 'Familiare' : g.guestType === '20' ? 'Membro' : '';
                 guestListHtml += `
                     <div class="detail-guest-item ${missing.length > 0 ? 'guest-has-errors' : ''}">
                         <div class="guest-avatar">${getInitials((g.firstName || '') + ' ' + (g.lastName || ''))}</div>
@@ -2277,11 +2277,11 @@ async function setAllGuestsType(reservationId, mode) {
     if (mode === 'single') {
         for (const g of resGuests) { g.guestType = '16'; }
     } else {
-        // Exactly one leader: keep existing leader if there's exactly one, else use first guest
-        const leaders = resGuests.filter(g => g.guestType === '17');
+        // Exactly one leader (CapoGruppo=18): keep existing if there's exactly one, else use first guest
+        const leaders = resGuests.filter(g => g.guestType === '18');
         const leaderId = leaders.length === 1 ? leaders[0].id : resGuests[0].id;
         for (const g of resGuests) {
-            g.guestType = g.id === leaderId ? '17' : '18';
+            g.guestType = g.id === leaderId ? '18' : '20';
         }
     }
 
@@ -2295,7 +2295,7 @@ async function setAllGuestsType(reservationId, mode) {
 async function setGuestAsLeader(guestId, reservationId) {
     const resGuests = guests.filter(g => g.reservationId === reservationId);
     for (const g of resGuests) {
-        g.guestType = g.id === guestId ? '17' : '18';
+        g.guestType = g.id === guestId ? '18' : '20';
     }
     try {
         await Promise.all(resGuests.map(g => apiPut(API.guests, g)));
@@ -2477,7 +2477,7 @@ function renderAlloggiatiResults(container, data, mode) {
         data.guests.forEach((g, i) => {
             html += `<div class="alloggiati-record-item">
                 <span>${g.name}</span>
-                <span class="badge">${g.guestType === '17' ? 'Leader' : g.guestType === '18' ? 'Member' : g.guestType === '19' ? 'Family Head' : g.guestType === '20' ? 'Family' : 'Single'}</span>
+                <span class="badge">${g.guestType === '17' ? 'CapoFam' : g.guestType === '18' ? 'Capo' : g.guestType === '19' ? 'Fam' : g.guestType === '20' ? 'Membro' : 'Singolo'}</span>
                 <span style="color:${g.recordLength === 168 ? 'var(--green)' : 'var(--red)'}">${g.recordLength} chars</span>
             </div>`;
         });
@@ -2500,16 +2500,28 @@ function renderAlloggiatiResults(container, data, mode) {
             html += '<div class="alloggiati-records">';
             data.details.forEach(d => {
                 const ok = d.esito;
-                const typeLabel = d.guestType === '17' ? 'Capo' : d.guestType === '18' ? 'Membro' : d.guestType === '19' ? 'CapoFam' : d.guestType === '20' ? 'Fam' : 'Singolo';
+                const typeLabel = d.guestType === '17' ? 'CapoFam' : d.guestType === '18' ? 'Capo' : d.guestType === '19' ? 'Fam' : d.guestType === '20' ? 'Membro' : 'Singolo';
                 const debugTag = mode === 'test'
                     ? `<span style="font-size:10px;color:var(--text-tertiary);margin-left:4px">[${typeLabel}${d.docType ? ' · ' + d.docType : ''}]</span>`
                     : '';
+                let debugRow = '';
+                if (mode === 'test' && !ok && d.recDocType !== undefined) {
+                    debugRow = `<div style="font-size:10px;font-family:monospace;color:var(--text-secondary);margin-top:2px;word-break:break-all">
+                        tipo="${d.recGuestType}" | comune="${d.recBirthComune}" | prov="${d.recBirthProvince}" | paese="${d.recBirthCountry}" | citt="${d.recCitizenship}" | <strong>docTipo="${d.recDocType}"</strong> | docNum="${d.recDocNumber?.trim()}" | docLuogo="${d.recDocPlace}" | len=${d.recLength}
+                    </div>`;
+                }
                 html += `<div class="alloggiati-record-item ${ok ? 'success' : 'error'}">
-                    <span>${d.guestName}${debugTag}</span>
-                    <span style="color:${ok ? 'var(--green)' : 'var(--red)'}">${ok ? 'OK' : d.errorDesc + (d.errorDetail ? ': ' + d.errorDetail : '')}</span>
+                    <div>
+                        <span>${d.guestName}${debugTag}</span>
+                        <span style="color:${ok ? 'var(--green)' : 'var(--red)'}"> — ${ok ? 'OK' : d.errorDesc + (d.errorDetail ? ': ' + d.errorDetail : '')}</span>
+                        ${debugRow}
+                    </div>
                 </div>`;
             });
             html += '</div>';
+        }
+        if (mode === 'test' && data.rawXml) {
+            console.log('[Alloggiati raw SOAP response]', data.rawXml);
         }
     }
     container.innerHTML = html;
@@ -5548,10 +5560,10 @@ function normalizeGuestType(val) {
     if (!val) return '16'; // default: Ospite Singolo
     const v = val.toLowerCase().trim();
     if (['16', 'ospite singolo', 'single guest', 'singolo'].includes(v)) return '16';
-    if (['17', 'capogruppo', 'group leader', 'capo gruppo'].includes(v)) return '17';
-    if (['18', 'membro gruppo', 'group member', 'membro'].includes(v)) return '18';
-    if (['19', 'capofamiglia', 'family head', 'capo famiglia'].includes(v)) return '19';
-    if (['20', 'membro famiglia', 'family member'].includes(v)) return '20';
+    if (['17', 'capofamiglia', 'family head', 'capo famiglia'].includes(v)) return '17';
+    if (['18', 'capogruppo', 'group leader', 'capo gruppo'].includes(v)) return '18';
+    if (['19', 'familiare', 'family member', 'membro famiglia'].includes(v)) return '19';
+    if (['20', 'membro gruppo', 'group member', 'membro'].includes(v)) return '20';
     return '16';
 }
 
@@ -5638,17 +5650,17 @@ async function executeGuestFileImport() {
     closeModal('fileImportModal');
     showToast(`Imported ${success} guest(s)${errors ? ', ' + errors + ' failed' : ''}`);
 
-    // Normalize group types: ensure only the first guest is leader (17), rest are members (18)
+    // Normalize group types: ensure only the first guest is CapoGruppo (18), rest are Membro (20)
     const resGuests = guests.filter(g => g.reservationId === reservationId);
     const isGroup = resGuests.some(g => g.guestType === '17' || g.guestType === '18');
     if (isGroup || resGuests.length > 1) {
         let leaderAssigned = false;
         for (const g of resGuests) {
-            if (!leaderAssigned && (g.guestType === '17' || g.guestType === '16')) {
-                g.guestType = '17';
+            if (!leaderAssigned && (g.guestType === '18' || g.guestType === '16')) {
+                g.guestType = '18';
                 leaderAssigned = true;
             } else {
-                g.guestType = '18';
+                g.guestType = '20';
             }
         }
         try {

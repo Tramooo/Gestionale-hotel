@@ -112,8 +112,9 @@ function buildRecord(guest, checkinDate, checkoutDate) {
   const arrivalDate = fmtDate(checkinDate);
   const birthDate = fmtDate(guest.birthDate);
   const guestType = guest.guestType || '16';
-  // Document fields are blank for: group members (18), family head (19), family member (20)
-  const noDoc = guestType === '18' || guestType === '19' || guestType === '20';
+  // Document fields are blank for: family members (19) and group members (20).
+  // Types 16 (Singolo), 17 (CapoFamiglia), 18 (CapoGruppo) all require a document.
+  const noDoc = guestType === '19' || guestType === '20';
 
   let record = '';
   record += padNum(guestType, 2);               // 0-1:   Tipo Alloggiato (2)
@@ -234,9 +235,9 @@ export default async function handler(req, res) {
         };
       });
 
-      // Alloggiati requires capogruppo (17) or capofamiglia (19) to come BEFORE their members (18/20).
+      // Alloggiati requires leaders (17=CapoFamiglia, 18=CapoGruppo) before their members (19/20).
       // Sort: leaders first, then members, then singles — preserving relative order within each group.
-      const typeOrder = { '17': 0, '19': 0, '18': 1, '20': 1, '16': 2 };
+      const typeOrder = { '17': 0, '18': 0, '19': 1, '20': 1, '16': 2 };
       guestsData.sort((a, b) => (typeOrder[a.guestType] ?? 2) - (typeOrder[b.guestType] ?? 2));
 
       // Build fixed-width records
@@ -294,13 +295,27 @@ export default async function handler(req, res) {
         success: esito.esito,
         validCount: parseInt(validCount) || 0,
         totalCount: records.length,
-        details: dettaglio.map((d, i) => ({
-          guestName: guestsData[i] ? `${guestsData[i].firstName} ${guestsData[i].lastName}` : `Row ${i + 1}`,
-          guestType: guestsData[i]?.guestType,
-          docType: guestsData[i]?.docType,
-          record: action === 'test' ? records[i] : undefined,
-          ...d
-        })),
+        details: dettaglio.map((d, i) => {
+          const g = guestsData[i];
+          const rec = records[i] || '';
+          return {
+            guestName: g ? `${g.firstName} ${g.lastName}` : `Row ${i + 1}`,
+            guestType: g?.guestType,
+            docType: g?.docType,
+            // Slices of the fixed-width record for key fields (test only)
+            recGuestType:     action === 'test' ? rec.substring(0, 2)    : undefined,
+            recBirthComune:   action === 'test' ? rec.substring(105, 114): undefined,
+            recBirthProvince: action === 'test' ? rec.substring(114, 116): undefined,
+            recBirthCountry:  action === 'test' ? rec.substring(116, 125): undefined,
+            recCitizenship:   action === 'test' ? rec.substring(125, 134): undefined,
+            recDocType:       action === 'test' ? rec.substring(134, 139): undefined,
+            recDocNumber:     action === 'test' ? rec.substring(139, 159): undefined,
+            recDocPlace:      action === 'test' ? rec.substring(159, 168): undefined,
+            recLength:        action === 'test' ? rec.length              : undefined,
+            ...d
+          };
+        }),
+        rawXml: action === 'test' ? xml.substring(0, 3000) : undefined,
         overallResult: esito
       });
     }
