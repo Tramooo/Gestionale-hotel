@@ -3045,14 +3045,13 @@ function printAssignments(mode) {
     const title = isCleaning ? `${r.groupName} — ${t('assign.printCleaning')}` : r.groupName;
     const printHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>
         <style>
-            body { font-family: -apple-system, sans-serif; padding: 24px; color: #222; }
+            body { font-family: -apple-system, sans-serif; margin: 0; padding: 0; color: #222; }
             table { border-collapse: collapse; width: 100%; }
             th { background: #e8e8e8; color: #000; padding: 6px 10px; text-align: left; font-size: 12px; }
             td { font-size: 12px; }
-            .page-block { page-break-after: always; }
+            .page-block { padding: 12mm 15mm; box-sizing: border-box; page-break-after: always; }
             .page-block:last-child { page-break-after: avoid; }
-            @page { margin: 15mm; }
-            @media print { body { padding: 0; } }
+            @page { margin: 0; }
         </style></head><body>
         ${pages}
         <script>window.onload=function(){window.print();}<\/script>
