@@ -2156,7 +2156,9 @@ function getGuestMissingFields(g) {
     if (!g.lastName) missing.push(t('field.lastName'));
     if (!g.sex) missing.push(t('field.sex'));
     if (!g.birthDate) missing.push(t('field.birthDate'));
-    if (!g.birthComune) missing.push(t('field.birthComune'));
+    const isForeignBorn = g.birthCountry && g.birthCountry !== '100000100' &&
+        !['italia', 'italy'].includes((g.birthCountry || '').toLowerCase());
+    if (!isForeignBorn && !g.birthComune) missing.push(t('field.birthComune'));
     if (!g.citizenship) missing.push(t('field.citizenship'));
     // Document required for: Singolo (16), CapoFamiglia (17), CapoGruppo (18)
     if ((g.guestType === '16' || g.guestType === '17' || g.guestType === '18') && !g.docNumber) missing.push(t('field.docNumber'));
@@ -2398,6 +2400,19 @@ function findLabelFromCode(list, code) {
     if (!list || !code) return '';
     const match = list.find(l => l.code === code);
     return match ? match.label : '';
+}
+
+// Resolve a raw comune name or code to its alloggiatiLuoghi entry.
+function lookupAlloggiatiLuogo(val) {
+    if (!val || !alloggiatiLuoghi) return null;
+    const v = val.trim();
+    const byCode = alloggiatiLuoghi.find(l => l.code === v);
+    if (byCode) return byCode;
+    const lower = v.toLowerCase();
+    return alloggiatiLuoghi.find(l => l.name.toLowerCase() === lower)
+        || alloggiatiLuoghi.find(l => l.label.toLowerCase() === lower)
+        || alloggiatiLuoghi.find(l => l.name.toLowerCase().startsWith(lower))
+        || null;
 }
 
 function setupAlloggiatiSearchField(searchId, hiddenId, listSource) {
@@ -5640,10 +5655,22 @@ async function executeGuestFileImport() {
     let success = 0, errors = 0;
 
     for (const data of toImport) {
+        // Resolve birthComune raw name → alloggiati code+province if tables are loaded
+        let birthComune = data.birthComune || '';
+        let birthProvince = data.birthProvince || '';
+        if (birthComune && alloggiatiLuoghi) {
+            const entry = lookupAlloggiatiLuogo(birthComune);
+            if (entry) {
+                birthComune = entry.code;
+                if (!birthProvince) birthProvince = entry.prov;
+            }
+        }
         const newGuest = {
             id: generateId(),
             reservationId,
             ...data,
+            birthComune,
+            birthProvince,
             roomId: '',
         };
         try {
