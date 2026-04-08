@@ -2101,10 +2101,8 @@ select.cell-input option {
 
 .mini-cal-dropdown {
     display: none;
-    position: absolute;
-    top: calc(100% + 6px);
-    left: 0;
-    z-index: 100;
+    position: fixed;
+    z-index: 10000;
     background: var(--bg-secondary);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);

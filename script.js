@@ -1226,6 +1226,17 @@ function toggleDatePicker(inputEl) {
     wrapper._viewDate = val ? new Date(val + 'T00:00:00') : new Date();
     renderDatePicker(wrapper);
     dd.classList.add('open');
+    // Position with fixed coordinates to avoid clipping by overflow:hidden parents
+    const rect = wrapper.getBoundingClientRect();
+    const dropdownH = 320; // approximate height
+    const spaceBelow = window.innerHeight - rect.bottom;
+    if (spaceBelow < dropdownH && rect.top > dropdownH) {
+        dd.style.top = (rect.top - dropdownH - 6) + 'px';
+    } else {
+        dd.style.top = (rect.bottom + 6) + 'px';
+    }
+    const rightEdge = rect.left + 280;
+    dd.style.left = (rightEdge > window.innerWidth ? window.innerWidth - 288 : rect.left) + 'px';
 }
 
 function closeAllDatePickers() {
