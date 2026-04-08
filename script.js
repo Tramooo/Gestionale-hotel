@@ -3047,11 +3047,12 @@ function printAssignments(mode) {
         <style>
             body { font-family: -apple-system, sans-serif; padding: 24px; color: #222; }
             table { border-collapse: collapse; width: 100%; }
-            th { background: #333; color: #fff; padding: 6px 10px; text-align: left; font-size: 12px; }
+            th { background: #e8e8e8; color: #000; padding: 6px 10px; text-align: left; font-size: 12px; }
             td { font-size: 12px; }
             .page-block { page-break-after: always; }
             .page-block:last-child { page-break-after: avoid; }
-            @media print { @page { margin: 0; } body { padding: 10mm; } }
+            @page { margin: 15mm; }
+            @media print { body { padding: 0; } }
         </style></head><body>
         ${pages}
         <script>window.onload=function(){window.print();}<\/script>
