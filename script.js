@@ -115,6 +115,55 @@ window.GroupStayReservationRooms.init({
     t
 });
 
+window.GroupStayIndividualReservation.init({
+    API,
+    addDays,
+    apiPost,
+    apiPut,
+    closeModal,
+    computeRoomStatuses,
+    escapeHtml,
+    formatDate,
+    generateId,
+    getGuests: () => guests,
+    getReservations: () => reservations,
+    getRooms: () => rooms,
+    nightsBetween,
+    openModal,
+    refreshCalendar,
+    renderDashboard,
+    renderReservations,
+    setDateFieldValue,
+    setReservations: (nextReservations) => { reservations = nextReservations; },
+    showToast,
+    t
+});
+
+window.GroupStayGroupReservation.init({
+    API,
+    addDays,
+    apiDelete,
+    apiPost,
+    apiPut,
+    calcReservationPrice,
+    closeModal,
+    formatDate,
+    generateId,
+    getAssignedRoomIds,
+    getGuests: () => guests,
+    getReservations: () => reservations,
+    getSelectedRoomIds,
+    openModal,
+    populateRoomChecklist,
+    refreshCalendar,
+    renderDashboard,
+    setDateFieldValue,
+    setGuests: (nextGuests) => { guests = nextGuests; },
+    setReservations: (nextReservations) => { reservations = nextReservations; },
+    showToast,
+    t
+});
+
 function saveDataCache() {
     try {
         localStorage.setItem(CACHE_KEY, JSON.stringify({
@@ -942,281 +991,21 @@ function updateRoomCount() { return window.GroupStayReservationRooms.updateRoomC
 function getSelectedRoomIds() { return window.GroupStayReservationRooms.getSelectedRoomIds(); }
 function getAssignedRoomIds(resId) { return window.GroupStayReservationRooms.getAssignedRoomIds(resId); }
 
-function toggleExpirationField() {
-    const status = document.getElementById('resStatus').value;
-    document.getElementById('resExpirationGroup').style.display = status === 'pending' ? '' : 'none';
-}
-
-function openNewReservationModal() {
-    document.getElementById('reservationModalTitle').textContent = t('res.newGroupReservation');
-    document.getElementById('reservationForm').reset();
-    document.getElementById('resId').value = '';
-    setDateFieldValue('resCheckin', formatDate(new Date()));
-    setDateFieldValue('resCheckout', formatDate(addDays(new Date(), 3)));
-    setDateFieldValue('resExpiration', formatDate(addDays(new Date(), 7)));
-    document.getElementById('resGuestCount').value = '';
-    document.getElementById('resPricePerPerson').value = '';
-    document.getElementById('resGratuity').value = '';
-    document.getElementById('resTotalPrice').textContent = '\u20AC0';
-    document.getElementById('resPrice').value = 0;
-    populateRoomChecklist([], null);
-    toggleExpirationField();
-    openModal('reservationModal');
-}
-
-function openEditReservation(id) {
-    const r = reservations.find(x => x.id === id);
-    if (!r) return;
-
-    document.getElementById('reservationModalTitle').textContent = t('res.editReservation');
-    document.getElementById('resId').value = r.id;
-    document.getElementById('resGroupName').value = r.groupName;
-    setDateFieldValue('resCheckin', r.checkin);
-    setDateFieldValue('resCheckout', r.checkout);
-    document.getElementById('resStatus').value = r.status;
-    setDateFieldValue('resExpiration', r.expiration || '');
-    document.getElementById('resGuestCount').value = r.guestCount || '';
-    document.getElementById('resPricePerPerson').value = r.pricePerPerson || '';
-    document.getElementById('resGratuity').value = r.gratuity || '';
-    document.getElementById('resNotes').value = r.notes || '';
-    document.getElementById('resMealPlan').value = r.mealPlan || 'BB';
-    document.getElementById('resVeggieBuffet').checked = r.veggieBuffet || false;
-    calcReservationPrice();
-    toggleExpirationField();
-
-    // Get rooms assigned to this reservation
-    const assignedIds = r.roomIds || getAssignedRoomIds(r.id);
-    populateRoomChecklist(assignedIds, r.id);
-
-    closeModal('reservationDetailModal');
-    openModal('reservationModal');
-}
+function toggleExpirationField() { return window.GroupStayGroupReservation.toggleExpirationField(); }
+function openNewReservationModal() { return window.GroupStayGroupReservation.openNewReservationModal(); }
+function openEditReservation(id) { return window.GroupStayGroupReservation.openEditReservation(id); }
 
 // ---- Individual Reservation ----
 
-function populateIndRoomSelect(excludeResId) {
-    const checkin = document.getElementById('indCheckin').value;
-    const checkout = document.getElementById('indCheckout').value;
-    const select = document.getElementById('indRoomId');
-    const currentVal = select.value;
+function populateIndRoomSelect(excludeResId) { return window.GroupStayIndividualReservation.populateIndRoomSelect(excludeResId); }
+function calcIndividualPrice() { return window.GroupStayIndividualReservation.calcIndividualPrice(); }
+function openNewIndividualModal() { return window.GroupStayIndividualReservation.openNewIndividualModal(); }
+function openEditIndividualReservation(id) { return window.GroupStayIndividualReservation.openEditIndividualReservation(id); }
+async function saveIndividualReservation(e) { return window.GroupStayIndividualReservation.saveIndividualReservation(e); }
 
-    const occupied = {};
-    if (checkin && checkout) {
-        reservations.forEach(res => {
-            if (res.id === excludeResId) return;
-            if (res.status === 'cancelled') return;
-            if (res.checkin < checkout && res.checkout > checkin) {
-                const rIds = res.roomIds && res.roomIds.length > 0
-                    ? res.roomIds
-                    : guests.filter(g => g.reservationId === res.id && g.roomId).map(g => g.roomId);
-                rIds.forEach(id => { occupied[id] = res.groupName; });
-            }
-        });
-    }
+async function saveReservation(e) { return window.GroupStayGroupReservation.saveReservation(e); }
 
-    const floors = {};
-    rooms.forEach(rm => {
-        if (!floors[rm.floor]) floors[rm.floor] = [];
-        floors[rm.floor].push(rm);
-    });
-
-    let html = '<option value="">— Seleziona camera —</option>';
-    Object.keys(floors).sort((a, b) => a - b).forEach(floor => {
-        html += `<optgroup label="${t('rooms.floor')} ${floor}">`;
-        floors[floor].sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true })).forEach(rm => {
-            const typeKey = 'roomType.' + rm.type;
-            const typeLabel = t(typeKey) !== typeKey ? t(typeKey) : rm.type;
-            if (occupied[rm.id]) {
-                html += `<option value="${rm.id}" disabled>Camera ${escapeHtml(rm.number)} – ${typeLabel} (occupata: ${escapeHtml(occupied[rm.id])})</option>`;
-            } else {
-                html += `<option value="${rm.id}">Camera ${escapeHtml(rm.number)} – ${typeLabel} (${rm.capacity} posti)</option>`;
-            }
-        });
-        html += '</optgroup>';
-    });
-    select.innerHTML = html;
-    if (currentVal) select.value = currentVal;
-}
-
-function calcIndividualPrice() {
-    const checkin = document.getElementById('indCheckin').value;
-    const checkout = document.getElementById('indCheckout').value;
-    const ppn = parseFloat(document.getElementById('indPricePerNight').value) || 0;
-    const nights = (checkin && checkout) ? nightsBetween(checkin, checkout) : 0;
-    const total = ppn * nights;
-    document.getElementById('indTotalPrice').textContent = '€' + total.toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-    document.getElementById('indPrice').value = total;
-}
-
-function openNewIndividualModal() {
-    document.getElementById('indModalTitle').textContent = t('res.newIndividual') || 'Nuova Prenotazione Individuale';
-    document.getElementById('indForm').reset();
-    document.getElementById('indId').value = '';
-    setDateFieldValue('indCheckin', formatDate(new Date()));
-    setDateFieldValue('indCheckout', formatDate(addDays(new Date(), 1)));
-    document.getElementById('indStatus').value = 'confirmed';
-    document.getElementById('indTotalPrice').textContent = '€0';
-    document.getElementById('indPrice').value = 0;
-    populateIndRoomSelect(null);
-    openModal('individualModal');
-}
-
-function openEditIndividualReservation(id) {
-    const r = reservations.find(x => x.id === id);
-    if (!r) return;
-
-    document.getElementById('indModalTitle').textContent = t('res.editReservation') || 'Modifica Prenotazione';
-    document.getElementById('indId').value = r.id;
-
-    const nameParts = (r.groupName || '').trim().split(/\s+/);
-    document.getElementById('indFirstName').value = nameParts[0] || '';
-    document.getElementById('indLastName').value = nameParts.slice(1).join(' ') || '';
-    document.getElementById('indPhone').value = r.phone || r.organizer || '';
-    document.getElementById('indEmail').value = r.email || '';
-    setDateFieldValue('indCheckin', r.checkin);
-    setDateFieldValue('indCheckout', r.checkout);
-    document.getElementById('indStatus').value = r.status;
-    document.getElementById('indPricePerNight').value = r.pricePerPerson || '';
-    document.getElementById('indNotes').value = r.notes || '';
-
-    populateIndRoomSelect(r.id);
-    if (r.roomIds && r.roomIds.length > 0) {
-        document.getElementById('indRoomId').value = r.roomIds[0];
-    }
-    calcIndividualPrice();
-    closeModal('reservationDetailModal');
-    openModal('individualModal');
-}
-
-async function saveIndividualReservation(e) {
-    e.preventDefault();
-    const id = document.getElementById('indId').value;
-    const firstName = document.getElementById('indFirstName').value.trim();
-    const lastName = document.getElementById('indLastName').value.trim();
-    const roomId = document.getElementById('indRoomId').value;
-    const checkin = document.getElementById('indCheckin').value;
-    const checkout = document.getElementById('indCheckout').value;
-
-    if (!roomId) { showToast(t('toast.selectRoom'), 'error'); return; }
-    if (new Date(checkout) <= new Date(checkin)) { showToast(t('toast.checkoutAfterCheckin'), 'error'); return; }
-
-    const data = {
-        groupName: `${firstName} ${lastName}`.trim(),
-        organizer: document.getElementById('indPhone').value.trim(),
-        phone: document.getElementById('indPhone').value.trim(),
-        email: document.getElementById('indEmail').value.trim(),
-        checkin,
-        checkout,
-        guestCount: 1,
-        roomCount: 1,
-        roomIds: [roomId],
-        status: document.getElementById('indStatus').value,
-        expiration: '',
-        pricePerPerson: parseFloat(document.getElementById('indPricePerNight').value) || 0,
-        gratuity: 0,
-        price: parseFloat(document.getElementById('indPrice').value) || 0,
-        notes: document.getElementById('indNotes').value.trim(),
-        resType: 'individual'
-    };
-
-    try {
-        if (id) {
-            const idx = reservations.findIndex(r => r.id === id);
-            if (idx !== -1) reservations[idx] = { ...reservations[idx], ...data };
-            await apiPut(API.reservations, { ...data, id });
-            showToast(t('toast.resUpdated'));
-        } else {
-            const newRes = { id: generateId(), ...data, createdAt: new Date().toISOString() };
-            reservations.push(newRes);
-            await apiPost(API.reservations, newRes);
-            showToast(t('toast.resCreated'));
-        }
-    } catch (err) {
-        console.error(err);
-        showToast(t('toast.resSaveFail'), 'error');
-        return;
-    }
-
-    closeModal('individualModal');
-    renderDashboard();
-    renderReservations();
-    refreshCalendar();
-    computeRoomStatuses();
-}
-
-async function saveReservation(e) {
-    e.preventDefault();
-
-    const id = document.getElementById('resId').value;
-    const selectedRooms = getSelectedRoomIds();
-    const data = {
-        groupName: document.getElementById('resGroupName').value.trim(),
-        checkin: document.getElementById('resCheckin').value,
-        checkout: document.getElementById('resCheckout').value,
-        guestCount: parseInt(document.getElementById('resGuestCount').value) || 0,
-        roomCount: selectedRooms.length,
-        roomIds: selectedRooms,
-        status: document.getElementById('resStatus').value,
-        expiration: document.getElementById('resStatus').value === 'pending' ? document.getElementById('resExpiration').value : '',
-        pricePerPerson: parseFloat(document.getElementById('resPricePerPerson').value) || 0,
-        gratuity: parseInt(document.getElementById('resGratuity').value) || 0,
-        price: parseFloat(document.getElementById('resPrice').value) || 0,
-        notes: document.getElementById('resNotes').value.trim(),
-        mealPlan: document.getElementById('resMealPlan').value,
-        veggieBuffet: document.getElementById('resVeggieBuffet').checked
-    };
-
-    if (new Date(data.checkout) <= new Date(data.checkin)) {
-        showToast(t('toast.checkoutAfterCheckin'), 'error');
-        return;
-    }
-
-    if (selectedRooms.length === 0) {
-        showToast(t('toast.selectRoom'), 'error');
-        return;
-    }
-
-    try {
-        if (id) {
-            const idx = reservations.findIndex(r => r.id === id);
-            if (idx !== -1) {
-                reservations[idx] = { ...reservations[idx], ...data };
-            }
-            await apiPut(API.reservations, { ...data, id });
-            showToast(t('toast.resUpdated'));
-        } else {
-            const newRes = { id: generateId(), ...data, createdAt: new Date().toISOString() };
-            reservations.push(newRes);
-            await apiPost(API.reservations, newRes);
-            showToast(t('toast.resCreated'));
-        }
-    } catch (err) {
-        console.error(err);
-        showToast(t('toast.resSaveFail'), 'error');
-        return;
-    }
-
-    closeModal('reservationModal');
-    renderDashboard();
-    refreshCalendar();
-}
-
-async function deleteReservation(id) {
-    if (!confirm(t('confirm.deleteReservation'))) return;
-    reservations = reservations.filter(r => r.id !== id);
-    guests = guests.filter(g => g.reservationId !== id);
-    try {
-        await apiDelete(API.reservations, id);
-    } catch (err) {
-        console.error(err);
-        showToast(t('toast.resDeleteFail'), 'error');
-        return;
-    }
-    closeModal('reservationDetailModal');
-    showToast(t('toast.resDeleted'));
-    renderDashboard();
-    refreshCalendar();
-}
+async function deleteReservation(id) { return window.GroupStayGroupReservation.deleteReservation(id); }
 
 // ---- Reservation Detail ----
 
