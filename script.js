@@ -3043,13 +3043,7 @@ function printAssignments(mode) {
         }
         pages += isCleaning
             ? `<div class="page-block"><table>${theadHtml}<tbody>${rows}</tbody></table></div>`
-            : `<div class="page-block">
-                <div class="print-sheet-header">
-                    <div class="print-sheet-kicker">${t('assign.roomPlanner')}</div>
-                    <div class="print-sheet-title">${escapeHtml(r.groupName)}</div>
-                </div>
-                <table class="print-assign-table">${theadHtml}<tbody>${rows}</tbody></table>
-            </div>`;
+            : `<div class="page-block"><table class="print-assign-table">${theadHtml}<tbody>${rows}</tbody></table></div>`;
     }
 
     const title = isCleaning ? `${r.groupName} — ${t('assign.printCleaning')}` : r.groupName;
@@ -3062,9 +3056,6 @@ function printAssignments(mode) {
             .page-block { padding: 10mm 12mm; box-sizing: border-box; page-break-after: always; }
             .page-block:last-child { page-break-after: avoid; }
             tr { page-break-inside: avoid; }
-            .print-sheet-header { margin-bottom: 10mm; padding-bottom: 5mm; border-bottom: 2px solid #d9cfbf; }
-            .print-sheet-kicker { font-size: 11px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #8a7761; margin-bottom: 4px; }
-            .print-sheet-title { font-size: 26px; font-weight: 600; letter-spacing: 0.01em; color: #2f2418; }
             .print-assign-table { border: 1px solid #d9cfbf; border-radius: 12px; overflow: hidden; }
             .print-floor-row td { padding: 12px 12px 8px; background: #fcfaf6; border-top: 1px solid #e6ddcf; border-bottom: 1px solid #e6ddcf; }
             .print-floor-badge { display: inline-block; padding: 5px 10px; background: #efe6d8; border-radius: 999px; color: #6a563d; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
