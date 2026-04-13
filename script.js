@@ -4,76 +4,21 @@
 
 // ---- DATA STORE (Neon Postgres via API) ----
 
-const API = {
-    reservations: '/api/reservations',
-    rooms: '/api/rooms',
-    guests: '/api/guests',
-    init: '/api/init',
-    assignments: '/api/assignments',
-    plannerConfig: '/api/planner-config',
-    alloggiati: '/api/alloggiati',
-    employees: '/api/employees',
-    files: '/api/files',
-    menus: '/api/menus',
-    compliance: '/api/compliance'
-};
+const {
+    API,
+    CERT_TYPES,
+    DOC_TYPES,
+    NO_EXPIRY_CERTS,
+    CACHE_KEY,
+    CACHE_TTL
+} = window.GroupStayConfig;
 
-// ---- Compliance constants ----
-const CERT_TYPES = {
-    sicurezza_generale:   'Formazione sicurezza generale (D.Lgs. 81/08)',
-    formazione_specifica: 'Formazione specifica settore turistico-ricettivo',
-    antincendio_basso:    'Antincendio rischio basso',
-    antincendio_medio:    'Antincendio rischio medio',
-    primo_soccorso:       'Primo soccorso',
-    haccp:                'HACCP (manipolazione alimenti)',
-    privacy_gdpr:         'Privacy / GDPR – Nomina incaricato',
-    spp_datore:           'DL SPP – Datore di lavoro (D.Lgs. 81/08)'
-};
-
-const DOC_TYPES = {
-    agibilita:               'Certificato di agibilità',
-    cpi:                     'CPI / SCIA antincendio',
-    autorizzazione_sanitaria:'Autorizzazione sanitaria',
-    classificazione:         'Classificazione regionale (stelle)',
-    licenza_esercizio:       'Licenza di esercizio (Comune)',
-    verifica_elettrico:      'Verifica impianto elettrico',
-    verifica_caldaia:        'Verifica caldaia / impianto termico',
-    verifica_ascensore:      'Verifica ascensore',
-    estintori:               'Controllo estintori'
-};
-
-// No-expiry cert types
-const NO_EXPIRY_CERTS = new Set(['privacy_gdpr', 'agibilita', 'autorizzazione_sanitaria', 'classificazione', 'licenza_esercizio']);
-
-async function apiGet(url) {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`API error: ${res.status}`);
-    return res.json();
-}
-
-async function apiPost(url, data) {
-    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-    if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `API error: ${res.status}`);
-    }
-    return res.json();
-}
-
-async function apiPut(url, data) {
-    const res = await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-    if (!res.ok) throw new Error(`API error: ${res.status}`);
-    return res.json();
-}
-
-async function apiDelete(url, id) {
-    const res = await fetch(`${url}?id=${id}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error(`API error: ${res.status}`);
-    return res.json();
-}
-
-const CACHE_KEY = 'gs_data_cache';
-const CACHE_TTL = 60 * 1000; // 60 seconds
+const {
+    apiGet,
+    apiPost,
+    apiPut,
+    apiDelete
+} = window.GroupStayApi;
 
 function saveDataCache() {
     try {
