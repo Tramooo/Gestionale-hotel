@@ -38,6 +38,25 @@ const {
 
 const formatDateDisplay = (dateStr) => window.GroupStayUtils.formatDateDisplay(dateStr, currentLang);
 
+window.GroupStayDatePicker.init({
+    calcIndividualPrice,
+    calcReservationPrice,
+    formatDate,
+    getSelectedRoomIds,
+    populateIndRoomSelect,
+    populateRoomChecklist,
+    t
+});
+
+const {
+    closeAllDatePickers,
+    datePickerNav,
+    renderDatePicker,
+    selectDatePickerDay,
+    setDateFieldValue,
+    toggleDatePicker
+} = window.GroupStayDatePicker;
+
 window.GroupStayUI.init({
     closeAllDatePickers
 });
@@ -76,6 +95,24 @@ window.GroupStayMenus.init({
     getReservations: () => reservations,
     nightsBetween,
     setReservations: (nextReservations) => { reservations = nextReservations; }
+});
+
+window.GroupStayReservationsList.init({
+    escapeHtml,
+    formatDateDisplay,
+    getCurrentFilter: () => currentFilter,
+    getReservations: () => reservations,
+    nightsBetween,
+    setCurrentFilter: (filter) => { currentFilter = filter; },
+    t
+});
+
+window.GroupStayReservationRooms.init({
+    escapeHtml,
+    getGuests: () => guests,
+    getReservations: () => reservations,
+    getRooms: () => rooms,
+    t
 });
 
 function saveDataCache() {
@@ -889,339 +926,25 @@ function renderDashboard() {
 // RESERVATIONS
 // =============================================
 
-function renderReservations() {
-    const search = (document.getElementById('searchReservations')?.value || '').toLowerCase();
-    let filtered = reservations;
-
-    if (currentFilter !== 'all') {
-        filtered = filtered.filter(r => r.status === currentFilter);
-    }
-
-    if (search) {
-        filtered = filtered.filter(r =>
-            (r.groupName || '').toLowerCase().includes(search) ||
-            (r.organizer || '').toLowerCase().includes(search) ||
-            (r.phone || '').toLowerCase().includes(search) ||
-            (r.email || '').toLowerCase().includes(search)
-        );
-    }
-
-    filtered.sort((a, b) => new Date(a.checkin) - new Date(b.checkin));
-
-    const list = document.getElementById('reservationsList');
-
-    if (filtered.length === 0) {
-        list.innerHTML = `
-            <div class="empty-state">
-                <p>${t('res.noReservations')}</p>
-            </div>
-        `;
-        return;
-    }
-
-    list.innerHTML = filtered.map(r => {
-        const nights = nightsBetween(r.checkin, r.checkout);
-        const statusLabel = r.status.replace('-', ' ');
-        const isIndividual = r.resType === 'individual';
-        const subtitle = isIndividual
-            ? (r.organizer || r.phone || r.email || '')
-            : (r.organizer || '');
-        const typeBadge = isIndividual
-            ? `<span class="res-type-badge individual">${t('res.typeIndividual')}</span>`
-            : `<span class="res-type-badge group">${t('res.typeGroup')}</span>`;
-        return `
-            <div class="reservation-card" onclick="openReservationDetail('${r.id}')">
-                <div class="res-color-bar ${r.status}"></div>
-                <div class="res-info">
-                    <div class="res-group-name">${escapeHtml(r.groupName)}${typeBadge}</div>
-                    <div class="res-organizer">${escapeHtml(subtitle)}</div>
-                </div>
-                <div class="res-meta">
-                    <div class="res-meta-item">
-                        <span class="res-meta-value">${r.guestCount}</span>
-                        <span class="res-meta-label">${t('res.guests')}</span>
-                    </div>
-                    <div class="res-meta-item">
-                        <span class="res-meta-value">${r.roomCount}</span>
-                        <span class="res-meta-label">${t('res.rooms')}</span>
-                    </div>
-                    <div class="res-meta-item">
-                        <span class="res-meta-value">${nights}</span>
-                        <span class="res-meta-label">${t('res.nights')}</span>
-                    </div>
-                </div>
-                <div class="res-dates">${formatDateDisplay(r.checkin)} &rarr; ${formatDateDisplay(r.checkout)}</div>
-                <span class="status-badge ${r.status}">${statusLabel}</span>
-            </div>
-        `;
-    }).join('');
-}
-
-function setReservationFilter(filter, el) {
-    currentFilter = filter;
-    document.querySelectorAll('#page-reservations .chip').forEach(c => c.classList.remove('active'));
-    el.classList.add('active');
-    renderReservations();
-}
-
-function filterReservations() {
-    renderReservations();
-}
+function renderReservations() { return window.GroupStayReservationsList.renderReservations(); }
+function setReservationFilter(filter, el) { return window.GroupStayReservationsList.setReservationFilter(filter, el); }
+function filterReservations() { return window.GroupStayReservationsList.filterReservations(); }
 
 // ---- New / Edit Reservation ----
 
-function getOccupiedRoomMap(excludeResId) {
-    // Build a map of roomId -> { groupName, checkin, checkout } for all confirmed/pending reservations
-    const checkin = document.getElementById('resCheckin').value;
-    const checkout = document.getElementById('resCheckout').value;
-    const occupied = {}; // roomId -> groupName
-    if (!checkin || !checkout) return occupied;
-    reservations.forEach(res => {
-        if (res.id === excludeResId) return;
-        if (res.status === 'cancelled') return;
-        // Check date overlap: resA.checkin < resB.checkout && resA.checkout > resB.checkin
-        if (res.checkin < checkout && res.checkout > checkin) {
-            const rIds = res.roomIds && res.roomIds.length > 0
-                ? res.roomIds
-                : guests.filter(g => g.reservationId === res.id && g.roomId).map(g => g.roomId);
-            rIds.forEach(id => { occupied[id] = res.groupName; });
-        }
-    });
-    return occupied;
-}
-
-function populateRoomChecklist(selectedRoomIds, excludeResId) {
-    const checklist = document.getElementById('resRoomChecklist');
-    const sortedRooms = [...rooms].sort((a, b) => a.floor !== b.floor ? a.floor - b.floor : parseInt(a.number) - parseInt(b.number));
-    const selected = new Set(selectedRoomIds || []);
-    const occupiedMap = getOccupiedRoomMap(excludeResId);
-
-    let html = '';
-    let currentFloor = null;
-    sortedRooms.forEach(r => {
-        if (r.floor !== currentFloor) {
-            currentFloor = r.floor;
-            const floorRooms = sortedRooms.filter(rm => rm.floor === r.floor);
-            const availableFloorRooms = floorRooms.filter(rm => !occupiedMap[rm.id]);
-            const allChecked = availableFloorRooms.length > 0 && availableFloorRooms.every(rm => selected.has(rm.id));
-            html += `<label class="room-check-floor-header"><input type="checkbox" data-floor="${r.floor}" ${allChecked ? 'checked' : ''} onchange="toggleFloorCheckboxes(this)"> ${t('rooms.floor')} ${r.floor}</label>`;
-        }
-        const isOccupied = !!occupiedMap[r.id];
-        const checked = selected.has(r.id) && !isOccupied;
-        if (isOccupied) {
-            html += `
-                <label class="room-check-item occupied" title="${escapeHtml(occupiedMap[r.id])}">
-                    <input type="checkbox" value="${r.id}" disabled>
-                    <div class="room-check-info">
-                        <span class="room-check-number">${r.number}</span>
-                        <span class="room-check-type">${r.type} &middot; ${r.capacity} ${t('rooms.pax')}</span>
-                    </div>
-                    <span class="room-check-occupied">${escapeHtml(occupiedMap[r.id])}</span>
-                </label>`;
-        } else {
-            html += `
-                <label class="room-check-item${checked ? ' checked' : ''}">
-                    <input type="checkbox" value="${r.id}" ${checked ? 'checked' : ''} onchange="onRoomCheckChange(this)">
-                    <div class="room-check-info">
-                        <span class="room-check-number">${r.number}</span>
-                        <span class="room-check-type">${r.type} &middot; ${r.capacity} ${t('rooms.pax')}</span>
-                    </div>
-                </label>`;
-        }
-    });
-
-    if (sortedRooms.length === 0) {
-        html = `<div style="padding:20px;text-align:center;color:var(--text-tertiary);font-size:13px">${t('res.noRoomsYet')}</div>`;
-    }
-
-    checklist.innerHTML = html;
-    const availableChecks = [...checklist.querySelectorAll('.room-check-item:not(.occupied) input[type="checkbox"]')];
-    document.getElementById('resRoomSelectAll').checked = availableChecks.length > 0 && availableChecks.every(c => c.checked);
-    updateRoomCount();
-}
-
-function toggleAllRoomCheckboxes(el) {
-    const checklist = document.getElementById('resRoomChecklist');
-    checklist.querySelectorAll('input[type="checkbox"]:not(:disabled)').forEach(c => {
-        c.checked = el.checked;
-        const item = c.closest('.room-check-item');
-        if (item) item.classList.toggle('checked', el.checked);
-    });
-    updateRoomCount();
-}
-
-function onRoomCheckChange(el) {
-    el.closest('.room-check-item').classList.toggle('checked', el.checked);
-    updateFloorAndSelectAll();
-    updateRoomCount();
-}
-
-function toggleFloorCheckboxes(el) {
-    const floor = el.dataset.floor;
-    const checklist = document.getElementById('resRoomChecklist');
-    // Find room checkboxes that belong to this floor — they follow the floor header
-    const roomItems = checklist.querySelectorAll('.room-check-item');
-    roomItems.forEach(item => {
-        const cb = item.querySelector('input[type="checkbox"]');
-        if (cb.disabled) return;
-        const roomId = cb.value;
-        const room = rooms.find(r => r.id === roomId);
-        if (room && String(room.floor) === floor) {
-            cb.checked = el.checked;
-            item.classList.toggle('checked', el.checked);
-        }
-    });
-    updateFloorAndSelectAll();
-    updateRoomCount();
-}
-
-function updateFloorAndSelectAll() {
-    const checklist = document.getElementById('resRoomChecklist');
-    const roomChecks = checklist.querySelectorAll('.room-check-item input[type="checkbox"]');
-    const floorChecks = checklist.querySelectorAll('.room-check-floor-header input[type="checkbox"]');
-
-    // Update each floor checkbox
-    floorChecks.forEach(fc => {
-        const floor = fc.dataset.floor;
-        const floorRoomChecks = [...roomChecks].filter(c => {
-            const room = rooms.find(r => r.id === c.value);
-            return room && String(room.floor) === floor;
-        });
-        fc.checked = floorRoomChecks.length > 0 && floorRoomChecks.every(c => c.checked);
-    });
-
-    // Update select all
-    const all = roomChecks.length > 0 && [...roomChecks].every(c => c.checked);
-    document.getElementById('resRoomSelectAll').checked = all;
-}
-
-function updateRoomCount() {
-    const count = document.querySelectorAll('#resRoomChecklist .room-check-item input[type="checkbox"]:checked').length;
-    const el = document.getElementById('resRoomCount');
-    if (el) el.textContent = `${count} ${count !== 1 ? t('res.roomsSelected') : t('res.roomSelected')}`;
-}
-
-function getSelectedRoomIds() {
-    return [...document.querySelectorAll('#resRoomChecklist .room-check-item input[type="checkbox"]:checked')].map(c => c.value);
-}
-
-function getAssignedRoomIds(resId) {
-    return [...new Set(guests.filter(g => g.reservationId === resId && g.roomId).map(g => g.roomId))];
-}
+function getOccupiedRoomMap(excludeResId) { return window.GroupStayReservationRooms.getOccupiedRoomMap(excludeResId); }
+function populateRoomChecklist(selectedRoomIds, excludeResId) { return window.GroupStayReservationRooms.populateRoomChecklist(selectedRoomIds, excludeResId); }
+function toggleAllRoomCheckboxes(el) { return window.GroupStayReservationRooms.toggleAllRoomCheckboxes(el); }
+function onRoomCheckChange(el) { return window.GroupStayReservationRooms.onRoomCheckChange(el); }
+function toggleFloorCheckboxes(el) { return window.GroupStayReservationRooms.toggleFloorCheckboxes(el); }
+function updateFloorAndSelectAll() { return window.GroupStayReservationRooms.updateFloorAndSelectAll(); }
+function updateRoomCount() { return window.GroupStayReservationRooms.updateRoomCount(); }
+function getSelectedRoomIds() { return window.GroupStayReservationRooms.getSelectedRoomIds(); }
+function getAssignedRoomIds(resId) { return window.GroupStayReservationRooms.getAssignedRoomIds(resId); }
 
 function toggleExpirationField() {
     const status = document.getElementById('resStatus').value;
     document.getElementById('resExpirationGroup').style.display = status === 'pending' ? '' : 'none';
-}
-
-// ---- Reusable Date Picker ----
-
-function getWrapper(el) {
-    return el.closest('.mini-cal-wrapper');
-}
-
-function toggleDatePicker(inputEl) {
-    const wrapper = getWrapper(inputEl);
-    const dd = wrapper.querySelector('.mini-cal-dropdown');
-    // Close all other open pickers first
-    document.querySelectorAll('.mini-cal-dropdown.open').forEach(d => {
-        if (d !== dd) d.classList.remove('open');
-    });
-    if (dd.classList.contains('open')) { dd.classList.remove('open'); return; }
-    const targetId = wrapper.dataset.target;
-    const val = document.getElementById(targetId).value;
-    wrapper._viewDate = val ? new Date(val + 'T00:00:00') : new Date();
-    renderDatePicker(wrapper);
-    dd.classList.add('open');
-    // Position with fixed coordinates to avoid clipping by overflow:hidden parents
-    const rect = wrapper.getBoundingClientRect();
-    const dropdownH = 320; // approximate height
-    const spaceBelow = window.innerHeight - rect.bottom;
-    if (spaceBelow < dropdownH && rect.top > dropdownH) {
-        dd.style.top = (rect.top - dropdownH - 6) + 'px';
-    } else {
-        dd.style.top = (rect.bottom + 6) + 'px';
-    }
-    const rightEdge = rect.left + 280;
-    dd.style.left = (rightEdge > window.innerWidth ? window.innerWidth - 288 : rect.left) + 'px';
-}
-
-function closeAllDatePickers() {
-    document.querySelectorAll('.mini-cal-dropdown.open').forEach(d => d.classList.remove('open'));
-}
-
-function datePickerNav(btn, dir) {
-    const wrapper = getWrapper(btn);
-    wrapper._viewDate.setMonth(wrapper._viewDate.getMonth() + dir);
-    renderDatePicker(wrapper);
-}
-
-function renderDatePicker(wrapper) {
-    const monthNames = t('months.full');
-    const vd = wrapper._viewDate;
-    const y = vd.getFullYear();
-    const m = vd.getMonth();
-    wrapper.querySelector('.mini-cal-month-label').textContent = monthNames[m] + ' ' + y;
-
-    const targetId = wrapper.dataset.target;
-    const selected = document.getElementById(targetId).value;
-    const todayStr = formatDate(new Date());
-
-    let startDow = new Date(y, m, 1).getDay();
-    if (startDow === 0) startDow = 7;
-    const daysInMonth = new Date(y, m + 1, 0).getDate();
-    const prevDays = new Date(y, m, 0).getDate();
-
-    let html = '';
-    for (let i = startDow - 1; i > 0; i--) {
-        html += `<button type="button" class="mini-cal-day other-month" disabled>${prevDays - i + 1}</button>`;
-    }
-    for (let d = 1; d <= daysInMonth; d++) {
-        const dateStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        let cls = 'mini-cal-day';
-        if (dateStr === todayStr) cls += ' today';
-        if (dateStr === selected) cls += ' selected';
-        html += `<button type="button" class="${cls}" onclick="selectDatePickerDay(this,'${dateStr}')">${d}</button>`;
-    }
-    const totalCells = startDow - 1 + daysInMonth;
-    const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
-    for (let i = 1; i <= remaining; i++) {
-        html += `<button type="button" class="mini-cal-day other-month" disabled>${i}</button>`;
-    }
-    wrapper.querySelector('.mini-cal-grid').innerHTML = html;
-}
-
-function selectDatePickerDay(btn, dateStr) {
-    const wrapper = getWrapper(btn);
-    const targetId = wrapper.dataset.target;
-    document.getElementById(targetId).value = dateStr;
-    setDatePickerDisplay(wrapper, dateStr);
-    wrapper.querySelector('.mini-cal-dropdown').classList.remove('open');
-    if (targetId === 'resCheckin' || targetId === 'resCheckout') {
-        calcReservationPrice();
-        // Refresh room checklist to update availability for new dates
-        const resId = document.getElementById('resId').value || null;
-        const selectedRooms = getSelectedRoomIds();
-        populateRoomChecklist(selectedRooms, resId);
-    }
-    if (targetId === 'indCheckin' || targetId === 'indCheckout') {
-        calcIndividualPrice();
-        populateIndRoomSelect(document.getElementById('indId').value || null);
-    }
-}
-
-function setDatePickerDisplay(wrapper, dateStr) {
-    const display = wrapper.querySelector('.mini-cal-display');
-    if (!dateStr) { display.textContent = t('res.selectDate'); return; }
-    const d = new Date(dateStr + 'T00:00:00');
-    const mn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    display.textContent = `${d.getDate()} ${mn[d.getMonth()]} ${d.getFullYear()}`;
-}
-
-function setDateFieldValue(targetId, dateStr) {
-    document.getElementById(targetId).value = dateStr;
-    const wrapper = document.querySelector(`.mini-cal-wrapper[data-target="${targetId}"]`);
-    if (wrapper) setDatePickerDisplay(wrapper, dateStr);
 }
 
 function openNewReservationModal() {
