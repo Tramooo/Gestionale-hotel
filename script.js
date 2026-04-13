@@ -3014,7 +3014,9 @@ function printAssignments(mode) {
         let rows = '';
         for (let j = i; j < Math.min(i + 2, floorKeys.length); j++) {
             const fk = floorKeys[j];
-            rows += `<tr><td colspan="${colCount}" style="background:#f0f0f0;font-weight:700;padding:6px 10px">${t('rooms.floor')} ${fk}</td></tr>`;
+            rows += isCleaning
+                ? `<tr><td colspan="${colCount}" style="background:#f0f0f0;font-weight:700;font-size:14px;padding:8px 10px">${t('rooms.floor')} ${fk}</td></tr>`
+                : `<tr class="print-floor-row"><td colspan="${colCount}"><span class="print-floor-badge">${t('rooms.floor')} ${fk}</span></td></tr>`;
             for (const rm of floors[fk]) {
                 if (isCleaning) {
                     const a = assignMap[rm.id];
@@ -3026,31 +3028,49 @@ function printAssignments(mode) {
                         typeLabel = vals[plannerColumns[0].id] || '';
                     }
                     rows += `<tr>
-                        <td style="padding:5px 10px;font-weight:600;border:1px solid #ddd">${rm.number}</td>
-                        <td style="padding:5px 10px;border:1px solid #ddd">${escapeHtml(String(typeLabel))}</td>
-                        <td style="padding:5px 10px;border:1px solid #ddd;min-width:200px"></td>
+                        <td style="padding:7px 10px;font-weight:600;font-size:13px;border:1px solid #ddd">${rm.number}</td>
+                        <td style="padding:7px 10px;font-size:13px;border:1px solid #ddd">${escapeHtml(String(typeLabel))}</td>
+                        <td style="padding:7px 10px;font-size:13px;border:1px solid #ddd;min-width:220px"></td>
                     </tr>`;
                 } else {
                     const vals = (assignMap[rm.id] || {}).cellValues || {};
                     rows += `<tr>
-                        <td style="padding:5px 10px;font-weight:600;border:1px solid #ddd">${rm.number}</td>
-                        ${plannerColumns.map(col => `<td style="padding:5px 10px;border:1px solid #ddd">${vals[col.id] != null ? vals[col.id] : ''}</td>`).join('')}
+                        <td class="print-room-cell">${rm.number}</td>
+                        ${plannerColumns.map(col => `<td class="print-value-cell">${vals[col.id] != null ? vals[col.id] : ''}</td>`).join('')}
                     </tr>`;
                 }
             }
         }
-        pages += `<div class="page-block"><table>${theadHtml}<tbody>${rows}</tbody></table></div>`;
+        pages += isCleaning
+            ? `<div class="page-block"><table>${theadHtml}<tbody>${rows}</tbody></table></div>`
+            : `<div class="page-block">
+                <div class="print-sheet-header">
+                    <div class="print-sheet-kicker">${t('assign.roomPlanner')}</div>
+                    <div class="print-sheet-title">${escapeHtml(r.groupName)}</div>
+                </div>
+                <table class="print-assign-table">${theadHtml}<tbody>${rows}</tbody></table>
+            </div>`;
     }
 
     const title = isCleaning ? `${r.groupName} — ${t('assign.printCleaning')}` : r.groupName;
     const printHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>
         <style>
-            body { font-family: -apple-system, sans-serif; margin: 0; padding: 0; color: #222; }
-            table { border-collapse: collapse; width: 100%; }
-            th { background: #e8e8e8; color: #000; padding: 6px 10px; text-align: left; font-size: 12px; }
-            td { font-size: 12px; }
-            .page-block { padding: 12mm 15mm; box-sizing: border-box; page-break-after: always; }
+            body { font-family: ${isCleaning ? "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" : "'Avenir Next', 'Helvetica Neue', Arial, sans-serif"}; margin: 0; padding: 0; color: #222; background: #fff; }
+            table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+            th { background: ${isCleaning ? '#e8e8e8' : '#f5f1e8'}; color: ${isCleaning ? '#000' : '#5a4a33'}; padding: ${isCleaning ? '8px 10px' : '9px 12px'}; text-align: left; font-size: ${isCleaning ? '13px' : '12px'}; line-height: 1.25; text-transform: ${isCleaning ? 'none' : 'uppercase'}; letter-spacing: ${isCleaning ? 'normal' : '0.06em'}; border-bottom: ${isCleaning ? 'none' : '1px solid #d9cfbf'}; }
+            td { font-size: 13px; line-height: 1.3; vertical-align: middle; word-wrap: break-word; }
+            .page-block { padding: 10mm 12mm; box-sizing: border-box; page-break-after: always; }
             .page-block:last-child { page-break-after: avoid; }
+            tr { page-break-inside: avoid; }
+            .print-sheet-header { margin-bottom: 10mm; padding-bottom: 5mm; border-bottom: 2px solid #d9cfbf; }
+            .print-sheet-kicker { font-size: 11px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #8a7761; margin-bottom: 4px; }
+            .print-sheet-title { font-size: 26px; font-weight: 600; letter-spacing: 0.01em; color: #2f2418; }
+            .print-assign-table { border: 1px solid #d9cfbf; border-radius: 12px; overflow: hidden; }
+            .print-floor-row td { padding: 12px 12px 8px; background: #fcfaf6; border-top: 1px solid #e6ddcf; border-bottom: 1px solid #e6ddcf; }
+            .print-floor-badge { display: inline-block; padding: 5px 10px; background: #efe6d8; border-radius: 999px; color: #6a563d; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+            .print-room-cell { padding: 9px 12px; font-weight: 700; font-size: 13px; color: #2f2418; border-bottom: 1px solid #ece6dc; background: #fff; }
+            .print-value-cell { padding: 9px 12px; font-size: 13px; color: #4b3d2c; border-bottom: 1px solid #ece6dc; background: #fff; }
+            .print-assign-table tbody tr:last-child td { border-bottom: none; }
             @page { margin: 0; }
         </style></head><body>
         ${pages}
