@@ -1410,63 +1410,140 @@ async function resolveGuestsForAlloggiati(reservationId) {
         'patente nautica': 'PNAUZ', 'porto d\'armi': 'PORDF', 'porto darmi': 'PORDF',
     };
     const ITALY_CODE = '100000100';
+    const VALID_GUEST_TYPES = new Set(['16', '17', '18', '19', '20']);
+    const normalizeText = (value) => String(value || '').trim();
+
+    function findStateEntry(val) {
+        if (!val || !alloggiatiStati) return null;
+        const raw = normalizeText(val);
+        if (!raw) return null;
+        if (/^\d{9}$/.test(raw)) {
+            return alloggiatiStati.find((entry) => entry.code === raw) || null;
+        }
+        const lower = raw.toLowerCase();
+        return alloggiatiStati.find((entry) => entry.name.toLowerCase() === lower)
+            || alloggiatiStati.find((entry) => entry.label.toLowerCase() === lower)
+            || alloggiatiStati.find((entry) => entry.name.toLowerCase().startsWith(lower))
+            || null;
+    }
 
     function resolveComune(val) {
         if (!val || !alloggiatiLuoghi) return { code: '', prov: '' };
-        // Already numeric → it's a code
-        if (/^\d/.test(val.trim())) {
-            const entry = alloggiatiLuoghi.find(l => l.code === val.trim());
-            return { code: val.trim(), prov: entry ? entry.prov : '' };
+        const raw = normalizeText(val);
+        if (!raw) return { code: '', prov: '' };
+        if (/^\d{9}$/.test(raw)) {
+            const entry = alloggiatiLuoghi.find((luogo) => luogo.code === raw && luogo.prov);
+            return entry ? { code: entry.code, prov: entry.prov || '' } : { code: '', prov: '' };
         }
-        // Try exact name match, then partial
-        const lower = val.toLowerCase().trim();
-        let entry = alloggiatiLuoghi.find(l => l.name.toLowerCase() === lower);
-        if (!entry) entry = alloggiatiLuoghi.find(l => l.label.toLowerCase() === lower);
-        if (!entry) entry = alloggiatiLuoghi.find(l => l.name.toLowerCase().startsWith(lower));
-        return entry ? { code: entry.code, prov: entry.prov } : { code: val, prov: '' };
+        const lower = raw.toLowerCase();
+        let entry = alloggiatiLuoghi.find((luogo) => luogo.prov && luogo.name.toLowerCase() === lower);
+        if (!entry) entry = alloggiatiLuoghi.find((luogo) => luogo.prov && luogo.label.toLowerCase() === lower);
+        if (!entry) entry = alloggiatiLuoghi.find((luogo) => luogo.prov && luogo.name.toLowerCase().startsWith(lower));
+        return entry ? { code: entry.code, prov: entry.prov || '' } : { code: '', prov: '' };
     }
 
-    return resGuests.map(g => {
-        // Resolve birthComune and birthProvince
-        const isForeign = g.birthCountry && g.birthCountry !== ITALY_CODE &&
-            !['italia', 'italy'].includes((g.birthCountry || '').toLowerCase());
-        let birthComune = '';
-        let birthProvince = '';
-        if (!isForeign) {
-            const resolved = resolveComune(g.birthComune);
-            birthComune = resolved.code;
-            birthProvince = g.birthProvince || resolved.prov || '';
-        } else {
-            birthProvince = 'EE';
+    function resolveStateCode(val, fallbackToItaly = false) {
+        const entry = findStateEntry(val);
+        if (entry) return entry.code;
+        return fallbackToItaly ? ITALY_CODE : '';
+    }
+
+    function resolveDocIssuedPlace(val) {
+        const comune = resolveComune(val);
+        if (comune.code) return comune.code;
+        const state = findStateEntry(val);
+        return state ? state.code : '';
+    }
+
+    function normalizeDocType(value) {
+        const raw = normalizeText(value).toUpperCase();
+        if (VALID_DOC.has(raw)) return raw;
+        const mapped = DOC_MAP[normalizeText(value).toLowerCase()];
+        return mapped || '';
+    }
+
+    function normalizeGuestType(value) {
+        const raw = normalizeText(value);
+        return VALID_GUEST_TYPES.has(raw) ? raw : '16';
+    }
+
+    function validateResolvedGuest(guest) {
+        const errors = [];
+        const requiresDocument = guest.guestType === '16' || guest.guestType === '17' || guest.guestType === '18';
+
+        if (!normalizeText(guest.lastName)) errors.push('cognome mancante');
+        if (!normalizeText(guest.firstName)) errors.push('nome mancante');
+        if (!['1', '2'].includes(normalizeText(guest.sex))) errors.push('sesso non valido');
+        if (!normalizeText(guest.birthDate)) errors.push('data di nascita mancante');
+        if (!/^\d{9}$/.test(normalizeText(guest.birthCountry))) {
+            errors.push('stato di nascita non valido');
+        }
+        if (!/^\d{9}$/.test(normalizeText(guest.citizenship))) {
+            errors.push('cittadinanza non valida');
         }
 
-        // Resolve docIssuedPlace the same way as comune
-        const resolvedDoc = resolveComune(g.docIssuedPlace);
-        const docIssuedPlace = resolvedDoc.code;
-
-        // Resolve docType
-        let docType = (g.docType || '').trim();
-        if (docType && !VALID_DOC.has(docType)) {
-            const mapped = DOC_MAP[docType.toLowerCase()];
-            if (mapped) docType = mapped;
+        if (guest.birthCountry === ITALY_CODE) {
+            if (!/^\d{9}$/.test(normalizeText(guest.birthComune))) {
+                errors.push('comune di nascita non valido');
+            }
+            if (!/^[A-Z]{2}$/.test(normalizeText(guest.birthProvince))) {
+                errors.push('provincia di nascita non valida');
+            }
         }
 
-        return {
+        if (requiresDocument) {
+            if (!VALID_DOC.has(normalizeText(guest.docType))) {
+                errors.push('tipo documento non valido');
+            }
+            if (!normalizeText(guest.docNumber)) {
+                errors.push('numero documento mancante');
+            }
+            if (!/^\d{9}$/.test(normalizeText(guest.docIssuedPlace))) {
+                errors.push('luogo rilascio documento non valido');
+            }
+        }
+
+        return errors;
+    }
+
+    const resolvedGuests = resGuests.map((g) => {
+        const birthCountry = resolveStateCode(g.birthCountry, !!normalizeText(g.birthComune));
+        const citizenship = resolveStateCode(g.citizenship, false);
+        const isItalianBirth = birthCountry === ITALY_CODE;
+        const resolvedBirthComune = isItalianBirth ? resolveComune(g.birthComune) : { code: '', prov: '' };
+        const guestType = normalizeGuestType(g.guestType);
+        const requiresDocument = guestType === '16' || guestType === '17' || guestType === '18';
+
+        const guest = {
             id: g.id,
             firstName: g.firstName,
             lastName: g.lastName,
-            sex: g.sex,
+            sex: normalizeText(g.sex),
             birthDate: g.birthDate,
-            birthComune,
-            birthProvince,
-            birthCountry: g.birthCountry,
-            citizenship: g.citizenship,
-            docType,
-            docNumber: g.docNumber,
-            docIssuedPlace,
-            guestType: g.guestType,
+            birthComune: isItalianBirth ? resolvedBirthComune.code : '',
+            birthProvince: isItalianBirth ? normalizeText(g.birthProvince || resolvedBirthComune.prov).toUpperCase().substring(0, 2) : '',
+            birthCountry,
+            citizenship,
+            docType: requiresDocument ? normalizeDocType(g.docType) : '',
+            docNumber: requiresDocument ? normalizeText(g.docNumber) : '',
+            docIssuedPlace: requiresDocument ? resolveDocIssuedPlace(g.docIssuedPlace) : '',
+            guestType,
+        };
+
+        return {
+            ...guest,
+            _validationErrors: validateResolvedGuest(guest)
         };
     });
+
+    const invalidGuests = resolvedGuests.filter((guest) => guest._validationErrors.length > 0);
+    if (invalidGuests.length > 0) {
+        throw new Error(invalidGuests
+            .map((guest) => `${guest.firstName || 'Ospite'} ${guest.lastName || ''}`.trim() + ': ' + guest._validationErrors.join(', '))
+            .join(' | '));
+    }
+
+    return resolvedGuests.map(({ _validationErrors, ...guest }) => guest);
 }
 
 async function alloggiatiTest(reservationId) {

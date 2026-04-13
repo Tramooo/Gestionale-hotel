@@ -81,10 +81,61 @@ function resolveCountryCode(val) {
   return COUNTRY_FALLBACK[v.toLowerCase()] || v;
 }
 
+function normalizeGuestForAlloggiatiRecord(guest) {
+  const guestType = ['16', '17', '18', '19', '20'].includes(String(guest.guestType || '').trim())
+    ? String(guest.guestType).trim()
+    : '16';
+  const noDoc = guestType === '19' || guestType === '20';
+  const birthCountry = resolveCountryCode(guest.birthCountry);
+  const citizenship = resolveCountryCode(guest.citizenship);
+  const isItalianBirth = !birthCountry || birthCountry === '100000100';
+
+  return {
+    ...guest,
+    guestType,
+    sex: String(guest.sex || '').trim(),
+    birthCountry,
+    citizenship,
+    birthComune: isItalianBirth ? String(guest.birthComune || '').trim() : '',
+    birthProvince: isItalianBirth ? String(guest.birthProvince || '').trim().toUpperCase().substring(0, 2) : '',
+    docType: noDoc ? '' : String(guest.docType || '').trim().toUpperCase().substring(0, 5),
+    docNumber: noDoc ? '' : String(guest.docNumber || '').trim(),
+    docIssuedPlace: noDoc ? '' : String(guest.docIssuedPlace || '').trim()
+  };
+}
+
+function validateGuestForAlloggiatiRecord(guest) {
+  const errors = [];
+  const requiresDocument = guest.guestType === '16' || guest.guestType === '17' || guest.guestType === '18';
+
+  if (!guest.lastName) errors.push('cognome mancante');
+  if (!guest.firstName) errors.push('nome mancante');
+  if (!['1', '2'].includes(guest.sex)) errors.push('sesso non valido');
+  if (!guest.birthDate) errors.push('data di nascita mancante');
+  if (!/^\d{9}$/.test(guest.birthCountry || '')) errors.push('stato di nascita non valido');
+  if (!/^\d{9}$/.test(guest.citizenship || '')) errors.push('cittadinanza non valida');
+
+  if (guest.birthCountry === '100000100') {
+    if (!/^\d{9}$/.test(guest.birthComune || '')) errors.push('comune di nascita non valido');
+    if (!/^[A-Z]{2}$/.test(guest.birthProvince || '')) errors.push('provincia di nascita non valida');
+  }
+
+  if (requiresDocument) {
+    if (!['IDENT', 'PASOR', 'PATEN', 'PNAUZ', 'PORDF'].includes(guest.docType || '')) {
+      errors.push('tipo documento non valido');
+    }
+    if (!guest.docNumber) errors.push('numero documento mancante');
+    if (!/^\d{9}$/.test(guest.docIssuedPlace || '')) errors.push('luogo rilascio documento non valido');
+  }
+
+  return errors;
+}
+
 // Build a 168-char fixed-width record from guest data
-function buildRecord(guest, checkinDate, checkoutDate) {
+function buildRecord(rawGuest, checkinDate, checkoutDate) {
   const pad = (val, len) => (val || '').toString().substring(0, len).padEnd(len, ' ');
   const padNum = (val, len) => (val || '').toString().substring(0, len).padStart(len, '0');
+  const guest = normalizeGuestForAlloggiatiRecord(rawGuest);
 
   // Calculate nights (max 30) — parse as UTC to avoid timezone issues
   const parseUTC = (s) => { const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? new Date(Date.UTC(m[1], m[2]-1, m[3])) : new Date(s); };
@@ -111,13 +162,12 @@ function buildRecord(guest, checkinDate, checkoutDate) {
 
   const arrivalDate = fmtDate(checkinDate);
   const birthDate = fmtDate(guest.birthDate);
-  const guestType = guest.guestType || '16';
   // Document fields are blank for: family members (19) and group members (20).
   // Types 16 (Singolo), 17 (CapoFamiglia), 18 (CapoGruppo) all require a document.
-  const noDoc = guestType === '19' || guestType === '20';
+  const noDoc = guest.guestType === '19' || guest.guestType === '20';
 
   let record = '';
-  record += padNum(guestType, 2);               // 0-1:   Tipo Alloggiato (2)
+  record += padNum(guest.guestType, 2);               // 0-1:   Tipo Alloggiato (2)
   record += arrivalDate;                          // 2-11:  Data Arrivo (10)
   record += padNum(nights, 2);                    // 12-13: Giorni Permanenza (2)
   record += pad(guest.lastName, 50);              // 14-63: Cognome (50)
@@ -229,19 +279,38 @@ export default async function handler(req, res) {
           ...g,
           birthComune: r.birthComune ?? g.birthComune,
           birthProvince: r.birthProvince ?? g.birthProvince,
+          birthCountry: r.birthCountry ?? g.birthCountry,
+          citizenship: r.citizenship ?? g.citizenship,
           docType: r.docType ?? g.docType,
+          docNumber: r.docNumber ?? g.docNumber,
           docIssuedPlace: r.docIssuedPlace ?? g.docIssuedPlace,
           guestType: r.guestType ?? g.guestType,
         };
       });
 
+      const normalizedGuests = guestsData.map(normalizeGuestForAlloggiatiRecord);
+      const validationErrors = normalizedGuests
+        .map((guest) => ({
+          guestId: guest.id,
+          guestName: `${guest.firstName} ${guest.lastName}`.trim(),
+          errors: validateGuestForAlloggiatiRecord(guest)
+        }))
+        .filter((entry) => entry.errors.length > 0);
+
+      if (validationErrors.length > 0) {
+        return res.status(400).json({
+          error: validationErrors.map((entry) => `${entry.guestName}: ${entry.errors.join(', ')}`).join(' | '),
+          validationErrors
+        });
+      }
+
       // Alloggiati requires leaders (17=CapoFamiglia, 18=CapoGruppo) before their members (19/20).
       // Sort: leaders first, then members, then singles — preserving relative order within each group.
       const typeOrder = { '17': 0, '18': 0, '19': 1, '20': 1, '16': 2 };
-      guestsData.sort((a, b) => (typeOrder[a.guestType] ?? 2) - (typeOrder[b.guestType] ?? 2));
+      normalizedGuests.sort((a, b) => (typeOrder[a.guestType] ?? 2) - (typeOrder[b.guestType] ?? 2));
 
       // Build fixed-width records
-      const records = guestsData.map(g =>
+      const records = normalizedGuests.map(g =>
         buildRecord(g, reservation.checkin, reservation.checkout)
       );
 
@@ -256,7 +325,7 @@ export default async function handler(req, res) {
             record0: records[0],
             recordLength: records[0] ? records[0].length : 0
           },
-          guests: guestsData.map(g => ({
+          guests: normalizedGuests.map(g => ({
             id: g.id,
             name: `${g.firstName} ${g.lastName}`,
             guestType: g.guestType,
@@ -296,7 +365,7 @@ export default async function handler(req, res) {
         validCount: parseInt(validCount) || 0,
         totalCount: records.length,
         details: dettaglio.map((d, i) => {
-          const g = guestsData[i];
+          const g = normalizedGuests[i];
           const rec = records[i] || '';
           return {
             guestName: g ? `${g.firstName} ${g.lastName}` : `Row ${i + 1}`,
