@@ -238,6 +238,17 @@ window.GroupStayGuestImport.init({
     t
 });
 
+window.GroupStayDashboard.init({
+    computeRoomStatuses,
+    escapeHtml,
+    formatDate,
+    formatDateDisplay,
+    getReservations: () => reservations,
+    getRooms: () => rooms,
+    openReservationDetail,
+    t
+});
+
 function saveDataCache() {
     try {
         localStorage.setItem(CACHE_KEY, JSON.stringify({
@@ -956,94 +967,7 @@ document.querySelectorAll('.nav-item, .tab-item').forEach(item => {
 // DASHBOARD
 // =============================================
 
-function renderDashboard() {
-    computeRoomStatuses();
-    // Stats
-    const activeGroups = reservations.filter(r => r.status === 'confirmed' || r.status === 'checked-in');
-    const todayStr = formatDate(new Date());
-    const todayGuests = activeGroups
-        .filter(r => r.checkin <= todayStr && r.checkout > todayStr)
-        .reduce((sum, r) => sum + (r.guestCount || 0), 0);
-    const occupiedRooms = rooms.filter(r => r.status === 'occupied').length;
-    document.getElementById('stat-active-groups').textContent = activeGroups.length;
-    document.getElementById('stat-total-guests').textContent = todayGuests;
-    document.getElementById('stat-rooms-occupied').textContent = occupiedRooms + '/' + rooms.length;
-
-    // Occupancy ring
-    const totalRooms = rooms.length;
-    const available = rooms.filter(r => r.status === 'available').length;
-    const maintenance = rooms.filter(r => r.status === 'maintenance').length;
-    const occupied = rooms.filter(r => r.status === 'occupied').length;
-    const percent = totalRooms > 0 ? Math.round((occupied / totalRooms) * 100) : 0;
-    const circumference = 2 * Math.PI * 52;
-    const offset = circumference - (percent / 100) * circumference;
-
-    document.getElementById('occupancy-circle').setAttribute('stroke-dashoffset', offset);
-    document.getElementById('occupancy-percent').textContent = percent + '%';
-    document.getElementById('legend-occupied').textContent = occupied;
-    document.getElementById('legend-available').textContent = available;
-    document.getElementById('legend-maintenance').textContent = maintenance;
-
-    // Upcoming check-ins
-    const upcoming = reservations
-        .filter(r => r.status === 'confirmed' || r.status === 'pending')
-        .sort((a, b) => new Date(a.checkin) - new Date(b.checkin))
-        .slice(0, 5);
-
-    const checkinEl = document.getElementById('upcoming-checkins');
-    if (upcoming.length === 0) {
-        checkinEl.innerHTML = `<div class="empty-state small"><p>${t('dash.noUpcoming')}</p></div>`;
-    } else {
-        checkinEl.innerHTML = upcoming.map(r => `
-            <div class="checkin-item" onclick="openReservationDetail('${r.id}')">
-                <div class="checkin-dot" style="background: ${r.status === 'confirmed' ? 'var(--green)' : 'var(--orange)'}"></div>
-                <div class="checkin-info">
-                    <div class="checkin-name">${escapeHtml(r.groupName)}</div>
-                    <div class="checkin-detail">${r.guestCount} ${t('dash.guests')} &middot; ${r.roomCount} ${t('res.rooms')}</div>
-                </div>
-                <div class="checkin-date">${formatDateDisplay(r.checkin)}</div>
-            </div>
-        `).join('');
-    }
-
-    // Today's activity
-    const today = formatDate(new Date());
-    const todayCheckins = reservations.filter(r => r.checkin === today);
-    const todayCheckouts = reservations.filter(r => r.checkout === today);
-
-    const activityEl = document.getElementById('today-activity');
-    const activities = [];
-
-    todayCheckins.forEach(r => {
-        activities.push(`
-            <div class="activity-item">
-                <div class="activity-icon checkin">&#8593;</div>
-                <div>
-                    <div class="activity-text"><strong>${escapeHtml(r.groupName)}</strong> ${t('dash.checkingIn')}</div>
-                    <div class="activity-time">${r.guestCount} ${t('dash.guests')}</div>
-                </div>
-            </div>
-        `);
-    });
-
-    todayCheckouts.forEach(r => {
-        activities.push(`
-            <div class="activity-item">
-                <div class="activity-icon checkout">&#8595;</div>
-                <div>
-                    <div class="activity-text"><strong>${escapeHtml(r.groupName)}</strong> ${t('dash.checkingOut')}</div>
-                    <div class="activity-time">${r.guestCount} ${t('dash.guests')}</div>
-                </div>
-            </div>
-        `);
-    });
-
-    if (activities.length === 0) {
-        activityEl.innerHTML = `<div class="empty-state small"><p>${t('dash.noActivity')}</p></div>`;
-    } else {
-        activityEl.innerHTML = activities.join('');
-    }
-}
+function renderDashboard() { return window.GroupStayDashboard.renderDashboard(); }
 
 // =============================================
 // RESERVATIONS

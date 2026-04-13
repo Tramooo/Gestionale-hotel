@@ -14,7 +14,6 @@ The frontend has moved from a single-file setup toward a layered structure witho
   Remaining application glue:
   - shared state
   - translations
-  - dashboard
   - guests
   - files
   - compliance
@@ -67,6 +66,9 @@ The frontend has moved from a single-file setup toward a layered structure witho
 - `js/features/guest-import.js`
   Guest file import modal, spreadsheet/PDF/DOCX parsing, preview rendering, and bulk guest import workflow.
 
+- `js/features/dashboard.js`
+  Dashboard stats, room occupancy summary, upcoming check-ins, and today activity rendering.
+
 ## Current backend structure
 
 - `api/*.js`
@@ -90,12 +92,12 @@ This reduces risk when changing:
 - reservation detail modal
 - guests list and guest form
 - guest file import and parsing
+- dashboard
 - shared UI behaviors
 
 ## Recommended next steps
 
 1. Extract the next high-value blocks from `script.js`:
-   - dashboard
    - compliance
    - employees
    - management stats helpers
