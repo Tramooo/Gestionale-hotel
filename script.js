@@ -228,6 +228,7 @@ window.GroupStayGuestImport.init({
     getGuests: () => guests,
     hideLoading,
     lookupAlloggiatiLuogo,
+    openModal,
     openFileImportModal,
     openGuestsList,
     parseImportDate,
