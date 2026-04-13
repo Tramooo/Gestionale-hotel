@@ -249,6 +249,114 @@ window.GroupStayDashboard.init({
     t
 });
 
+window.GroupStayCompliance.init({
+    API,
+    CERT_TYPES,
+    DOC_TYPES,
+    apiDelete,
+    apiPost,
+    apiPut,
+    closeModal,
+    escapeHtml,
+    formatDate,
+    formatDateDisplay,
+    generateId,
+    getComplianceCerts: () => complianceCerts,
+    getComplianceDocs: () => complianceDocs,
+    getEmployees: () => employees,
+    openModal,
+    renderCompliance: () => window.GroupStayCompliance.renderCompliance(),
+    setComplianceCerts: (nextCerts) => { complianceCerts = nextCerts; },
+    setComplianceDocs: (nextDocs) => { complianceDocs = nextDocs; },
+    setDateFieldValue,
+    showToast
+});
+
+window.GroupStayEmployees.init({
+    API,
+    apiDelete,
+    apiPost,
+    apiPut,
+    closeModal,
+    escapeHtml,
+    formatDate,
+    generateId,
+    getEmployees: () => employees,
+    getEmpViewMonth: () => empViewMonth,
+    getMonthPayOverrides: () => monthPayOverrides,
+    getWorkEntries: () => workEntries,
+    openModal,
+    renderManagement,
+    setEmployees: (nextEmployees) => { employees = nextEmployees; },
+    setEmpViewMonth: (nextMonth) => { empViewMonth = nextMonth; },
+    setMonthPayOverrides: (nextOverrides) => { monthPayOverrides = nextOverrides; },
+    setWorkEntries: (nextEntries) => { workEntries = nextEntries; },
+    showToast,
+    t
+});
+
+window.GroupStayManagement.init({
+    calcEstimatedPay,
+    escapeHtml,
+    getDaysInMonth,
+    getEmployeeMonthStats,
+    getEmployees: () => employees,
+    getEmpMonthPay,
+    getEmpViewMonth: () => empViewMonth,
+    getMonthPayOverrides: () => monthPayOverrides,
+    getReservations: () => reservations,
+    getWorkEntries: () => workEntries,
+    nightsBetween,
+    renderEmployees,
+    t
+});
+
+window.GroupStayPlanner.init({
+    computeRoomStatuses,
+    escapeHtml,
+    formatDate,
+    formatDateDisplay,
+    getCalendarDate: () => calendarDate,
+    getGuests: () => guests,
+    getPlannerDayWidth: () => PLANNER_DAY_WIDTH,
+    getPlannerExtendChunk: () => PLANNER_EXTEND_CHUNK,
+    getPlannerExtendThreshold: () => PLANNER_EXTEND_THRESHOLD,
+    getPlannerGridEl: () => plannerGridEl,
+    getPlannerHeaderEl: () => plannerHeaderEl,
+    getPlannerInitialFuture: () => PLANNER_INITIAL_FUTURE,
+    getPlannerInitialPast: () => PLANNER_INITIAL_PAST,
+    getPlannerIsExtending: () => plannerIsExtending,
+    getPlannerRoomsEl: () => plannerRoomsEl,
+    getPlannerRowHeight: () => PLANNER_ROW_HEIGHT,
+    getPlannerStartDate: () => plannerStartDate,
+    getPlannerTotalDays: () => plannerTotalDays,
+    getReservations: () => reservations,
+    getRooms: () => rooms,
+    hideBarTooltip,
+    initGridDrag,
+    openReservationDetail,
+    renderCalendar: () => window.GroupStayPlanner.renderCalendar(),
+    renderExpiringBanner: () => window.GroupStayPlanner.renderExpiringBanner(),
+    renderPlannerMonthBar: () => window.GroupStayPlanner.renderPlannerMonthBar(),
+    setCalendarDate: (nextDate) => { calendarDate = nextDate; },
+    setPlannerGridEl: (nextEl) => { plannerGridEl = nextEl; },
+    setPlannerHeaderEl: (nextEl) => { plannerHeaderEl = nextEl; },
+    setPlannerIsExtending: (next) => { plannerIsExtending = next; },
+    setPlannerRoomsEl: (nextEl) => { plannerRoomsEl = nextEl; },
+    setPlannerStartDate: (nextDate) => { plannerStartDate = nextDate; },
+    setPlannerTotalDays: (nextTotal) => { plannerTotalDays = nextTotal; },
+    t
+});
+
+window.GroupStayPlannerDrag.init({
+    dayIndexToDate,
+    formatDate,
+    getPlannerDayWidth: () => PLANNER_DAY_WIDTH,
+    getPlannerGridEl: () => plannerGridEl,
+    getPlannerTotalDays: () => plannerTotalDays,
+    openBookingTypeChooser
+});
+
 function saveDataCache() {
     try {
         localStorage.setItem(CACHE_KEY, JSON.stringify({
@@ -1904,507 +2012,56 @@ let plannerHeaderEl = null; // .p-header-panel
 let plannerRoomsEl = null;  // .p-rooms-panel
 let plannerIsExtending = false;
 
-function dateToDayIndex(d) {
-    return Math.round((d - plannerStartDate) / 86400000);
-}
-function dayIndexToDate(i) {
-    return new Date(plannerStartDate.getFullYear(), plannerStartDate.getMonth(), plannerStartDate.getDate() + i);
-}
-
-function getPlannerSortedRooms() {
-    return [...rooms].sort((a, b) => a.floor !== b.floor ? a.floor - b.floor : parseInt(a.number) - parseInt(b.number));
-}
-function getPlannerFloors(sortedRooms) {
-    const floors = {};
-    sortedRooms.forEach(r => { (floors[r.floor] = floors[r.floor] || []).push(r); });
-    return floors;
-}
-function getPlannerRoomBookings(sortedRooms) {
-    const rb = {};
-    sortedRooms.forEach(rm => { rb[rm.id] = []; });
-    reservations.forEach(res => {
-        if (res.status === 'cancelled') return;
-        const si = dateToDayIndex(new Date(res.checkin + 'T00:00:00'));
-        const ei = dateToDayIndex(new Date(res.checkout + 'T00:00:00'));
-        if (ei <= 0 || si >= plannerTotalDays) return;
-        const booking = { res, startIdx: Math.max(0, si), endIdx: Math.min(plannerTotalDays, ei) };
-
-        // Use roomIds if available, fall back to guest assignments
-        const assignedIds = res.roomIds && res.roomIds.length > 0
-            ? res.roomIds
-            : [...new Set(guests.filter(g => g.reservationId === res.id && g.roomId).map(g => g.roomId))];
-        if (assignedIds.length > 0) {
-            assignedIds.forEach(rid => { if (rb[rid]) rb[rid].push(booking); });
-        } else {
-            // No rooms assigned — place on first available room
-            for (let i = 0; i < sortedRooms.length; i++) {
-                const rm = sortedRooms[i];
-                const conflict = rb[rm.id].some(b =>
-                    b.startIdx < booking.endIdx && b.endIdx > booking.startIdx
-                );
-                if (!conflict) {
-                    rb[rm.id].push(booking);
-                    break;
-                }
-            }
-        }
-    });
-    return rb;
-}
-
-function renderCalendar() {
-    computeRoomStatuses();
-    const board = document.getElementById('plannerBoard');
-    const anchor = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), calendarDate.getDate());
-    plannerStartDate = new Date(anchor);
-    plannerStartDate.setHours(0, 0, 0, 0);
-    plannerStartDate.setDate(plannerStartDate.getDate() - PLANNER_INITIAL_PAST);
-    plannerTotalDays = PLANNER_INITIAL_PAST + PLANNER_INITIAL_FUTURE;
-
-    board.innerHTML = buildBoardHTML();
-
-    plannerGridEl = board.querySelector('.p-grid-panel');
-    plannerHeaderEl = board.querySelector('.p-header-panel');
-    plannerRoomsEl = board.querySelector('.p-rooms-panel');
-
-    plannerGridEl.addEventListener('scroll', onPlannerScroll);
-
-    // Scroll to anchor date
-    const anchorIdx = dateToDayIndex(anchor);
-    plannerGridEl.scrollLeft = Math.max(0, anchorIdx * PLANNER_DAY_WIDTH - plannerGridEl.clientWidth / 3);
-
-    initGridDrag();
-    renderPlannerMonthBar();
-    renderExpiringBanner();
-}
-
-// Rebuild board without resetting scroll position
-function refreshCalendar() {
-    if (!plannerGridEl) { renderCalendar(); return; }
-    const slBefore = plannerGridEl.scrollLeft;
-    const stBefore = plannerGridEl.scrollTop;
-
-    const board = document.getElementById('plannerBoard');
-    plannerGridEl.removeEventListener('scroll', onPlannerScroll);
-    board.innerHTML = buildBoardHTML();
-    plannerGridEl = board.querySelector('.p-grid-panel');
-    plannerHeaderEl = board.querySelector('.p-header-panel');
-    plannerRoomsEl = board.querySelector('.p-rooms-panel');
-    plannerGridEl.addEventListener('scroll', onPlannerScroll);
-    initGridDrag();
-
-    plannerGridEl.scrollLeft = slBefore;
-    plannerGridEl.scrollTop = stBefore;
-    const headerInner = plannerHeaderEl.querySelector('.p-header-inner');
-    const roomsInner = plannerRoomsEl.querySelector('.p-rooms-inner');
-    if (headerInner) headerInner.style.transform = `translateX(${-slBefore}px)`;
-    if (roomsInner) roomsInner.style.transform = `translateY(${-stBefore}px)`;
-    renderExpiringBanner();
-}
-
-function renderExpiringBanner() {
-    const banner = document.getElementById('expiringBanner');
-    if (!banner) return;
-    const today = formatDate(new Date());
-    const expiring = reservations.filter(r => r.status === 'pending' && r.expiration === today);
-
-    if (expiring.length === 0) {
-        banner.style.display = 'none';
-        return;
-    }
-
-    banner.style.display = 'block';
-    banner.innerHTML = `
-        <div class="expiring-banner">
-            <div class="expiring-banner-title">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-                </svg>
-                ${t('cal.expiringToday')} (${expiring.length})
-            </div>
-            <div class="expiring-banner-list">
-                ${expiring.map(r => `
-                    <div class="expiring-banner-item" onclick="openReservationDetail('${r.id}')">
-                        <span class="expiring-banner-name">${escapeHtml(r.groupName)}</span>
-                        <span class="expiring-banner-dates">${formatDateDisplay(r.checkin)} → ${formatDateDisplay(r.checkout)}</span>
-                        <span class="expiring-banner-info">${r.roomCount} ${r.roomCount !== 1 ? t('cal.roomPlural') : t('cal.roomSingular')} · ${r.guestCount} ${r.guestCount !== 1 ? t('cal.guestPlural') : t('cal.guestSingular')}</span>
-                    </div>
-                `).join('')}
-            </div>
-        </div>
-    `;
-}
-
-function buildBoardHTML() {
-    const DW = PLANNER_DAY_WIDTH;
-    const today = formatDate(new Date());
-    const dayAbbr = t('days.short');
-    const monthFull = t('months.full');
-
-    const sortedRooms = getPlannerSortedRooms();
-    const floors = getPlannerFloors(sortedRooms);
-    const rb = getPlannerRoomBookings(sortedRooms);
-    const floorKeys = Object.keys(floors).sort((a, b) => a - b);
-    const totalR = sortedRooms.length;
-
-    // Month spans
-    const monthSpans = [];
-    let curMK = null;
-    for (let i = 0; i < plannerTotalDays; i++) {
-        const d = dayIndexToDate(i);
-        const mk = d.getFullYear() + '-' + d.getMonth();
-        if (mk !== curMK) { monthSpans.push({ label: monthFull[d.getMonth()] + ' ' + d.getFullYear(), count: 1 }); curMK = mk; }
-        else monthSpans[monthSpans.length - 1].count++;
-    }
-
-    // Per-day occupancy
-    const dayOcc = new Uint16Array(plannerTotalDays);
-    sortedRooms.forEach(rm => {
-        rb[rm.id].forEach(b => { for (let i = b.startIdx; i < b.endIdx; i++) dayOcc[i]++; });
-    });
-
-    // === 1. CORNER (top-left, fixed) ===
-    let corner = '<div class="p-corner">';
-    corner += '<div class="p-corner-cell months">&nbsp;</div>';
-    corner += `<div class="p-corner-cell days">${t('cal.room')}</div>`;
-    corner += `<div class="p-corner-cell stats">${t('cal.available')}</div>`;
-    corner += `<div class="p-corner-cell stats">${t('cal.occupied')}</div>`;
-    corner += '</div>';
-
-    // === 2. HEADER (top-right, h-scroll synced) ===
-    let header = '<div class="p-header-panel"><div class="p-header-inner">';
-
-    // Months row
-    header += '<div class="p-header-row months">';
-    monthSpans.forEach(ms => {
-        header += `<div class="p-month-label" style="width:${ms.count * DW}px">${ms.label}</div>`;
-    });
-    header += '</div>';
-
-    // Days row
-    header += '<div class="p-header-row days">';
-    for (let i = 0; i < plannerTotalDays; i++) {
-        const d = dayIndexToDate(i);
-        const dow = d.getDay();
-        let c = 'p-day-cell';
-        if (formatDate(d) === today) c += ' today';
-        else if (dow === 0 || dow === 6) c += ' weekend';
-        header += `<div class="${c}" style="width:${DW}px"><span class="day-num">${d.getDate()}</span><span class="day-name">${dayAbbr[dow]}</span></div>`;
-    }
-    header += '</div>';
-
-    // Available row
-    header += '<div class="p-header-row stats">';
-    for (let i = 0; i < plannerTotalDays; i++) {
-        header += `<div class="p-stats-cell" style="width:${DW}px">${totalR - dayOcc[i]}</div>`;
-    }
-    header += '</div>';
-
-    // Occupied row
-    header += '<div class="p-header-row stats">';
-    for (let i = 0; i < plannerTotalDays; i++) {
-        const o = dayOcc[i];
-        header += `<div class="p-stats-cell${o > 0 ? ' highlight' : ''}" style="width:${DW}px">${o}</div>`;
-    }
-    header += '</div>';
-
-    header += '</div></div>';
-
-    // === 3. ROOMS (bottom-left, v-scroll synced) ===
-    let roomsPanel = '<div class="p-rooms-panel"><div class="p-rooms-inner">';
-    floorKeys.forEach(floor => {
-        const RH = PLANNER_ROW_HEIGHT;
-        roomsPanel += `<div class="p-floor-left">${t('rooms.floor')} ${floor}</div>`;
-        floors[floor].forEach(room => {
-            roomsPanel += `<div class="p-room-left" style="height:${RH}px" onclick="openEditRoom('${room.id}')">
-                <span class="planner-room-status ${room.status}"></span>
-                <span class="planner-room-label">${room.number}</span>
-                <span class="planner-room-type">${room.type.substring(0, 3)}</span>
-            </div>`;
-        });
-    });
-    roomsPanel += '</div></div>';
-
-    // === 4. GRID BODY (bottom-right, master scroller) ===
-    let grid = '<div class="p-grid-panel"><div class="p-grid-inner">';
-
-    // Today line — use midnight to avoid timezone drift
-    const todayMidnight = new Date();
-    todayMidnight.setHours(0, 0, 0, 0);
-    const todayIdx = dateToDayIndex(todayMidnight);
-    if (todayIdx >= 0 && todayIdx < plannerTotalDays) {
-        grid += `<div class="planner-today-line" style="left:${todayIdx * DW + DW / 2}px"></div>`;
-    }
-
-    floorKeys.forEach(floor => {
-        // Floor header row
-        grid += '<div class="p-grid-floor-row">';
-        for (let i = 0; i < plannerTotalDays; i++) {
-            grid += `<div class="p-floor-cell" style="width:${DW}px"></div>`;
-        }
-        grid += '</div>';
-
-        // Room rows
-        floors[floor].forEach(room => {
-            grid += `<div class="p-grid-room-row" style="height:${PLANNER_ROW_HEIGHT}px" data-room-id="${room.id}">`;
-            for (let i = 0; i < plannerTotalDays; i++) {
-                const d = dayIndexToDate(i);
-                const dow = d.getDay();
-                let c = 'p-grid-cell';
-                if (formatDate(d) === today) c += ' today-col';
-                else if (dow === 0 || dow === 6) c += ' weekend';
-                grid += `<div class="${c}" style="width:${DW}px" data-day="${i}"></div>`;
-            }
-            // Reservation bars — sort by start
-            const bookings = (rb[room.id] || []).slice().sort((a, b) => a.startIdx - b.startIdx);
-            bookings.forEach((b, bi) => {
-                const ARROW = 10;
-                const hasNext = bi < bookings.length - 1 && bookings[bi + 1].startIdx <= b.endIdx;
-                const hasPrev = bi > 0 && bookings[bi - 1].endIdx >= b.startIdx;
-                const left = b.startIdx * DW;
-                // Extend arrow tip into next bar's notch
-                const width = (b.endIdx - b.startIdx) * DW + (hasNext ? ARROW : 0);
-                const label = escapeHtml(b.res.groupName);
-                const cls = `planner-res-bar ${b.res.status}${hasPrev ? ' bar-has-prev' : ''}`;
-                const nights = Math.max(1, b.endIdx - b.startIdx);
-                const resGuests = guests.filter(g => g.reservationId === b.res.id).length;
-                const statusLabel = b.res.status.charAt(0).toUpperCase() + b.res.status.slice(1);
-                const expirationInfo = b.res.status === 'pending' && b.res.expiration ? ` · ${t('cal.expires')} ${formatDateDisplay(b.res.expiration)}` : '';
-                const tipData = `${label}||${formatDateDisplay(b.res.checkin)} → ${formatDateDisplay(b.res.checkout)}||${nights} ${nights > 1 ? t('cal.nightsPlural') : t('cal.nights')} · ${b.res.roomCount} ${b.res.roomCount !== 1 ? t('cal.roomPlural') : t('cal.roomSingular')} · ${resGuests} ${resGuests !== 1 ? t('cal.guestPlural') : t('cal.guestSingular')}||${statusLabel}${expirationInfo}${b.res.price ? ' · €' + Number(b.res.price).toLocaleString() : ''}`;
-                grid += `<div class="${cls}" style="left:${left}px;width:${width}px;z-index:${2 + bi}" onclick="openReservationDetail('${b.res.id}')" data-tip="${tipData}" onmouseenter="showBarTooltip(event)" onmouseleave="hideBarTooltip()"><span class="bar-label">${label}</span></div>`;
-            });
-            grid += '</div>';
-        });
-    });
-
-    grid += '</div></div>';
-
-    return corner + header + roomsPanel + grid;
-}
+function dateToDayIndex(d) { return window.GroupStayPlanner.dateToDayIndex(d); }
+function dayIndexToDate(i) { return window.GroupStayPlanner.dayIndexToDate(i); }
+function getPlannerSortedRooms() { return window.GroupStayPlanner.getPlannerSortedRooms(); }
+function getPlannerFloors(sortedRooms) { return window.GroupStayPlanner.getPlannerFloors(sortedRooms); }
+function getPlannerRoomBookings(sortedRooms) { return window.GroupStayPlanner.getPlannerRoomBookings(sortedRooms); }
+function renderCalendar() { return window.GroupStayPlanner.renderCalendar(); }
+function refreshCalendar() { return window.GroupStayPlanner.refreshCalendar(); }
+function renderExpiringBanner() { return window.GroupStayPlanner.renderExpiringBanner(); }
+function buildBoardHTML() { return window.GroupStayPlanner.buildBoardHTML(); }
 
 // ---- Scroll sync + infinite extend ----
 
-function onPlannerScroll() {
-    // Sync header horizontal scroll via transform (more reliable than scrollLeft on overflow:hidden)
-    const headerInner = plannerHeaderEl.querySelector('.p-header-inner');
-    const roomsInner = plannerRoomsEl.querySelector('.p-rooms-inner');
-    if (headerInner) headerInner.style.transform = `translateX(${-plannerGridEl.scrollLeft}px)`;
-    if (roomsInner) roomsInner.style.transform = `translateY(${-plannerGridEl.scrollTop}px)`;
-
-    if (plannerIsExtending) return;
-
-    const sl = plannerGridEl.scrollLeft;
-    const maxScroll = plannerGridEl.scrollWidth - plannerGridEl.clientWidth;
-
-    if (sl >= maxScroll - PLANNER_EXTEND_THRESHOLD) {
-        plannerIsExtending = true;
-        extendPlanner('right');
-        plannerIsExtending = false;
-    }
-    if (sl <= PLANNER_EXTEND_THRESHOLD) {
-        plannerIsExtending = true;
-        extendPlanner('left');
-        plannerIsExtending = false;
-    }
-
-    updateMonthBarFromScroll();
-}
-
-function extendPlanner(dir) {
-    const chunk = PLANNER_EXTEND_CHUNK;
-    const slBefore = plannerGridEl.scrollLeft;
-    const stBefore = plannerGridEl.scrollTop;
-
-    if (dir === 'left') {
-        plannerStartDate = new Date(plannerStartDate);
-        plannerStartDate.setDate(plannerStartDate.getDate() - chunk);
-    }
-    plannerTotalDays += chunk;
-
-    const board = document.getElementById('plannerBoard');
-    plannerGridEl.removeEventListener('scroll', onPlannerScroll);
-    board.innerHTML = buildBoardHTML();
-    plannerGridEl = board.querySelector('.p-grid-panel');
-    plannerHeaderEl = board.querySelector('.p-header-panel');
-    plannerRoomsEl = board.querySelector('.p-rooms-panel');
-    plannerGridEl.addEventListener('scroll', onPlannerScroll);
-    initGridDrag();
-
-    plannerGridEl.scrollLeft = dir === 'left' ? slBefore + chunk * PLANNER_DAY_WIDTH : slBefore;
-    plannerGridEl.scrollTop = stBefore;
-    // Sync immediately via transform
-    const headerInner = plannerHeaderEl.querySelector('.p-header-inner');
-    const roomsInner = plannerRoomsEl.querySelector('.p-rooms-inner');
-    if (headerInner) headerInner.style.transform = `translateX(${-plannerGridEl.scrollLeft}px)`;
-    if (roomsInner) roomsInner.style.transform = `translateY(${-plannerGridEl.scrollTop}px)`;
-}
+function onPlannerScroll() { return window.GroupStayPlanner.onPlannerScroll(); }
+function extendPlanner(dir) { return window.GroupStayPlanner.extendPlanner(dir); }
 
 // ---- Month bar ----
 
-function updateMonthBarFromScroll() {
-    if (!plannerGridEl) return;
-    const centerX = plannerGridEl.scrollLeft + plannerGridEl.clientWidth / 2;
-    const centerIdx = Math.floor(centerX / PLANNER_DAY_WIDTH);
-    if (centerIdx < 0 || centerIdx >= plannerTotalDays) return;
-    const centerDate = dayIndexToDate(centerIdx);
-    const y = centerDate.getFullYear(), m = centerDate.getMonth();
-    document.querySelectorAll('.planner-month-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.year === String(y) && btn.dataset.month === String(m));
-    });
-}
-
-function renderPlannerMonthBar() {
-    const bar = document.getElementById('plannerMonthBar');
-    const mn = t('months.short');
-    const now = new Date();
-    let html = '';
-    for (let off = -12; off <= 12; off++) {
-        const d = new Date(now.getFullYear(), now.getMonth() + off, 1);
-        const y = d.getFullYear(), m = d.getMonth();
-        html += `<button class="planner-month-btn" data-year="${y}" data-month="${m}" onclick="jumpToMonth(${y},${m})">${mn[m]} ${String(y).substring(2)}</button>`;
-    }
-    bar.innerHTML = html;
-    updateMonthBarFromScroll();
-}
-
-function jumpToMonth(year, month) {
-    if (!plannerGridEl) return;
-    const targetDate = new Date(year, month, 1);
-    let idx = dateToDayIndex(targetDate);
-    if (idx < 0 || idx >= plannerTotalDays) { calendarDate = targetDate; renderCalendar(); return; }
-    plannerGridEl.scrollTo({ left: Math.max(0, idx * PLANNER_DAY_WIDTH - 100), behavior: 'smooth' });
-}
-
-function calendarPrev() {
-    if (!plannerGridEl) return;
-    plannerGridEl.scrollBy({ left: -30 * PLANNER_DAY_WIDTH, behavior: 'smooth' });
-}
-function calendarNext() {
-    if (!plannerGridEl) return;
-    plannerGridEl.scrollBy({ left: 30 * PLANNER_DAY_WIDTH, behavior: 'smooth' });
-}
-function calendarToday() {
-    if (!plannerGridEl) { calendarDate = new Date(); renderCalendar(); return; }
-    const idx = dateToDayIndex(new Date());
-    if (idx < 0 || idx >= plannerTotalDays) { calendarDate = new Date(); renderCalendar(); return; }
-    plannerGridEl.scrollTo({ left: Math.max(0, idx * PLANNER_DAY_WIDTH - plannerGridEl.clientWidth / 3), behavior: 'smooth' });
-}
+function updateMonthBarFromScroll() { return window.GroupStayPlanner.updateMonthBarFromScroll(); }
+function renderPlannerMonthBar() { return window.GroupStayPlanner.renderPlannerMonthBar(); }
+function jumpToMonth(year, month) { return window.GroupStayPlanner.jumpToMonth(year, month); }
+function calendarPrev() { return window.GroupStayPlanner.calendarPrev(); }
+function calendarNext() { return window.GroupStayPlanner.calendarNext(); }
+function calendarToday() { return window.GroupStayPlanner.calendarToday(); }
 
 // =============================================
 // DRAG-TO-SELECT ON GRID
 // =============================================
 
-let dragState = null; // { startDayIdx, currentDayIdx, overlay, rowTop, rowHeight }
-
 function initGridDrag() {
-    if (!plannerGridEl) return;
-    const gridInner = plannerGridEl.querySelector('.p-grid-inner');
-    if (!gridInner) return;
-
-    gridInner.addEventListener('mousedown', onGridDragStart);
-    gridInner.addEventListener('touchstart', onGridDragStart, { passive: false });
+    return window.GroupStayPlannerDrag.initGridDrag();
 }
 
 function getDayIdxFromEvent(e) {
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const rect = plannerGridEl.getBoundingClientRect();
-    const x = clientX - rect.left + plannerGridEl.scrollLeft;
-    return Math.floor(x / PLANNER_DAY_WIDTH);
+    return window.GroupStayPlannerDrag.getDayIdxFromEvent(e);
 }
 
 function onGridDragStart(e) {
-    // Ignore if clicking on a reservation bar
-    const target = e.target.closest('.planner-res-bar');
-    if (target) return;
-
-    // Only left mouse button or touch
-    if (e.type === 'mousedown' && e.button !== 0) return;
-    if (e.type === 'touchstart') e.preventDefault();
-
-    const dayIdx = getDayIdxFromEvent(e);
-    if (dayIdx < 0 || dayIdx >= plannerTotalDays) return;
-
-    // Find which room row was clicked
-    const gridInner = plannerGridEl.querySelector('.p-grid-inner');
-    const rowEl = (e.touches ? document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY) : e.target).closest('.p-grid-room-row');
-    let rowTop = 0;
-    let rowHeight = gridInner.offsetHeight;
-    if (rowEl) {
-        rowTop = rowEl.offsetTop;
-        rowHeight = rowEl.offsetHeight;
-    }
-
-    // Create selection overlay
-    const overlay = document.createElement('div');
-    overlay.className = 'grid-drag-overlay';
-    gridInner.appendChild(overlay);
-
-    dragState = { startDayIdx: dayIdx, currentDayIdx: dayIdx, overlay, rowTop, rowHeight };
-    updateDragOverlay();
-
-    document.addEventListener('mousemove', onGridDragMove);
-    document.addEventListener('mouseup', onGridDragEnd);
-    document.addEventListener('touchmove', onGridDragMove, { passive: false });
-    document.addEventListener('touchend', onGridDragEnd);
+    return window.GroupStayPlannerDrag.onGridDragStart(e);
 }
 
 function onGridDragMove(e) {
-    if (!dragState) return;
-    if (e.type === 'touchmove') e.preventDefault();
-
-    const dayIdx = getDayIdxFromEvent(e);
-    if (dayIdx < 0 || dayIdx >= plannerTotalDays) return;
-
-    dragState.currentDayIdx = dayIdx;
-    updateDragOverlay();
+    return window.GroupStayPlannerDrag.onGridDragMove(e);
 }
 
 function updateDragOverlay() {
-    if (!dragState || !dragState.overlay) return;
-    const DW = PLANNER_DAY_WIDTH;
-    const startIdx = Math.min(dragState.startDayIdx, dragState.currentDayIdx);
-    const endIdx = Math.max(dragState.startDayIdx, dragState.currentDayIdx);
-    const left = startIdx * DW;
-    const width = (endIdx - startIdx + 1) * DW;
-
-    const ov = dragState.overlay;
-    ov.style.left = left + 'px';
-    ov.style.top = dragState.rowTop + 'px';
-    ov.style.width = width + 'px';
-    ov.style.height = dragState.rowHeight + 'px';
-
-    // Show date label
-    const startDate = dayIndexToDate(startIdx);
-    const endDate = dayIndexToDate(endIdx + 1); // checkout = day after last selected
-    const nights = endIdx - startIdx + 1;
-    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const fmt = d => `${d.getDate()} ${monthNames[d.getMonth()]}`;
-    ov.setAttribute('data-label', `${fmt(startDate)} → ${fmt(endDate)} (${nights}n)`);
+    return window.GroupStayPlannerDrag.updateDragOverlay();
 }
 
 function onGridDragEnd() {
-    document.removeEventListener('mousemove', onGridDragMove);
-    document.removeEventListener('mouseup', onGridDragEnd);
-    document.removeEventListener('touchmove', onGridDragMove);
-    document.removeEventListener('touchend', onGridDragEnd);
-
-    if (!dragState) return;
-
-    const startIdx = Math.min(dragState.startDayIdx, dragState.currentDayIdx);
-    const endIdx = Math.max(dragState.startDayIdx, dragState.currentDayIdx);
-
-    // Remove overlay
-    if (dragState.overlay && dragState.overlay.parentNode) {
-        dragState.overlay.parentNode.removeChild(dragState.overlay);
-    }
-    dragState = null;
-
-    // Allow single click (1 night) or drag
-
-    const checkinDate = dayIndexToDate(startIdx);
-    const checkoutDate = dayIndexToDate(endIdx + 1);
-
-    openBookingTypeChooser(formatDate(checkinDate), formatDate(checkoutDate));
+    return window.GroupStayPlannerDrag.onGridDragEnd();
 }
 
 function openBookingTypeChooser(checkin, checkout) {
@@ -2455,433 +2112,72 @@ function chooseBookingType(type) {
 // =============================================
 
 function certStatus(expiryDate) {
-    if (!expiryDate) return 'no-expiry';
-    const today = new Date(); today.setHours(0,0,0,0);
-    const exp = new Date(expiryDate); exp.setHours(0,0,0,0);
-    const diff = Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
-    if (diff < 0) return 'expired';
-    if (diff <= 30) return 'expiring';
-    return 'valid';
+    return window.GroupStayCompliance.certStatus(expiryDate);
 }
 
 function certStatusLabel(status) {
-    return { expired: 'Scaduto', expiring: 'In Scadenza', valid: 'Valido', 'no-expiry': 'Permanente' }[status] || '';
+    return window.GroupStayCompliance.certStatusLabel(status);
 }
 
 function renderCompliance() {
-    renderComplianceSummary();
-    renderComplianceEmpGrid();
-    renderComplianceDocList();
+    return window.GroupStayCompliance.renderCompliance();
 }
 
 function renderComplianceSummary() {
-    const today = new Date(); today.setHours(0,0,0,0);
-    let expired = 0, expiring = 0, valid = 0;
-    [...complianceCerts, ...complianceDocs].forEach(c => {
-        const s = certStatus(c.expiryDate);
-        if (s === 'expired') expired++;
-        else if (s === 'expiring') expiring++;
-        else if (s === 'valid') valid++;
-    });
-    document.getElementById('complianceSummary').innerHTML = `
-        <div class="compliance-stats">
-            <div class="comp-stat-card">
-                <div class="comp-stat-value">${employees.length}</div>
-                <div class="comp-stat-label">Dipendenti</div>
-            </div>
-            <div class="comp-stat-card comp-stat-expired">
-                <div class="comp-stat-value">${expired}</div>
-                <div class="comp-stat-label">Scaduti</div>
-            </div>
-            <div class="comp-stat-card comp-stat-expiring">
-                <div class="comp-stat-value">${expiring}</div>
-                <div class="comp-stat-label">In Scadenza (&le;30gg)</div>
-            </div>
-            <div class="comp-stat-card comp-stat-valid">
-                <div class="comp-stat-value">${valid}</div>
-                <div class="comp-stat-label">Validi</div>
-            </div>
-        </div>`;
+    return window.GroupStayCompliance.renderComplianceSummary();
 }
 
 function switchComplianceTab(tab) {
-    document.querySelectorAll('.comp-tab').forEach(b => b.classList.remove('active'));
-    event.target.classList.add('active');
-    document.getElementById('compTabDipendenti').style.display = tab === 'dipendenti' ? '' : 'none';
-    document.getElementById('compTabStruttura').style.display = tab === 'struttura' ? '' : 'none';
+    return window.GroupStayCompliance.switchComplianceTab(tab, event?.target);
 }
 
 function renderComplianceEmpGrid() {
-    const container = document.getElementById('complianceEmpGrid');
-    if (!container) return;
-    if (employees.length === 0) {
-        container.innerHTML = '<div class="comp-empty">Nessun dipendente trovato. Aggiungi dipendenti dalla sezione Gestione.</div>';
-        return;
-    }
-
-    let html = '';
-    employees.forEach(emp => {
-        const empCerts = complianceCerts.filter(c => c.employeeId === emp.id);
-        const empName = `${emp.firstName} ${emp.lastName}`;
-        const hasAlert = empCerts.some(c => { const s = certStatus(c.expiryDate); return s === 'expired' || s === 'expiring'; });
-
-        html += `<div class="comp-emp-card ${hasAlert ? 'comp-emp-alert' : ''}">
-            <div class="comp-emp-header">
-                <div>
-                    <div class="comp-emp-name">${escapeHtml(empName)}</div>
-                    <div class="comp-emp-role">${escapeHtml(emp.role || '')}</div>
-                </div>
-                <button class="btn btn-sm btn-primary" onclick="openCompCertModal(null, '${emp.id}')">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    Aggiungi
-                </button>
-            </div>`;
-
-        if (empCerts.length === 0) {
-            html += `<div class="comp-no-certs">Nessun certificato registrato</div>`;
-        } else {
-            html += `<div class="comp-cert-list">`;
-            empCerts.forEach(cert => {
-                const s = certStatus(cert.expiryDate);
-                const label = certStatusLabel(s);
-                const expStr = cert.expiryDate ? formatDateDisplay(cert.expiryDate) : '—';
-                const issuedStr = cert.issuedDate ? formatDateDisplay(cert.issuedDate) : '—';
-                html += `<div class="comp-cert-row">
-                    <div class="comp-cert-info">
-                        <span class="comp-cert-name">${escapeHtml(CERT_TYPES[cert.certType] || cert.certType)}</span>
-                        <span class="comp-cert-dates">Rilascio: ${issuedStr} · Scadenza: ${expStr}</span>
-                        ${cert.notes ? `<span class="comp-cert-notes">${escapeHtml(cert.notes)}</span>` : ''}
-                    </div>
-                    <div class="comp-cert-actions">
-                        <span class="comp-cert-badge comp-badge-${s}">${label}</span>
-                        ${cert.fileData ? (() => { _filePreviewMap[cert.id] = { fileData: cert.fileData, fileName: cert.fileName || 'documento' }; return `<button class="btn btn-ghost btn-sm" title="Anteprima documento" onclick="openFilePreview('${cert.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>`; })() : ''}
-                        <button class="btn btn-ghost btn-sm" onclick="openCompCertModal('${cert.id}', '${emp.id}')">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                        </button>
-                        <button class="btn btn-ghost btn-sm" onclick="deleteCompCert('${cert.id}')">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                        </button>
-                    </div>
-                </div>`;
-            });
-            html += `</div>`;
-        }
-        html += `</div>`;
-    });
-    container.innerHTML = html;
+    return window.GroupStayCompliance.renderComplianceEmpGrid();
 }
 
 function renderComplianceDocList() {
-    const container = document.getElementById('complianceDocList');
-    if (!container) return;
-    if (complianceDocs.length === 0) {
-        container.innerHTML = '<div class="comp-empty">Nessun documento di struttura registrato.</div>';
-        return;
-    }
-    let html = '<div class="comp-doc-list">';
-    complianceDocs.forEach(doc => {
-        const s = certStatus(doc.expiryDate);
-        const label = certStatusLabel(s);
-        const expStr = doc.expiryDate ? formatDateDisplay(doc.expiryDate) : '—';
-        const issuedStr = doc.issuedDate ? formatDateDisplay(doc.issuedDate) : '—';
-        html += `<div class="comp-doc-row">
-            <div class="comp-cert-info">
-                <span class="comp-cert-name">${escapeHtml(DOC_TYPES[doc.docType] || doc.docType)}</span>
-                <span class="comp-cert-dates">Rilascio: ${issuedStr} · Scadenza: ${expStr}</span>
-                ${doc.notes ? `<span class="comp-cert-notes">${escapeHtml(doc.notes)}</span>` : ''}
-            </div>
-            <div class="comp-cert-actions">
-                <span class="comp-cert-badge comp-badge-${s}">${label}</span>
-                ${doc.fileData ? (() => { _filePreviewMap[doc.id] = { fileData: doc.fileData, fileName: doc.fileName || 'documento' }; return `<button class="btn btn-ghost btn-sm" title="Anteprima documento" onclick="openFilePreview('${doc.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>`; })() : ''}
-                <button class="btn btn-ghost btn-sm" onclick="openCompDocModal('${doc.id}')">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                </button>
-                <button class="btn btn-ghost btn-sm" onclick="deleteCompDoc('${doc.id}')">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                </button>
-            </div>
-        </div>`;
-    });
-    html += '</div>';
-    container.innerHTML = html;
+    return window.GroupStayCompliance.renderComplianceDocList();
 }
 
 // ---- Cert Modal ----
 
 function openCompCertModal(certId, employeeId) {
-    _compCertFileData = '';
-    _compCertFileName = '';
-    const form = document.getElementById('compCertForm');
-    form.reset();
-    document.getElementById('compCertFileName').textContent = '';
-
-    if (certId) {
-        const cert = complianceCerts.find(c => c.id === certId);
-        if (!cert) return;
-        document.getElementById('compCertModalTitle').textContent = 'Modifica Certificato';
-        document.getElementById('compCertId').value = cert.id;
-        document.getElementById('compCertEmployeeId').value = cert.employeeId;
-        document.getElementById('compCertType').value = cert.certType;
-        if (cert.issuedDate) setDateFieldValue('compCertIssued', cert.issuedDate);
-        if (cert.expiryDate) setDateFieldValue('compCertExpiry', cert.expiryDate);
-        document.getElementById('compCertNotes').value = cert.notes || '';
-        _compCertFileData = cert.fileData || '';
-        _compCertFileName = cert.fileName || '';
-        if (cert.fileName) document.getElementById('compCertFileName').textContent = cert.fileName;
-    } else {
-        document.getElementById('compCertModalTitle').textContent = 'Aggiungi Certificato';
-        document.getElementById('compCertId').value = '';
-        document.getElementById('compCertEmployeeId').value = employeeId;
-    }
-    openModal('compCertModal');
+    return window.GroupStayCompliance.openCompCertModal(certId, employeeId);
 }
 
 function handleCompCertFile(input) {
-    const file = input.files[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { showToast('File troppo grande (max 5MB)', 'error'); return; }
-    const reader = new FileReader();
-    reader.onload = e => {
-        _compCertFileData = e.target.result;
-        _compCertFileName = file.name;
-        document.getElementById('compCertFileName').textContent = file.name;
-    };
-    reader.readAsDataURL(file);
+    return window.GroupStayCompliance.handleCompCertFile(input);
 }
 
 async function saveCompCert(e) {
-    e.preventDefault();
-    const id = document.getElementById('compCertId').value;
-    const data = {
-        employeeId: document.getElementById('compCertEmployeeId').value,
-        certType: document.getElementById('compCertType').value,
-        issuedDate: document.getElementById('compCertIssued').value || null,
-        expiryDate: document.getElementById('compCertExpiry').value || null,
-        notes: document.getElementById('compCertNotes').value.trim(),
-        fileData: _compCertFileData,
-        fileName: _compCertFileName
-    };
-    try {
-        if (id) {
-            await apiPut(API.compliance + '?target=certs', { ...data, id });
-            const idx = complianceCerts.findIndex(c => c.id === id);
-            if (idx !== -1) complianceCerts[idx] = { ...complianceCerts[idx], ...data };
-        } else {
-            const newCert = { id: generateId(), ...data, createdAt: new Date().toISOString() };
-            await apiPost(API.compliance + '?target=certs', newCert);
-            complianceCerts.push(newCert);
-        }
-        closeModal('compCertModal');
-        renderCompliance();
-        showToast('Certificato salvato');
-    } catch (err) {
-        showToast('Errore salvataggio certificato', 'error');
-    }
+    return window.GroupStayCompliance.saveCompCert(e);
 }
 
 async function deleteCompCert(id) {
-    if (!confirm('Eliminare questo certificato?')) return;
-    await apiDelete(API.compliance + '?target=certs', id);
-    complianceCerts = complianceCerts.filter(c => c.id !== id);
-    renderCompliance();
-    showToast('Certificato eliminato');
+    return window.GroupStayCompliance.deleteCompCert(id);
 }
 
 // ---- Doc Modal ----
 
 function openCompDocModal(docId) {
-    _compDocFileData = '';
-    _compDocFileName = '';
-    const form = document.getElementById('compDocForm');
-    form.reset();
-    document.getElementById('compDocFileName').textContent = '';
-
-    if (docId) {
-        const doc = complianceDocs.find(d => d.id === docId);
-        if (!doc) return;
-        document.getElementById('compDocModalTitle').textContent = 'Modifica Documento';
-        document.getElementById('compDocId').value = doc.id;
-        document.getElementById('compDocType').value = doc.docType;
-        if (doc.issuedDate) setDateFieldValue('compDocIssued', doc.issuedDate);
-        if (doc.expiryDate) setDateFieldValue('compDocExpiry', doc.expiryDate);
-        document.getElementById('compDocNotes').value = doc.notes || '';
-        _compDocFileData = doc.fileData || '';
-        _compDocFileName = doc.fileName || '';
-        if (doc.fileName) document.getElementById('compDocFileName').textContent = doc.fileName;
-    } else {
-        document.getElementById('compDocModalTitle').textContent = 'Aggiungi Documento';
-        document.getElementById('compDocId').value = '';
-    }
-    openModal('compDocModal');
+    return window.GroupStayCompliance.openCompDocModal(docId);
 }
 
 function handleCompDocFile(input) {
-    const file = input.files[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { showToast('File troppo grande (max 5MB)', 'error'); return; }
-    const reader = new FileReader();
-    reader.onload = e => {
-        _compDocFileData = e.target.result;
-        _compDocFileName = file.name;
-        document.getElementById('compDocFileName').textContent = file.name;
-    };
-    reader.readAsDataURL(file);
+    return window.GroupStayCompliance.handleCompDocFile(input);
 }
 
 async function saveCompDoc(e) {
-    e.preventDefault();
-    const id = document.getElementById('compDocId').value;
-    const data = {
-        docType: document.getElementById('compDocType').value,
-        issuedDate: document.getElementById('compDocIssued').value || null,
-        expiryDate: document.getElementById('compDocExpiry').value || null,
-        notes: document.getElementById('compDocNotes').value.trim(),
-        fileData: _compDocFileData,
-        fileName: _compDocFileName
-    };
-    try {
-        if (id) {
-            await apiPut(API.compliance + '?target=docs', { ...data, id });
-            const idx = complianceDocs.findIndex(d => d.id === id);
-            if (idx !== -1) complianceDocs[idx] = { ...complianceDocs[idx], ...data };
-        } else {
-            const newDoc = { id: generateId(), ...data, createdAt: new Date().toISOString() };
-            await apiPost(API.compliance + '?target=docs', newDoc);
-            complianceDocs.push(newDoc);
-        }
-        closeModal('compDocModal');
-        renderCompliance();
-        showToast('Documento salvato');
-    } catch (err) {
-        showToast('Errore salvataggio documento', 'error');
-    }
+    return window.GroupStayCompliance.saveCompDoc(e);
 }
 
 async function deleteCompDoc(id) {
-    if (!confirm('Eliminare questo documento?')) return;
-    await apiDelete(API.compliance + '?target=docs', id);
-    complianceDocs = complianceDocs.filter(d => d.id !== id);
-    renderCompliance();
-    showToast('Documento eliminato');
+    return window.GroupStayCompliance.deleteCompDoc(id);
 }
 
-// ---- File Preview ----
-
-const _filePreviewMap = {};
-
-function openFilePreview(key) {
-    const { fileData, fileName } = _filePreviewMap[key] || {};
-    if (!fileData) return;
-    const overlay = document.getElementById('filePreviewOverlay');
-    const content = document.getElementById('filePreviewContent');
-    const nameEl = document.getElementById('filePreviewName');
-    const dlBtn = document.getElementById('filePreviewDownload');
-
-    nameEl.textContent = fileName;
-    dlBtn.href = fileData;
-    dlBtn.download = fileName;
-
-    const isPdf = fileData.startsWith('data:application/pdf') || fileName.toLowerCase().endsWith('.pdf');
-    if (isPdf) {
-        content.innerHTML = `<iframe src="${fileData}" class="file-preview-iframe"></iframe>`;
-    } else {
-        content.innerHTML = `<img src="${fileData}" class="file-preview-img" alt="${escapeHtml(fileName)}">`;
-    }
-
-    overlay.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-}
-
-function closeFilePreview() {
-    document.getElementById('filePreviewOverlay').style.display = 'none';
-    document.getElementById('filePreviewContent').innerHTML = '';
-    document.body.style.overflow = '';
-}
-
-// ---- PDF Export ----
-
-function exportCompliancePDF() {
-    const today = new Date().toLocaleDateString('it-IT');
-    const todayStr = formatDate(new Date());
-
-    const statusBadge = s => ({
-        expired: '<span style="color:#c0392b;font-weight:700">● Scaduto</span>',
-        expiring: '<span style="color:#e67e22;font-weight:700">● In Scadenza</span>',
-        valid:    '<span style="color:#27ae60;font-weight:700">● Valido</span>',
-        'no-expiry': '<span style="color:#555">● Permanente</span>'
-    }[s] || '');
-
-    let empRows = '';
-    employees.forEach(emp => {
-        const empCerts = complianceCerts.filter(c => c.employeeId === emp.id);
-        if (empCerts.length === 0) {
-            empRows += `<tr><td>${escapeHtml(emp.lastName)} ${escapeHtml(emp.firstName)}</td><td>${escapeHtml(emp.role||'')}</td><td colspan="4" style="color:#aaa;font-style:italic">Nessun certificato registrato</td></tr>`;
-        } else {
-            empCerts.forEach((cert, i) => {
-                const s = certStatus(cert.expiryDate);
-                empRows += `<tr>
-                    ${i === 0 ? `<td rowspan="${empCerts.length}">${escapeHtml(emp.lastName)} ${escapeHtml(emp.firstName)}</td><td rowspan="${empCerts.length}">${escapeHtml(emp.role||'')}</td>` : ''}
-                    <td>${escapeHtml(CERT_TYPES[cert.certType] || cert.certType)}</td>
-                    <td>${cert.issuedDate ? new Date(cert.issuedDate).toLocaleDateString('it-IT') : '—'}</td>
-                    <td>${cert.expiryDate ? new Date(cert.expiryDate).toLocaleDateString('it-IT') : '—'}</td>
-                    <td>${statusBadge(s)}</td>
-                </tr>`;
-            });
-        }
-    });
-
-    let docRows = complianceDocs.map(doc => {
-        const s = certStatus(doc.expiryDate);
-        return `<tr>
-            <td>${escapeHtml(DOC_TYPES[doc.docType] || doc.docType)}</td>
-            <td>${doc.issuedDate ? new Date(doc.issuedDate).toLocaleDateString('it-IT') : '—'}</td>
-            <td>${doc.expiryDate ? new Date(doc.expiryDate).toLocaleDateString('it-IT') : '—'}</td>
-            <td>${statusBadge(s)}</td>
-            <td>${escapeHtml(doc.notes || '')}</td>
-        </tr>`;
-    }).join('');
-
-    const html = `<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8">
-    <title>Report Sicurezza & Compliance</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: Arial, sans-serif; color: #1a1a1a; padding: 40px; font-size: 13px; }
-        h1 { font-size: 22px; margin-bottom: 4px; }
-        .subtitle { color: #666; font-size: 12px; margin-bottom: 32px; }
-        h2 { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #555; margin: 28px 0 10px; border-bottom: 1px solid #ddd; padding-bottom: 6px; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
-        th { background: #f5f5f5; font-weight: 700; text-align: left; padding: 8px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
-        td { padding: 7px 10px; border-bottom: 1px solid #eee; vertical-align: top; }
-        tr:last-child td { border-bottom: none; }
-        .footer { margin-top: 40px; padding-top: 12px; border-top: 1px solid #ddd; font-size: 11px; color: #aaa; text-align: right; }
-        @page { margin: 20px; }
-        @media print { body { padding: 0; } }
-    </style>
-    </head><body>
-    <h1>Report Sicurezza & Compliance</h1>
-    <div class="subtitle">Generato il ${today} · Dati aggiornati a oggi</div>
-
-    <h2>Certificati Dipendenti</h2>
-    <table>
-        <thead><tr><th>Cognome Nome</th><th>Ruolo</th><th>Certificato</th><th>Rilascio</th><th>Scadenza</th><th>Stato</th></tr></thead>
-        <tbody>${empRows || '<tr><td colspan="6" style="color:#aaa">Nessun dipendente</td></tr>'}</tbody>
-    </table>
-
-    <h2>Documenti di Struttura</h2>
-    <table>
-        <thead><tr><th>Documento</th><th>Rilascio</th><th>Scadenza</th><th>Stato</th><th>Note</th></tr></thead>
-        <tbody>${docRows || '<tr><td colspan="5" style="color:#aaa">Nessun documento</td></tr>'}</tbody>
-    </table>
-
-    <div class="footer">Report generato dal gestionale alberghiero · ${today}</div>
-    </body></html>`;
-
-    const w = window.open('', '_blank');
-    w.document.write(html);
-    w.document.close();
-    w.focus();
-    setTimeout(() => w.print(), 400);
-}
+function openFilePreview(key) { return window.GroupStayCompliance.openFilePreview(key); }
+function closeFilePreview() { return window.GroupStayCompliance.closeFilePreview(); }
+function exportCompliancePDF() { return window.GroupStayCompliance.exportCompliancePDF(); }
 
 // =============================================
 // THEME
@@ -4050,875 +3346,46 @@ function hideBarTooltip() {
 // EMPLOYEES
 // =============================================
 
-function empMonthNav(delta) {
-    empViewMonth.setMonth(empViewMonth.getMonth() + delta);
-    renderEmployees();
-}
+function empMonthNav(delta) { return window.GroupStayEmployees.empMonthNav(delta); }
+function getDaysInMonth(year, month) { return window.GroupStayEmployees.getDaysInMonth(year, month); }
+function getEmployeeMonthStats(empId, year, month) { return window.GroupStayEmployees.getEmployeeMonthStats(empId, year, month); }
+function getEmpMonthPay(emp, yearMonth) { return window.GroupStayEmployees.getEmpMonthPay(emp, yearMonth); }
+function calcEstimatedPay(emp, daysWorked, totalHours, yearMonth) { return window.GroupStayEmployees.calcEstimatedPay(emp, daysWorked, totalHours, yearMonth); }
 
-function getDaysInMonth(year, month) {
-    return new Date(year, month + 1, 0).getDate();
-}
+function calcReservationRevenue(r) { return window.GroupStayManagement.calcReservationRevenue(r); }
+function renderManagement() { return window.GroupStayManagement.renderManagement(); }
 
-function getEmployeeMonthStats(empId, year, month) {
-    const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
-    const entries = workEntries.filter(w => w.employeeId === empId && w.workDate && w.workDate.startsWith(monthStr));
-    const daysWorked = entries.length;
-    const totalHours = entries.reduce((sum, w) => sum + (w.hours || 0), 0);
-    return { daysWorked, totalHours, entries };
-}
-
-// Returns effective {payType, payRate} for an employee in a given month (YYYY-MM),
-// using a month-level override if one exists, otherwise the employee's default.
-function getEmpMonthPay(emp, yearMonth) {
-    const override = monthPayOverrides.find(o => o.employeeId === emp.id && o.yearMonth === yearMonth);
-    if (override) return { payType: override.payType, payRate: override.payRate };
-    return { payType: emp.payType, payRate: emp.payRate };
-}
-
-function calcEstimatedPay(emp, daysWorked, totalHours, yearMonth) {
-    const { payType, payRate } = yearMonth ? getEmpMonthPay(emp, yearMonth) : emp;
-    if (payType === 'hourly') {
-        return totalHours * payRate;
-    }
-    // monthly: daily rate = monthly pay / 30, then multiply by days worked
-    return (payRate / 30) * daysWorked;
-}
-
-function calcReservationRevenue(r) {
-    // Dynamically recalculate price based on presenze formula
-    const gc = r.guestCount || 0;
-    const ppn = r.pricePerPerson || 0;
-    const grat = r.gratuity || 0;
-    const nights = (r.checkin && r.checkout) ? nightsBetween(r.checkin, r.checkout) : 0;
-    if (ppn > 0 && gc > 0 && nights > 0) {
-        const free = grat > 0 ? Math.floor(gc / grat) : 0;
-        return Math.max(0, gc - free) * nights * ppn;
-    }
-    return r.price || 0;
-}
-
-function renderManagement() {
-    const now = new Date();
-    const thisMonth = now.getMonth();
-    const thisYear = now.getFullYear();
-
-    // Monthly revenue (confirmed/checked-in this month)
-    const monthRevenue = reservations
-        .filter(r => {
-            const d = new Date(r.checkin);
-            return (r.status === 'confirmed' || r.status === 'checked-in') && d.getMonth() === thisMonth && d.getFullYear() === thisYear;
-        })
-        .reduce((sum, r) => sum + calcReservationRevenue(r), 0);
-
-    // Annual revenue (confirmed/checked-in this year)
-    const yearRevenue = reservations
-        .filter(r => (r.status === 'confirmed' || r.status === 'checked-in') && new Date(r.checkin).getFullYear() === thisYear)
-        .reduce((sum, r) => sum + calcReservationRevenue(r), 0);
-
-    // Pending revenue (non-confirmed reservations)
-    const pendingRevenue = reservations
-        .filter(r => r.status === 'pending')
-        .reduce((sum, r) => sum + calcReservationRevenue(r), 0);
-
-    const revEl = document.getElementById('stat-revenue');
-    const yearEl = document.getElementById('stat-year-revenue');
-    const pendingEl = document.getElementById('stat-pending-revenue');
-    if (revEl) revEl.textContent = '\u20AC' + monthRevenue.toLocaleString();
-    if (yearEl) yearEl.textContent = '\u20AC' + yearRevenue.toLocaleString();
-    if (pendingEl) pendingEl.textContent = '\u20AC' + pendingRevenue.toLocaleString();
-
-    // Total presenze (confirmed/checked-in, ospiti × notti)
-    const totalPresenze = reservations
-        .filter(r => r.status === 'confirmed' || r.status === 'checked-in')
-        .reduce((sum, r) => {
-            const nights = (r.checkin && r.checkout) ? nightsBetween(r.checkin, r.checkout) : 0;
-            return sum + (r.guestCount || 0) * nights;
-        }, 0);
-    const presenzeEl = document.getElementById('stat-total-presenze');
-    if (presenzeEl) presenzeEl.textContent = totalPresenze.toLocaleString();
-
-    // Employee total cost (all time from work entries, respecting per-month overrides)
-    let totalEmpCostAll = 0;
-    employees.forEach(emp => {
-        const empEntries = workEntries.filter(w => w.employeeId === emp.id);
-        // Group entries by month then apply effective pay type for each month
-        const byMonth = {};
-        empEntries.forEach(w => {
-            const m = w.workDate ? w.workDate.substring(0, 7) : null;
-            if (m) {
-                if (!byMonth[m]) byMonth[m] = { days: 0, hours: 0 };
-                byMonth[m].days++;
-                byMonth[m].hours += w.hours || 0;
-            }
-        });
-        Object.entries(byMonth).forEach(([m, { days, hours }]) => {
-            const { payType, payRate } = getEmpMonthPay(emp, m);
-            if (payType === 'hourly') {
-                totalEmpCostAll += hours * payRate;
-            } else {
-                totalEmpCostAll += (days / 30) * payRate;
-            }
-        });
-    });
-
-    const empCostEl = document.getElementById('stat-emp-cost');
-    if (empCostEl) empCostEl.textContent = '\u20AC' + Math.round(totalEmpCostAll).toLocaleString();
-
-    // Employee cost breakdown for currently viewed month only
-    const empYear = empViewMonth.getFullYear();
-    const empMonth = empViewMonth.getMonth();
-
-    const breakdownEl = document.getElementById('empCostBreakdown');
-    if (breakdownEl) {
-        const empCosts = [];
-        let totalMonthCost = 0;
-        const breakdownMonthStr = `${empYear}-${String(empMonth + 1).padStart(2, '0')}`;
-        employees.forEach(emp => {
-            const stats = getEmployeeMonthStats(emp.id, empYear, empMonth);
-            const cost = calcEstimatedPay(emp, stats.daysWorked, stats.totalHours, breakdownMonthStr);
-            totalMonthCost += cost;
-            if (cost > 0 || stats.daysWorked > 0) {
-                empCosts.push({ emp, cost, stats });
-            }
-        });
-
-        if (empCosts.length > 0) {
-            breakdownEl.style.display = '';
-            const monthNames = t('months.full');
-            const monthLabel = `${monthNames[empMonth]} ${empYear}`;
-            let rows = empCosts.map(({ emp, cost, stats }) => {
-                const effPay = getEmpMonthPay(emp, breakdownMonthStr);
-                const detail = effPay.payType === 'hourly'
-                    ? `${stats.totalHours % 1 === 0 ? stats.totalHours : stats.totalHours.toFixed(1)}h \u00D7 \u20AC${effPay.payRate.toFixed(2)}/h`
-                    : `${stats.daysWorked}g / 30 \u00D7 \u20AC${effPay.payRate.toFixed(0)}`;
-                return `<tr>
-                    <td style="padding:8px 12px;font-weight:500">${escapeHtml(emp.lastName)} ${escapeHtml(emp.firstName)}</td>
-                    <td style="padding:8px 12px;color:var(--text-secondary);font-size:13px">${detail}</td>
-                    <td style="padding:8px 12px;text-align:right;font-weight:600;font-variant-numeric:tabular-nums">\u20AC${Math.round(cost).toLocaleString()}</td>
-                </tr>`;
-            }).join('');
-            breakdownEl.innerHTML = `
-                <div style="padding:12px 12px 4px;font-weight:600;font-size:14px">Costo dipendenti — ${monthLabel}</div>
-                <table style="width:100%;border-collapse:collapse">
-                    <thead><tr>
-                        <th style="padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--text-secondary);border-bottom:1px solid var(--border-light)">Dipendente</th>
-                        <th style="padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--text-secondary);border-bottom:1px solid var(--border-light)">Dettaglio</th>
-                        <th style="padding:10px 12px;text-align:right;font-size:11px;text-transform:uppercase;color:var(--text-secondary);border-bottom:1px solid var(--border-light)">Costo</th>
-                    </tr></thead>
-                    <tbody>${rows}
-                        <tr style="border-top:2px solid var(--border-light)">
-                            <td colspan="2" style="padding:10px 12px;font-weight:700">Totale mese</td>
-                            <td style="padding:10px 12px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums">\u20AC${Math.round(totalMonthCost).toLocaleString()}</td>
-                        </tr>
-                    </tbody>
-                </table>`;
-        } else {
-            breakdownEl.style.display = 'none';
-        }
-    }
-
-    renderEmployees();
-}
-
-function renderEmployees() {
-    const grid = document.getElementById('employeesGrid');
-    const search = (document.getElementById('searchEmployees')?.value || '').toLowerCase();
-    const year = empViewMonth.getFullYear();
-    const month = empViewMonth.getMonth();
-    const monthNames = t('months.full');
-    document.getElementById('empMonthLabel').textContent = `${monthNames[month]} ${year}`;
-
-    let filtered = employees;
-    if (search) {
-        filtered = filtered.filter(e =>
-            (e.firstName + ' ' + e.lastName + ' ' + (e.role || '')).toLowerCase().includes(search)
-        );
-    }
-
-    if (filtered.length === 0) {
-        grid.innerHTML = `<div class="empty-state"><p>${t('emp.noEmployees')}</p></div>`;
-        return;
-    }
-
-    const dim = getDaysInMonth(year, month);
-    const dayHeaders = t('months.dayHeaders') || ['Lu','Ma','Me','Gi','Ve','Sa','Do'];
-    const todayStr = formatDate(new Date());
-    const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
-
-    // Build header row
-    let headerCells = `<th class="emp-tbl-sticky">${t('emp.employee')}</th><th class="emp-tbl-type">${t('emp.type')}</th>`;
-    for (let d = 1; d <= dim; d++) {
-        const dateStr = `${monthStr}-${String(d).padStart(2, '0')}`;
-        const dow = (new Date(year, month, d).getDay() + 6) % 7; // Mon=0
-        const isWeekend = dow >= 5;
-        const isToday = dateStr === todayStr;
-        let cls = 'emp-tbl-day';
-        if (isWeekend) cls += ' emp-tbl-weekend';
-        if (isToday) cls += ' emp-tbl-today';
-        headerCells += `<th class="${cls}"><span class="emp-tbl-dow">${dayHeaders[dow]}</span><span class="emp-tbl-dnum">${d}</span></th>`;
-    }
-    headerCells += `<th class="emp-tbl-total">${t('emp.totalCol')}</th><th class="emp-tbl-pay">${t('emp.estimatedPay')}</th>`;
-
-    // Build body rows
-    let bodyRows = '';
-    filtered.forEach(emp => {
-        const stats = getEmployeeMonthStats(emp.id, year, month);
-        const effPay = getEmpMonthPay(emp, monthStr);
-        const estimated = calcEstimatedPay(emp, stats.daysWorked, stats.totalHours, monthStr);
-        const entryMap = {};
-        stats.entries.forEach(w => { entryMap[w.workDate] = w; });
-
-        const isOverridden = monthPayOverrides.some(o => o.employeeId === emp.id && o.yearMonth === monthStr);
-        const typeLabel = effPay.payType === 'hourly' ? '\u20AC/h' : '\u20AC/m';
-        const typeCls = 'emp-tbl-type emp-tbl-type-btn' + (isOverridden ? ' emp-tbl-type-override' : '');
-        const typeTitle = isOverridden ? 'Override attivo — clicca per modificare' : 'Clicca per cambiare tipo paga questo mese';
-        const roleStr = emp.role ? `<span class="emp-tbl-role">${escapeHtml(emp.role)}</span>` : '';
-        let row = `<td class="emp-tbl-sticky emp-tbl-name" onclick="openEditEmployee('${emp.id}')"><span class="emp-tbl-empname">${escapeHtml(emp.lastName)} ${escapeHtml(emp.firstName)}</span>${roleStr}</td>`;
-        row += `<td class="${typeCls}" title="${typeTitle}" onclick="openPayTypePopover('${emp.id}','${monthStr}',this)">${typeLabel}</td>`;
-
-        for (let d = 1; d <= dim; d++) {
-            const dateStr = `${monthStr}-${String(d).padStart(2, '0')}`;
-            const entry = entryMap[dateStr];
-            const dow = (new Date(year, month, d).getDay() + 6) % 7;
-            const isWeekend = dow >= 5;
-            const isToday = dateStr === todayStr;
-            let cls = 'emp-tbl-cell';
-            if (isWeekend) cls += ' emp-tbl-weekend';
-            if (isToday) cls += ' emp-tbl-today';
-            if (entry) cls += ' emp-tbl-worked';
-
-            if (effPay.payType === 'hourly') {
-                let display = '';
-                if (entry) {
-                    const hStr = entry.hours % 1 === 0 ? entry.hours.toString() : entry.hours.toFixed(1);
-                    display = entry.startTime2 ? `<span class="emp-tbl-2shifts">${hStr}</span>` : hStr;
-                }
-                row += `<td class="${cls}" data-emp="${emp.id}" data-date="${dateStr}" onclick="openTimePopover('${emp.id}','${dateStr}',this)">${display}</td>`;
-            } else {
-                const display = entry ? '\u2713' : '';
-                row += `<td class="${cls}" data-emp="${emp.id}" data-date="${dateStr}" onclick="empTableToggle('${emp.id}','${dateStr}')">${display}</td>`;
-            }
-        }
-
-        const totalDisplay = effPay.payType === 'hourly'
-            ? (stats.totalHours % 1 === 0 ? stats.totalHours + 'h' : stats.totalHours.toFixed(1) + 'h')
-            : stats.daysWorked + 'g';
-        row += `<td class="emp-tbl-total">${totalDisplay}</td>`;
-        row += `<td class="emp-tbl-pay">\u20AC${estimated.toFixed(0)}</td>`;
-
-        bodyRows += `<tr>${row}</tr>`;
-    });
-
-    // Build colgroup for proper column sizing
-    let colgroup = '<colgroup><col style="width:140px"><col style="width:40px">';
-    for (let d = 1; d <= dim; d++) colgroup += '<col>';
-    colgroup += '<col style="width:56px"><col style="width:64px"></colgroup>';
-
-    grid.innerHTML = `
-        <div class="emp-table-wrap">
-            <table class="emp-table">
-                ${colgroup}
-                <thead><tr>${headerCells}</tr></thead>
-                <tbody>${bodyRows}</tbody>
-            </table>
-        </div>
-    `;
-}
+function renderEmployees() { return window.GroupStayEmployees.renderEmployees(); }
 
 // Toggle day for monthly employees in table view
-async function empTableToggle(empId, dateStr) {
-    const existing = workEntries.find(w => w.employeeId === empId && w.workDate === dateStr);
-    if (existing) {
-        try {
-            await fetch(`${API.employees}?id=${existing.id}&type=work`, { method: 'DELETE' });
-            workEntries = workEntries.filter(w => w.id !== existing.id);
-        } catch (err) { console.error(err); }
-    } else {
-        const data = { id: generateId(), employeeId: empId, workDate: dateStr, hours: 8, notes: '' };
-        try {
-            await apiPost(API.employees + '?type=work', data);
-            workEntries.push(data);
-        } catch (err) { console.error(err); }
-    }
-    renderEmployees();
-}
+async function empTableToggle(empId, dateStr) { return window.GroupStayEmployees.empTableToggle(empId, dateStr); }
 
-// Time entry popover for hourly employees
-function openTimePopover(empId, dateStr, cellEl) {
-    // Remove any existing popover
-    closeTimePopover();
+function toggleShift2Popover() { return window.GroupStayEmployees.toggleShift2Popover(); }
 
-    const existing = workEntries.find(w => w.employeeId === empId && w.workDate === dateStr);
-    const startVal  = (existing && existing.startTime)  || '08:00';
-    const endVal    = (existing && existing.endTime)    || '16:00';
-    const start2Val = (existing && existing.startTime2) || '';
-    const end2Val   = (existing && existing.endTime2)   || '';
-    const hasShift2 = !!(existing && existing.startTime2);
-
-    const pop = document.createElement('div');
-    pop.id = 'empTimePopover';
-    pop.className = 'emp-time-popover';
-    pop.innerHTML = `
-        <div class="emp-time-popover-inner">
-            <div class="emp-time-shift-label">Turno 1</div>
-            <div class="emp-time-row">
-                <label>${t('emp.startTime')}</label>
-                <input type="time" id="empPopStart" value="${startVal}">
-            </div>
-            <div class="emp-time-row">
-                <label>${t('emp.endTime')}</label>
-                <input type="time" id="empPopEnd" value="${endVal}">
-            </div>
-            <div id="empPopShift2" style="${hasShift2 ? '' : 'display:none'}">
-                <div class="emp-time-shift-label" style="margin-top:8px">Turno 2</div>
-                <div class="emp-time-row">
-                    <label>${t('emp.startTime')}</label>
-                    <input type="time" id="empPopStart2" value="${start2Val}">
-                </div>
-                <div class="emp-time-row">
-                    <label>${t('emp.endTime')}</label>
-                    <input type="time" id="empPopEnd2" value="${end2Val}">
-                </div>
-            </div>
-            <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
-                <div class="emp-time-calc" id="empPopCalc"></div>
-                <button id="empPopAddShift2" class="btn btn-ghost btn-sm" style="font-size:11px;padding:2px 6px;${hasShift2 ? 'display:none' : ''}" onclick="toggleShift2Popover()">+ Turno 2</button>
-                <button id="empPopRemoveShift2" class="btn btn-ghost btn-sm" style="font-size:11px;padding:2px 6px;color:var(--red);${hasShift2 ? '' : 'display:none'}" onclick="toggleShift2Popover()">- Turno 2</button>
-            </div>
-            <div class="emp-time-actions">
-                <button class="btn btn-primary btn-sm" onclick="saveTimePopover('${empId}','${dateStr}')">${t('emp.save')}</button>
-                ${existing ? `<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteTimePopover('${empId}','${dateStr}')">${t('emp.delete')}</button>` : ''}
-            </div>
-        </div>
-    `;
-    document.body.appendChild(pop);
-
-    // Position near cell
-    const rect = cellEl.getBoundingClientRect();
-    const popW = 210, popH = hasShift2 ? 300 : 200;
-    let left = rect.left + rect.width / 2 - popW / 2;
-    let top = rect.bottom + 6;
-    if (left < 8) left = 8;
-    if (left + popW > window.innerWidth - 8) left = window.innerWidth - popW - 8;
-    if (top + popH > window.innerHeight - 8) top = rect.top - popH - 6;
-    pop.style.left = left + 'px';
-    pop.style.top = top + 'px';
-
-    // Live calc — total of both shifts
-    function updateCalc() {
-        let totalH = 0;
-        const s1 = document.getElementById('empPopStart').value;
-        const e1 = document.getElementById('empPopEnd').value;
-        if (s1 && e1) totalH += calcHoursFromTimes(s1, e1);
-        const s2 = document.getElementById('empPopStart2')?.value;
-        const e2 = document.getElementById('empPopEnd2')?.value;
-        if (s2 && e2) totalH += calcHoursFromTimes(s2, e2);
-        document.getElementById('empPopCalc').textContent = totalH > 0 ? totalH.toFixed(1) + 'h' : '';
-    }
-    ['empPopStart','empPopEnd','empPopStart2','empPopEnd2'].forEach(id => {
-        document.getElementById(id)?.addEventListener('input', updateCalc);
-    });
-    updateCalc();
-
-    // Close on outside click (deferred)
-    setTimeout(() => {
-        document.addEventListener('mousedown', _timePopoverOutsideClick);
-    }, 10);
-}
-
-function toggleShift2Popover() {
-    const section = document.getElementById('empPopShift2');
-    const addBtn  = document.getElementById('empPopAddShift2');
-    const remBtn  = document.getElementById('empPopRemoveShift2');
-    const visible = section.style.display !== 'none';
-    section.style.display = visible ? 'none' : '';
-    addBtn.style.display  = visible ? '' : 'none';
-    remBtn.style.display  = visible ? 'none' : '';
-    if (visible) {
-        // Clear shift 2 values when hiding
-        const s2 = document.getElementById('empPopStart2');
-        const e2 = document.getElementById('empPopEnd2');
-        if (s2) s2.value = '';
-        if (e2) e2.value = '';
-    }
-    // Recalculate total
-    let totalH = 0;
-    const s1 = document.getElementById('empPopStart').value;
-    const e1 = document.getElementById('empPopEnd').value;
-    if (s1 && e1) totalH += calcHoursFromTimes(s1, e1);
-    document.getElementById('empPopCalc').textContent = totalH > 0 ? totalH.toFixed(1) + 'h' : '';
-}
-
-function _timePopoverOutsideClick(e) {
-    const pop = document.getElementById('empTimePopover');
-    if (pop && !pop.contains(e.target)) {
-        closeTimePopover();
-    }
-}
-
-function closeTimePopover() {
-    const pop = document.getElementById('empTimePopover');
-    if (pop) pop.remove();
-    document.removeEventListener('mousedown', _timePopoverOutsideClick);
-}
+function closeTimePopover() { return window.GroupStayEmployees.closeTimePopover(); }
 
 // Pay type override popover — lets you switch hourly/monthly for one specific month
-function openPayTypePopover(empId, yearMonth, cellEl) {
-    closePayTypePopover();
-    closeTimePopover();
-    const emp = employees.find(e => e.id === empId);
-    if (!emp) return;
+function openTimePopover(empId, dateStr, cellEl) { return window.GroupStayEmployees.openTimePopover(empId, dateStr, cellEl); }
+function openPayTypePopover(empId, yearMonth, cellEl) { return window.GroupStayEmployees.openPayTypePopover(empId, yearMonth, cellEl); }
 
-    const override = monthPayOverrides.find(o => o.employeeId === empId && o.yearMonth === yearMonth);
-    const effPay = getEmpMonthPay(emp, yearMonth);
-
-    const pop = document.createElement('div');
-    pop.id = 'empPayTypePopover';
-    pop.className = 'emp-time-popover';
-    pop.innerHTML = `
-        <div class="emp-time-popover-inner">
-            <div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Tipo paga — ${yearMonth}</div>
-            <div class="emp-time-row">
-                <label>Tipo</label>
-                <select id="payTypePopSelect" style="font-size:13px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;background:var(--bg-secondary);color:var(--text-primary)">
-                    <option value="monthly" ${effPay.payType === 'monthly' ? 'selected' : ''}>Mensile (€/mese)</option>
-                    <option value="hourly" ${effPay.payType === 'hourly' ? 'selected' : ''}>Oraria (€/ora)</option>
-                </select>
-            </div>
-            <div class="emp-time-row">
-                <label id="payTypePopRateLabel">${effPay.payType === 'hourly' ? 'Tariffa (€/h)' : 'Stipendio (€)'}</label>
-                <input type="number" id="payTypePopRate" value="${effPay.payRate}" min="0" step="0.01" style="width:80px">
-            </div>
-            ${override ? `<div style="font-size:11px;color:var(--text-secondary);margin-bottom:6px">Default: ${emp.payType === 'hourly' ? '€/h' : '€/mese'} · €${emp.payRate.toFixed(2)}</div>` : ''}
-            <div class="emp-time-actions">
-                <button class="btn btn-primary btn-sm" onclick="savePayTypeOverride('${empId}','${yearMonth}')">Salva</button>
-                ${override ? `<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deletePayTypeOverride('${override.id}','${empId}','${yearMonth}')">Ripristina default</button>` : ''}
-            </div>
-        </div>
-    `;
-    document.body.appendChild(pop);
-
-    // Update rate label when type changes
-    document.getElementById('payTypePopSelect').addEventListener('change', function () {
-        document.getElementById('payTypePopRateLabel').textContent = this.value === 'hourly' ? 'Tariffa (€/h)' : 'Stipendio (€)';
-    });
-
-    // Position near cell
-    const rect = cellEl.getBoundingClientRect();
-    const popW = 220, popH = 200;
-    let left = rect.left + rect.width / 2 - popW / 2;
-    let top = rect.bottom + 6;
-    if (left < 8) left = 8;
-    if (left + popW > window.innerWidth - 8) left = window.innerWidth - popW - 8;
-    if (top + popH > window.innerHeight - 8) top = rect.top - popH - 6;
-    pop.style.left = left + 'px';
-    pop.style.top = top + 'px';
-
-    setTimeout(() => {
-        document.addEventListener('mousedown', _payTypePopoverOutsideClick);
-    }, 10);
-}
-
-function _payTypePopoverOutsideClick(e) {
-    const pop = document.getElementById('empPayTypePopover');
-    if (pop && !pop.contains(e.target)) closePayTypePopover();
-}
-
-function closePayTypePopover() {
-    const pop = document.getElementById('empPayTypePopover');
-    if (pop) pop.remove();
-    document.removeEventListener('mousedown', _payTypePopoverOutsideClick);
-}
-
-async function savePayTypeOverride(empId, yearMonth) {
-    const payType = document.getElementById('payTypePopSelect').value;
-    const payRate = parseFloat(document.getElementById('payTypePopRate').value) || 0;
-    closePayTypePopover();
-
-    const existing = monthPayOverrides.find(o => o.employeeId === empId && o.yearMonth === yearMonth);
-    const data = { id: existing ? existing.id : generateId(), employeeId: empId, yearMonth, payType, payRate };
-
-    try {
-        await apiPost(API.employees + '?type=monthOverride', data);
-        if (existing) {
-            existing.payType = payType;
-            existing.payRate = payRate;
-        } else {
-            monthPayOverrides.push(data);
-        }
-    } catch (err) { console.error(err); }
-
-    renderEmployees();
-    renderManagement();
-}
-
-async function deletePayTypeOverride(overrideId, empId, yearMonth) {
-    closePayTypePopover();
-    try {
-        await fetch(`${API.employees}?id=${overrideId}&type=monthOverride`, { method: 'DELETE' });
-        monthPayOverrides = monthPayOverrides.filter(o => !(o.employeeId === empId && o.yearMonth === yearMonth));
-    } catch (err) { console.error(err); }
-
-    renderEmployees();
-    renderManagement();
-}
-
-function calcHoursFromTimes(start, end) {
-    const [sh, sm] = start.split(':').map(Number);
-    const [eh, em] = end.split(':').map(Number);
-    let mins = (eh * 60 + em) - (sh * 60 + sm);
-    if (mins < 0) mins += 24 * 60; // overnight
-    return mins / 60;
-}
-
-async function saveTimePopover(empId, dateStr) {
-    const startTime  = document.getElementById('empPopStart').value;
-    const endTime    = document.getElementById('empPopEnd').value;
-    if (!startTime || !endTime) return;
-
-    const startTime2 = document.getElementById('empPopStart2')?.value || null;
-    const endTime2   = document.getElementById('empPopEnd2')?.value   || null;
-
-    let hours = calcHoursFromTimes(startTime, endTime);
-    if (startTime2 && endTime2) hours += calcHoursFromTimes(startTime2, endTime2);
-
-    const existing = workEntries.find(w => w.employeeId === empId && w.workDate === dateStr);
-    if (existing) {
-        existing.hours      = hours;
-        existing.startTime  = startTime;
-        existing.endTime    = endTime;
-        existing.startTime2 = startTime2 || null;
-        existing.endTime2   = endTime2   || null;
-        try { await apiPut(API.employees + '?type=work', existing); } catch (err) { console.error(err); }
-    } else {
-        const data = { id: generateId(), employeeId: empId, workDate: dateStr, hours, notes: '', startTime, endTime, startTime2: startTime2 || null, endTime2: endTime2 || null };
-        try {
-            await apiPost(API.employees + '?type=work', data);
-            workEntries.push(data);
-        } catch (err) { console.error(err); }
-    }
-    closeTimePopover();
-    renderEmployees();
-}
-
-async function deleteTimePopover(empId, dateStr) {
-    const existing = workEntries.find(w => w.employeeId === empId && w.workDate === dateStr);
-    if (existing) {
-        try {
-            await fetch(`${API.employees}?id=${existing.id}&type=work`, { method: 'DELETE' });
-            workEntries = workEntries.filter(w => w.id !== existing.id);
-        } catch (err) { console.error(err); }
-    }
-    closeTimePopover();
-    renderEmployees();
-}
-
-function openNewEmployeeModal() {
-    document.getElementById('employeeForm').reset();
-    document.getElementById('empId').value = '';
-    document.getElementById('employeeModalTitle').textContent = t('emp.addEmployee');
-    document.getElementById('deleteEmpBtn').style.display = 'none';
-    togglePayRateLabel();
-    openModal('employeeModal');
-}
-
-function openEditEmployee(id) {
-    const emp = employees.find(e => e.id === id);
-    if (!emp) return;
-    document.getElementById('empId').value = emp.id;
-    document.getElementById('empFirstName').value = emp.firstName;
-    document.getElementById('empLastName').value = emp.lastName;
-    document.getElementById('empRole').value = emp.role || '';
-    document.getElementById('empPayType').value = emp.payType;
-    document.getElementById('empPayRate').value = emp.payRate || '';
-    document.getElementById('empNotes').value = emp.notes || '';
-    document.getElementById('employeeModalTitle').textContent = t('emp.editEmployee');
-    document.getElementById('deleteEmpBtn').style.display = 'inline-flex';
-    togglePayRateLabel();
-    openModal('employeeModal');
-}
-
-function togglePayRateLabel() {
-    const payType = document.getElementById('empPayType').value;
-    const label = document.getElementById('empPayRateLabel');
-    label.textContent = (payType === 'hourly' ? t('emp.hourlyPay') : t('emp.monthlyPay')) + ' (\u20AC)';
-}
-
-async function saveEmployee(e) {
-    e.preventDefault();
-    const id = document.getElementById('empId').value;
-    const data = {
-        id: id || generateId(),
-        firstName: document.getElementById('empFirstName').value.trim(),
-        lastName: document.getElementById('empLastName').value.trim(),
-        role: document.getElementById('empRole').value.trim(),
-        payType: document.getElementById('empPayType').value,
-        payRate: parseFloat(document.getElementById('empPayRate').value) || 0,
-        phone: '',
-        email: '',
-        notes: document.getElementById('empNotes').value.trim(),
-    };
-
-    try {
-        if (id) {
-            await apiPut(API.employees, data);
-            const idx = employees.findIndex(e => e.id === id);
-            if (idx >= 0) employees[idx] = data;
-        } else {
-            await apiPost(API.employees, data);
-            employees.push(data);
-        }
-        showToast(t('toast.empSaved'));
-        closeModal('employeeModal');
-        renderEmployees();
-    } catch (err) {
-        console.error('Employee save error:', err);
-        showToast(t('toast.empSaveFail') + ': ' + err.message, 'error');
-    }
-}
-
-async function deleteEmployee() {
-    const id = document.getElementById('empId').value;
-    if (!id || !confirm(t('confirm.deleteEmployee'))) return;
-    try {
-        await apiDelete(API.employees, id);
-        employees = employees.filter(e => e.id !== id);
-        workEntries = workEntries.filter(w => w.employeeId !== id);
-        showToast(t('toast.empDeleted'));
-        closeModal('employeeModal');
-        renderEmployees();
-    } catch (err) {
-        showToast(t('toast.empDeleteFail'), 'error');
-    }
-}
-
-function openEmployeeDetail(empId) {
-    const emp = employees.find(e => e.id === empId);
-    if (!emp) return;
-
-    const year = empViewMonth.getFullYear();
-    const month = empViewMonth.getMonth();
-    const monthNames = t('months.full');
-    const dim = getDaysInMonth(year, month);
-    const detailMonthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
-    const stats = getEmployeeMonthStats(empId, year, month);
-    const effPay = getEmpMonthPay(emp, detailMonthStr);
-    const estimated = calcEstimatedPay(emp, stats.daysWorked, stats.totalHours, detailMonthStr);
-
-    document.getElementById('empDetailName').textContent = `${emp.lastName} ${emp.firstName}`;
-
-    const isOverridden = monthPayOverrides.some(o => o.employeeId === empId && o.yearMonth === detailMonthStr);
-    const payInfo = effPay.payType === 'hourly'
-        ? `${t('emp.hourlyPay')}: \u20AC${effPay.payRate.toFixed(2)}/h${isOverridden ? ' \u26A0\uFE0F' : ''}`
-        : `${t('emp.monthlyPay')}: \u20AC${effPay.payRate.toFixed(2)}${isOverridden ? ' \u26A0\uFE0F' : ''}`;
-
-    // Build calendar grid
-    const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
-    const startOffset = (firstDay + 6) % 7; // convert to Mon=0
-    const dayHeaders = t('months.dayHeaders') || ['Lu','Ma','Me','Gi','Ve','Sa','Do'];
-
-    // Map entries by date string
-    const entryMap = {};
-    stats.entries.forEach(w => { entryMap[w.workDate] = w; });
-
-    const todayStr = formatDate(new Date());
-
-    let calCells = '';
-    // Day headers
-    calCells += dayHeaders.map(d => `<div class="emp-cal-header">${d}</div>`).join('');
-    // Empty cells before first day
-    for (let i = 0; i < startOffset; i++) calCells += '<div class="emp-cal-cell empty"></div>';
-    // Day cells
-    for (let d = 1; d <= dim; d++) {
-        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        const entry = entryMap[dateStr];
-        const isToday = dateStr === todayStr;
-        const dayOfWeek = (startOffset + d - 1) % 7;
-        const isWeekend = dayOfWeek >= 5;
-        let cls = 'emp-cal-cell';
-        if (isToday) cls += ' today';
-        if (isWeekend) cls += ' weekend';
-        if (entry) cls += ' worked';
-
-        if (effPay.payType === 'hourly') {
-            calCells += `<div class="${cls}" onclick="empCalDayClick('${empId}','${dateStr}')">
-                <span class="emp-cal-day">${d}</span>
-                ${entry ? `<span class="emp-cal-hours">${entry.hours}h</span>` : ''}
-            </div>`;
-        } else {
-            calCells += `<div class="${cls}" onclick="empCalDayToggle('${empId}','${dateStr}')">
-                <span class="emp-cal-day">${d}</span>
-                ${entry ? `<svg class="emp-cal-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>` : ''}
-            </div>`;
-        }
-    }
-
-    const body = document.getElementById('employeeDetailBody');
-    body.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-            <div>
-                <span style="color:var(--text-secondary);font-size:13px">${escapeHtml(emp.role || '—')} · ${payInfo}</span>
-            </div>
-            <button class="btn btn-secondary btn-sm" onclick="closeModal('employeeDetailModal');openEditEmployee('${empId}')">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                ${t('common.edit')}
-            </button>
-        </div>
-
-        <div class="emp-detail-section">
-            <div class="emp-summary-grid">
-                <div class="emp-summary-card">
-                    <div class="value">${stats.daysWorked}</div>
-                    <div class="label">${t('emp.workDays')}</div>
-                </div>
-                <div class="emp-summary-card">
-                    <div class="value">${stats.totalHours.toFixed(1)}</div>
-                    <div class="label">${t('emp.totalHours')}</div>
-                </div>
-                <div class="emp-summary-card">
-                    <div class="value" style="color:var(--green)">&euro;${estimated.toFixed(2)}</div>
-                    <div class="label">${t('emp.estimatedPay')}</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="emp-detail-section">
-            <h4>${monthNames[month]} ${year}</h4>
-            <div class="emp-cal-grid">
-                ${calCells}
-            </div>
-            ${effPay.payType === 'hourly' ? `<p style="font-size:11px;color:var(--text-secondary);margin-top:8px">${t('emp.calHintHourly')}</p>` :
-            `<p style="font-size:11px;color:var(--text-secondary);margin-top:8px">${t('emp.calHintMonthly')}</p>`}
-        </div>
-    `;
-
-    openModal('employeeDetailModal');
-}
-
-// Calendar day click for hourly employees — prompt for hours
-async function empCalDayClick(empId, dateStr) {
-    const existing = workEntries.find(w => w.employeeId === empId && w.workDate === dateStr);
-    if (existing) {
-        const input = prompt(t('emp.enterHours'), existing.hours);
-        if (input === null) return;
-        const hours = parseFloat(input);
-        if (isNaN(hours) || hours < 0) return;
-        if (hours === 0) {
-            // Remove entry
-            try {
-                await fetch(`${API.employees}?id=${existing.id}&type=work`, { method: 'DELETE' });
-                workEntries = workEntries.filter(w => w.id !== existing.id);
-            } catch (err) { console.error(err); }
-        } else {
-            existing.hours = hours;
-            try { await apiPut(API.employees + '?type=work', existing); } catch (err) { console.error(err); }
-        }
-    } else {
-        const input = prompt(t('emp.enterHours'), '8');
-        if (input === null) return;
-        const hours = parseFloat(input);
-        if (isNaN(hours) || hours <= 0) return;
-        const data = { id: generateId(), employeeId: empId, workDate: dateStr, hours, notes: '' };
-        try {
-            await apiPost(API.employees + '?type=work', data);
-            workEntries.push(data);
-        } catch (err) { console.error(err); }
-    }
-    renderEmployees();
-    openEmployeeDetail(empId);
-}
-
-// Calendar day toggle for monthly employees — toggle worked/not worked
-async function empCalDayToggle(empId, dateStr) {
-    const existing = workEntries.find(w => w.employeeId === empId && w.workDate === dateStr);
-    if (existing) {
-        try {
-            await fetch(`${API.employees}?id=${existing.id}&type=work`, { method: 'DELETE' });
-            workEntries = workEntries.filter(w => w.id !== existing.id);
-        } catch (err) { console.error(err); }
-    } else {
-        const data = { id: generateId(), employeeId: empId, workDate: dateStr, hours: 8, notes: '' };
-        try {
-            await apiPost(API.employees + '?type=work', data);
-            workEntries.push(data);
-        } catch (err) { console.error(err); }
-    }
-    renderEmployees();
-    openEmployeeDetail(empId);
-}
-
-function closeWorkEntryModal() {
-    const empId = document.getElementById('workEntryEmployeeId').value;
-    closeModal('workEntryModal');
-    if (empId) openEmployeeDetail(empId);
-}
-
-function openNewWorkEntry(empId) {
-    closeModal('employeeDetailModal');
-    document.getElementById('workEntryForm').reset();
-    document.getElementById('workEntryId').value = '';
-    document.getElementById('workEntryEmployeeId').value = empId;
-    document.getElementById('workEntryDate').value = formatDate(new Date());
-    document.getElementById('workEntryHours').value = '8';
-    document.getElementById('workEntryModalTitle').textContent = t('emp.addWorkDay');
-    openModal('workEntryModal');
-}
-
-function openEditWorkEntry(workId) {
-    const entry = workEntries.find(w => w.id === workId);
-    if (!entry) return;
-    closeModal('employeeDetailModal');
-    document.getElementById('workEntryId').value = entry.id;
-    document.getElementById('workEntryEmployeeId').value = entry.employeeId;
-    document.getElementById('workEntryDate').value = entry.workDate;
-    document.getElementById('workEntryHours').value = entry.hours || '';
-    document.getElementById('workEntryNotes').value = entry.notes || '';
-    document.getElementById('workEntryModalTitle').textContent = t('emp.editWorkDay');
-    openModal('workEntryModal');
-}
-
-async function saveWorkEntry(e) {
-    e.preventDefault();
-    const id = document.getElementById('workEntryId').value;
-    const empId = document.getElementById('workEntryEmployeeId').value;
-    const data = {
-        id: id || generateId(),
-        employeeId: empId,
-        workDate: document.getElementById('workEntryDate').value,
-        hours: parseFloat(document.getElementById('workEntryHours').value) || 0,
-        notes: document.getElementById('workEntryNotes').value.trim(),
-    };
-
-    try {
-        if (id) {
-            await apiPut(API.employees + '?type=work', data);
-            const idx = workEntries.findIndex(w => w.id === id);
-            if (idx >= 0) workEntries[idx] = data;
-        } else {
-            await apiPost(API.employees + '?type=work', data);
-            workEntries.push(data);
-        }
-        showToast(t('toast.workSaved'));
-        closeModal('workEntryModal');
-        renderEmployees();
-        openEmployeeDetail(empId);
-    } catch (err) {
-        showToast(t('toast.workSaveFail'), 'error');
-    }
-}
-
-async function deleteWorkEntry(workId, empId) {
-    if (!confirm(t('confirm.deleteWorkEntry'))) return;
-    try {
-        await fetch(`${API.employees}?id=${workId}&type=work`, { method: 'DELETE' });
-        workEntries = workEntries.filter(w => w.id !== workId);
-        showToast(t('toast.workDeleted'));
-        renderEmployees();
-        openEmployeeDetail(empId);
-    } catch (err) {
-        showToast(t('toast.workDeleteFail'), 'error');
-    }
-}
+function closePayTypePopover() { return window.GroupStayEmployees.closePayTypePopover(); }
+async function savePayTypeOverride(empId, yearMonth) { return window.GroupStayEmployees.savePayTypeOverride(empId, yearMonth); }
+async function deletePayTypeOverride(overrideId, empId, yearMonth) { return window.GroupStayEmployees.deletePayTypeOverride(overrideId, empId, yearMonth); }
+async function saveTimePopover(empId, dateStr) { return window.GroupStayEmployees.saveTimePopover(empId, dateStr); }
+async function deleteTimePopover(empId, dateStr) { return window.GroupStayEmployees.deleteTimePopover(empId, dateStr); }
+function openNewEmployeeModal() { return window.GroupStayEmployees.openNewEmployeeModal(); }
+function openEditEmployee(id) { return window.GroupStayEmployees.openEditEmployee(id); }
+function togglePayRateLabel() { return window.GroupStayEmployees.togglePayRateLabel(); }
+async function saveEmployee(e) { return window.GroupStayEmployees.saveEmployee(e); }
+async function deleteEmployee() { return window.GroupStayEmployees.deleteEmployee(); }
+function openEmployeeDetail(empId) { return window.GroupStayEmployees.openEmployeeDetail(empId); }
+async function empCalDayClick(empId, dateStr) { return window.GroupStayEmployees.empCalDayClick(empId, dateStr); }
+async function empCalDayToggle(empId, dateStr) { return window.GroupStayEmployees.empCalDayToggle(empId, dateStr); }
+function closeWorkEntryModal() { return window.GroupStayEmployees.closeWorkEntryModal(); }
+function openNewWorkEntry(empId) { return window.GroupStayEmployees.openNewWorkEntry(empId); }
+function openEditWorkEntry(workId) { return window.GroupStayEmployees.openEditWorkEntry(workId); }
+async function saveWorkEntry(e) { return window.GroupStayEmployees.saveWorkEntry(e); }
+async function deleteWorkEntry(workId, empId) { return window.GroupStayEmployees.deleteWorkEntry(workId, empId); }
 
 // Apply saved theme immediately
 applyTheme(getTheme());

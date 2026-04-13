@@ -16,9 +16,6 @@ The frontend has moved from a single-file setup toward a layered structure witho
   - translations
   - guests
   - files
-  - compliance
-  - employee management
-  - calendar/planner
   - wiring between modules
 
 - `js/core/config.js`
@@ -69,6 +66,21 @@ The frontend has moved from a single-file setup toward a layered structure witho
 - `js/features/dashboard.js`
   Dashboard stats, room occupancy summary, upcoming check-ins, and today activity rendering.
 
+- `js/features/compliance.js`
+  Compliance summary, employee/document lists, tab switching, certificate/document CRUD modals, file preview, and PDF export.
+
+- `js/features/employees.js`
+  Employee month grid, pay override popovers, employee CRUD, work entry CRUD, and employee detail workflows.
+
+- `js/features/management.js`
+  Management revenue/presenze summaries, employee cost aggregates, and monthly cost breakdown rendering.
+
+- `js/features/planner.js`
+  Planner board rendering, occupancy rows, reservation bars, scroll sync, infinite extension, expiring banner, and month navigation.
+
+- `js/features/planner-drag.js`
+  Planner drag-to-select overlay and booking date range selection workflow.
+
 ## Current backend structure
 
 - `api/*.js`
@@ -93,26 +105,26 @@ This reduces risk when changing:
 - guests list and guest form
 - guest file import and parsing
 - dashboard
+- compliance workflows
+- employees core workflows
+- management stats helpers
+- planner board and navigation
+- planner drag-to-select
 - shared UI behaviors
 
 ## Recommended next steps
 
-1. Extract the next high-value blocks from `script.js`:
-   - compliance
-   - employees
-   - management stats helpers
-
-2. Create more core services:
+1. Create more core services:
    - `js/core/cache.js`
    - `js/core/i18n.js`
    - `js/core/dom.js`
 
-3. Standardize backend helpers:
+2. Standardize backend helpers:
    - `api/_validators.js`
    - `api/_serializers.js`
    - optional repository/service split for larger routes
 
-4. Add a real dev/test workflow:
+3. Add a real dev/test workflow:
    - local env file
    - preview/staging deploy
    - smoke test checklist
