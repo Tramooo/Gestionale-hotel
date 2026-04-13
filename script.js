@@ -3051,16 +3051,16 @@ function printAssignments(mode) {
         <style>
             body { font-family: ${isCleaning ? "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" : "'Avenir Next', 'Helvetica Neue', Arial, sans-serif"}; margin: 0; padding: 0; color: #222; background: #fff; }
             table { border-collapse: collapse; width: 100%; table-layout: fixed; }
-            th { background: ${isCleaning ? '#e8e8e8' : '#f5f1e8'}; color: ${isCleaning ? '#000' : '#5a4a33'}; padding: ${isCleaning ? '8px 10px' : '9px 12px'}; text-align: left; font-size: ${isCleaning ? '13px' : '12px'}; line-height: 1.25; text-transform: ${isCleaning ? 'none' : 'uppercase'}; letter-spacing: ${isCleaning ? 'normal' : '0.06em'}; border-bottom: ${isCleaning ? 'none' : '1px solid #d9cfbf'}; }
+            th { background: ${isCleaning ? '#e8e8e8' : '#f5f1e8'}; color: ${isCleaning ? '#000' : '#5a4a33'}; padding: ${isCleaning ? '8px 10px' : '7px 10px'}; text-align: left; font-size: ${isCleaning ? '13px' : '11px'}; line-height: 1.2; text-transform: ${isCleaning ? 'none' : 'uppercase'}; letter-spacing: ${isCleaning ? 'normal' : '0.05em'}; border-bottom: ${isCleaning ? 'none' : '1px solid #d9cfbf'}; }
             td { font-size: 13px; line-height: 1.3; vertical-align: middle; word-wrap: break-word; }
-            .page-block { padding: 10mm 12mm; box-sizing: border-box; page-break-after: always; }
+            .page-block { padding: ${isCleaning ? '10mm 12mm' : '7mm 10mm'}; box-sizing: border-box; page-break-after: always; }
             .page-block:last-child { page-break-after: avoid; }
             tr { page-break-inside: avoid; }
             .print-assign-table { border: 1px solid #d9cfbf; border-radius: 12px; overflow: hidden; }
-            .print-floor-row td { padding: 12px 12px 8px; background: #fcfaf6; border-top: 1px solid #e6ddcf; border-bottom: 1px solid #e6ddcf; }
-            .print-floor-badge { display: inline-block; padding: 5px 10px; background: #efe6d8; border-radius: 999px; color: #6a563d; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
-            .print-room-cell { padding: 9px 12px; font-weight: 700; font-size: 13px; color: #2f2418; border-bottom: 1px solid #ece6dc; background: #fff; }
-            .print-value-cell { padding: 9px 12px; font-size: 13px; color: #4b3d2c; border-bottom: 1px solid #ece6dc; background: #fff; }
+            .print-floor-row td { padding: 8px 10px 5px; background: #fcfaf6; border-top: 1px solid #e6ddcf; border-bottom: 1px solid #e6ddcf; }
+            .print-floor-badge { display: inline-block; padding: 4px 8px; background: #efe6d8; border-radius: 999px; color: #6a563d; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; }
+            .print-room-cell { padding: 6px 10px; font-weight: 700; font-size: 12px; color: #2f2418; border-bottom: 1px solid #ece6dc; background: #fff; }
+            .print-value-cell { padding: 6px 10px; font-size: 12px; color: #4b3d2c; border-bottom: 1px solid #ece6dc; background: #fff; }
             .print-assign-table tbody tr:last-child td { border-bottom: none; }
             @page { margin: 0; }
         </style></head><body>
