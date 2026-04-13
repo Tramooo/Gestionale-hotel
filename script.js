@@ -20,6 +20,64 @@ const {
     apiDelete
 } = window.GroupStayApi;
 
+const {
+    closeModal,
+    hideLoading,
+    openModal,
+    showLoading,
+    showToast
+} = window.GroupStayUI;
+
+const {
+    addDays,
+    escapeHtml,
+    formatDate,
+    generateId,
+    nightsBetween
+} = window.GroupStayUtils;
+
+const formatDateDisplay = (dateStr) => window.GroupStayUtils.formatDateDisplay(dateStr, currentLang);
+
+window.GroupStayUI.init({
+    closeAllDatePickers
+});
+
+window.GroupStayRooms.init({
+    API,
+    apiDelete,
+    apiPost,
+    apiPut,
+    closeModal,
+    computeRoomStatuses,
+    generateId,
+    getCurrentRoomFilter: () => currentRoomFilter,
+    getGuests: () => guests,
+    getRooms: () => rooms,
+    onRoomsChanged: () => window.GroupStayRooms.renderRooms(),
+    openModal,
+    refreshCalendar,
+    renderDashboard,
+    setCurrentRoomFilter: (filter) => { currentRoomFilter = filter; },
+    setGuests: (nextGuests) => { guests = nextGuests; },
+    setRooms: (nextRooms) => { rooms = nextRooms; },
+    showToast,
+    t
+});
+
+window.GroupStayMenus.init({
+    API,
+    apiGet,
+    apiPost,
+    apiPut,
+    escapeHtml,
+    formatDate,
+    formatDateDisplay,
+    generateId,
+    getReservations: () => reservations,
+    nightsBetween,
+    setReservations: (nextReservations) => { reservations = nextReservations; }
+});
+
 function saveDataCache() {
     try {
         localStorage.setItem(CACHE_KEY, JSON.stringify({
@@ -94,10 +152,6 @@ function computeRoomStatuses() {
         if (rm.status === 'maintenance') return; // keep maintenance as-is
         rm.status = occupiedIds.has(rm.id) ? 'occupied' : 'available';
     });
-}
-
-function generateId() {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2, 6);
 }
 
 // ---- STATE ----
@@ -612,32 +666,6 @@ function applyTranslations() {
 
 // ---- HELPERS ----
 
-function formatDate(date) {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-}
-
-function formatDateDisplay(dateStr) {
-    if (!dateStr) return '';
-    const d = new Date(dateStr + 'T00:00:00');
-    const locale = currentLang === 'it' ? 'it-IT' : 'en-GB';
-    return d.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
-}
-
-function addDays(date, days) {
-    const d = new Date(date);
-    d.setDate(d.getDate() + days);
-    return d;
-}
-
-function nightsBetween(checkin, checkout) {
-    const d1 = new Date(checkin);
-    const d2 = new Date(checkout);
-    return Math.max(1, Math.round((d2 - d1) / (1000 * 60 * 60 * 24)));
-}
-
 function calcReservationPrice() {
     const guestCount = parseInt(document.getElementById('resGuestCount').value) || 0;
     const pricePerPerson = parseFloat(document.getElementById('resPricePerPerson').value) || 0;
@@ -763,72 +791,6 @@ document.querySelectorAll('.nav-item, .tab-item').forEach(item => {
         navigateTo(item.dataset.page);
     });
 });
-
-// ---- MODAL HELPERS ----
-
-function openModal(id) {
-    document.getElementById(id).classList.add('open');
-    document.body.style.overflow = 'hidden';
-}
-
-function closeModal(id) {
-    document.getElementById(id).classList.remove('open');
-    document.body.style.overflow = '';
-}
-
-// Close modal on overlay click
-document.querySelectorAll('.modal-overlay').forEach(overlay => {
-    overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) {
-            overlay.classList.remove('open');
-            document.body.style.overflow = '';
-        }
-    });
-});
-
-// Close on escape
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-        closeAllDatePickers();
-        document.querySelectorAll('.modal-overlay.open').forEach(m => {
-            m.classList.remove('open');
-            document.body.style.overflow = '';
-        });
-    }
-});
-
-// Close date pickers when clicking outside
-document.addEventListener('click', (e) => {
-    if (!e.target.closest('.mini-cal-wrapper')) {
-        closeAllDatePickers();
-    }
-});
-
-// ---- TOAST ----
-
-function showLoading(message = 'Caricamento...') {
-    const el = document.getElementById('loadingOverlay');
-    if (!el) return;
-    document.getElementById('loadingMessage').textContent = message;
-    el.style.display = 'flex';
-}
-
-function hideLoading() {
-    const el = document.getElementById('loadingOverlay');
-    if (el) el.style.display = 'none';
-}
-
-function showToast(message, type = 'success') {
-    const container = document.getElementById('toastContainer');
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.textContent = message;
-    container.appendChild(toast);
-    setTimeout(() => {
-        toast.style.animation = 'toastOut 0.3s ease forwards';
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
-}
 
 // =============================================
 // DASHBOARD
@@ -1694,280 +1656,14 @@ async function saveDetailNotes(id) {
 
 // ---- Reservation Files ----
 
-async function loadReservationMenus(r) {
-    const container = document.getElementById('menuContainer');
-    if (!container) return;
-    try {
-        const menus = await apiGet(`${API.menus}?reservationId=${r.id}`);
-        _lastMenus = menus;
-        renderMenuSection(r, menus);
-    } catch (err) {
-        container.innerHTML = '<div class="menu-error">Errore caricamento menu</div>';
-    }
-}
-
-function getMealDays(r) {
-    const days = [];
-    if (!r.checkin || !r.checkout) return days;
-    const plan = r.mealPlan || 'BB';
-    if (plan === 'BB') return days;
-
-    const checkinMs = new Date(r.checkin).getTime();
-    const checkoutMs = new Date(r.checkout).getTime();
-
-    if (plan === 'FB') {
-        // First day: dinner only (just arrived)
-        // Middle days: lunch + dinner
-        // Departure day (checkout): lunch only
-        let cur = new Date(r.checkin);
-        while (cur.getTime() <= checkoutMs) {
-            const dateStr = formatDate(cur);
-            const isFirst = cur.getTime() === checkinMs;
-            const isLast = cur.getTime() === checkoutMs;
-            if (isFirst) {
-                days.push({ date: dateStr, mealType: 'dinner' });
-            } else if (isLast) {
-                days.push({ date: dateStr, mealType: 'lunch' });
-            } else {
-                days.push({ date: dateStr, mealType: 'lunch' });
-                days.push({ date: dateStr, mealType: 'dinner' });
-            }
-            cur.setDate(cur.getDate() + 1);
-        }
-    } else {
-        // HB / FBC: dinner each night from checkin to day before checkout
-        let d = new Date(r.checkin);
-        const end = new Date(r.checkout);
-        while (d < end) {
-            days.push({ date: formatDate(d), mealType: 'dinner' });
-            d.setDate(d.getDate() + 1);
-        }
-    }
-    return days;
-}
-
-function renderMenuSection(r, menus) {
-    const container = document.getElementById('menuContainer');
-    if (!container) return;
-    const plan = r.mealPlan || 'BB';
-
-    const intolerances = r.intolerances || [];
-    const intolHtml = `
-        <div class="menu-intolerances">
-            <div class="menu-intol-header">
-                <span class="menu-intol-title">Intolleranze / Esigenze Alimentari</span>
-                <button class="btn btn-sm btn-secondary" onclick="addIntoleranceRow('${r.id}')">+ Aggiungi</button>
-            </div>
-            <div id="intolList" class="intol-list">
-                ${intolerances.length === 0 ? '<div class="menu-bb-note" style="margin:0">Nessuna intolleranza registrata</div>' :
-                    intolerances.map((it, i) => `
-                    <div class="intol-row" data-idx="${i}">
-                        <input class="form-control intol-count" type="number" min="1" value="${it.count || 1}" placeholder="N"
-                            onblur="saveIntolerances('${r.id}')" style="width:60px">
-                        <input class="form-control intol-note" type="text" value="${escapeHtml(it.note || '')}" placeholder="es. celiaco, no maiale…"
-                            onblur="saveIntolerances('${r.id}')">
-                        <button class="btn btn-ghost btn-sm intol-del-btn" onclick="removeIntoleranceRow(this,'${r.id}')">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                        </button>
-                    </div>`).join('')}
-            </div>
-        </div>`;
-
-    if (plan === 'BB') {
-        container.innerHTML = intolHtml + '<div class="menu-bb-note">Solo colazione — nessun menu da inserire</div>';
-        return;
-    }
-
-    const days = getMealDays(r);
-    const menuMap = {};
-    menus.forEach(m => { menuMap[`${m.date}_${m.mealType}`] = m; });
-
-    let html = intolHtml;
-    let lastDate = '';
-    days.forEach(({ date, mealType }) => {
-        if (date !== lastDate) {
-            if (lastDate) html += '</div>';
-            html += `<div class="menu-day">
-                <div class="menu-day-header">${formatDateDisplay(date)}</div>`;
-            lastDate = date;
-        }
-        const key = `${date}_${mealType}`;
-        const m = menuMap[key] || {};
-        const mid = m.id || '';
-        const mealLabel = mealType === 'lunch' ? 'Pranzo' : 'Cena';
-        const fields = ['primo', 'secondo', 'contorno', 'dessert'];
-        html += `<div class="menu-meal">
-            <div class="menu-meal-type">${mealLabel}</div>
-            <div class="menu-meal-fields">`;
-        if (r.veggieBuffet) {
-            html += `<div class="menu-field menu-field-full">
-                <label class="menu-field-label">Antipasto</label>
-                <div class="menu-veggie-badge">Buffet di verdure</div>
-            </div>`;
-        }
-        fields.forEach(f => {
-            html += `<div class="menu-field">
-                <label class="menu-field-label">${f.charAt(0).toUpperCase() + f.slice(1)}</label>
-                <input class="form-control menu-input" type="text" value="${escapeHtml(m[f] || '')}"
-                    data-resid="${r.id}" data-date="${date}" data-mealtype="${mealType}" data-field="${f}" data-mid="${mid}"
-                    onblur="saveMenuField(this)" placeholder="—">
-            </div>`;
-        });
-        html += '</div></div>';
-    });
-    if (lastDate) html += '</div>';
-    container.innerHTML = html;
-}
-
-function addIntoleranceRow(resId) {
-    const r = reservations.find(x => x.id === resId);
-    if (!r) return;
-    if (!r.intolerances) r.intolerances = [];
-    r.intolerances.push({ count: 1, note: '' });
-    const menus = [];
-    document.querySelectorAll('.menu-input').forEach(inp => {
-        // preserve existing menus by re-rendering without reload
-    });
-    renderMenuSection(r, _lastMenus || []);
-}
-
-function removeIntoleranceRow(btn, resId) {
-    const row = btn.closest('.intol-row');
-    const idx = parseInt(row.dataset.idx);
-    const r = reservations.find(x => x.id === resId);
-    if (!r || !r.intolerances) return;
-    r.intolerances.splice(idx, 1);
-    saveIntolerances(resId);
-    renderMenuSection(r, _lastMenus || []);
-}
-
-async function saveIntolerances(resId) {
-    const r = reservations.find(x => x.id === resId);
-    if (!r) return;
-    const rows = document.querySelectorAll('#intolList .intol-row');
-    const list = [];
-    rows.forEach(row => {
-        const count = parseInt(row.querySelector('.intol-count').value) || 1;
-        const note = row.querySelector('.intol-note').value.trim();
-        if (note) list.push({ count, note });
-    });
-    r.intolerances = list;
-    try {
-        await apiPut(API.reservations, { ...r, id: resId });
-    } catch (err) {
-        console.error('Intolerances save error', err);
-    }
-}
-
-let _lastMenus = [];
-
-function printMenu(resId) {
-    const r = reservations.find(x => x.id === resId);
-    if (!r) return;
-    const menus = _lastMenus;
-    const plan = r.mealPlan || 'BB';
-    const days = getMealDays(r);
-    const menuMap = {};
-    menus.forEach(m => { menuMap[`${m.date}_${m.mealType}`] = m; });
-    const intolerances = r.intolerances || [];
-
-    const planLabels = { BB: 'BB – Solo Colazione', HB: 'HB – Colazione & Cena', FB: 'FB – Colazione, Pranzo & Cena', FBC: 'FBC – Colazione, Pranzo al Sacco & Cena' };
-
-    let daysHtml = '';
-    let lastDate = '';
-    days.forEach(({ date, mealType }) => {
-        if (date !== lastDate) {
-            if (lastDate) daysHtml += '</div>';
-            daysHtml += `<div class="print-day"><div class="print-day-header">${formatDateDisplay(date)}</div>`;
-            lastDate = date;
-        }
-        const m = menuMap[`${date}_${mealType}`] || {};
-        const mealLabel = mealType === 'lunch' ? 'Pranzo' : 'Cena';
-        const fields = [['Primo', m.primo], ['Secondo', m.secondo], ['Contorno', m.contorno], ['Dessert', m.dessert]];
-        const veggieRow = r.veggieBuffet ? `<tr><td class="print-field-label">Antipasto</td><td class="print-field-val print-veggie">Buffet di verdure</td></tr>` : '';
-        daysHtml += `<div class="print-meal">
-            <div class="print-meal-type">${mealLabel}</div>
-            <table class="print-meal-table">
-                ${veggieRow}
-                ${fields.map(([label, val]) => `<tr><td class="print-field-label">${label}</td><td class="print-field-val">${escapeHtml(val || '—')}</td></tr>`).join('')}
-            </table>
-        </div>`;
-    });
-    if (lastDate) daysHtml += '</div>';
-
-    const intolHtml = intolerances.length > 0 ? `
-        <div class="print-intol">
-            <div class="print-section-title">Intolleranze / Esigenze Alimentari</div>
-            <ul class="print-intol-list">
-                ${intolerances.map(it => `<li><strong>${it.count}</strong> × ${escapeHtml(it.note)}</li>`).join('')}
-            </ul>
-        </div>` : '';
-
-    const html = `<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8">
-    <title>Menu – ${escapeHtml(r.groupName)}</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Georgia', serif; color: #1a1a1a; background: #fff; padding: 40px; max-width: 860px; margin: 0 auto; font-size: 16px; line-height: 1.45; }
-        .print-header { text-align: center; margin-bottom: 36px; padding-bottom: 24px; border-bottom: 2px solid #1a1a1a; }
-        .print-hotel { font-size: 15px; letter-spacing: 0.15em; text-transform: uppercase; color: #666; margin-bottom: 8px; }
-        .print-group { font-size: 32px; font-weight: bold; margin-bottom: 6px; }
-        .print-dates { font-size: 18px; color: #555; margin-bottom: 4px; }
-        .print-plan { display: inline-block; margin-top: 10px; font-size: 15px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; background: #f0f0f0; padding: 6px 16px; border-radius: 20px; color: #333; }
-        .print-intol { margin-bottom: 32px; padding: 18px 22px; background: #fff8f0; border-left: 4px solid #e8a020; border-radius: 4px; }
-        .print-section-title { font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #888; margin-bottom: 10px; }
-        .print-intol-list { padding-left: 18px; }
-        .print-intol-list li { font-size: 17px; margin-bottom: 6px; }
-        .print-day { margin-bottom: 28px; break-inside: avoid; }
-        .print-day-header { font-size: 16px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #888; border-bottom: 1px solid #ddd; padding-bottom: 6px; margin-bottom: 12px; }
-        .print-meal { margin-bottom: 18px; padding-left: 14px; border-left: 3px solid #1a1a1a; }
-        .print-meal-type { font-size: 15px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #1a1a1a; margin-bottom: 8px; }
-        .print-meal-table { width: 100%; border-collapse: collapse; }
-        .print-field-label { font-size: 15px; color: #888; width: 110px; padding: 4px 0; vertical-align: top; }
-        .print-field-val { font-size: 18px; color: #1a1a1a; padding: 4px 0; }
-        .print-veggie { color: #27ae60; font-style: italic; }
-        .print-footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #ddd; text-align: center; font-size: 13px; color: #aaa; }
-        @page { margin: 0; }
-        @media print { body { padding: 20px; } }
-    </style>
-    </head><body>
-    <div class="print-header">
-        <div class="print-dates">${formatDateDisplay(r.checkin)} — ${formatDateDisplay(r.checkout)} &nbsp;·&nbsp; ${nightsBetween(r.checkin, r.checkout)} notti &nbsp;·&nbsp; ${r.guestCount || 0} ospiti</div>
-        <div class="print-plan">${planLabels[plan] || plan}</div>
-    </div>
-    ${intolHtml}
-    ${daysHtml || '<p style="color:#888;text-align:center">Nessun menu da visualizzare</p>'}
-    <div class="print-footer">Stampato il ${new Date().toLocaleDateString('it-IT')}</div>
-    </body></html>`;
-
-    const w = window.open('', '_blank');
-    w.document.write(html);
-    w.document.close();
-    w.focus();
-    setTimeout(() => w.print(), 400);
-}
-
-async function saveMenuField(input) {
-    const { resid, date, mealtype, field } = input.dataset;
-    const value = input.value.trim();
-    // collect all 4 fields for this meal slot
-    const allInputs = document.querySelectorAll(
-        `.menu-input[data-resid="${resid}"][data-date="${date}"][data-mealtype="${mealtype}"]`
-    );
-    const entry = { reservationId: resid, date, mealType: mealtype, primo: '', secondo: '', contorno: '', dessert: '' };
-    allInputs.forEach(inp => { entry[inp.dataset.field] = inp.value.trim(); });
-    // generate id if new
-    let mid = input.dataset.mid;
-    if (!mid) {
-        mid = generateId();
-        allInputs.forEach(inp => { inp.dataset.mid = mid; });
-    }
-    entry.id = mid;
-    try {
-        await apiPost(API.menus, entry);
-    } catch (err) {
-        console.error('Menu save error', err);
-    }
-}
+async function loadReservationMenus(r) { return window.GroupStayMenus.loadReservationMenus(r); }
+function getMealDays(r) { return window.GroupStayMenus.getMealDays(r); }
+function renderMenuSection(r, menus) { return window.GroupStayMenus.renderMenuSection(r, menus); }
+function addIntoleranceRow(resId) { return window.GroupStayMenus.addIntoleranceRow(resId); }
+function removeIntoleranceRow(btn, resId) { return window.GroupStayMenus.removeIntoleranceRow(btn, resId); }
+async function saveIntolerances(resId) { return window.GroupStayMenus.saveIntolerances(resId); }
+function printMenu(resId) { return window.GroupStayMenus.printMenu(resId); }
+async function saveMenuField(input) { return window.GroupStayMenus.saveMenuField(input); }
 
 async function loadReservationFiles(reservationId) {
     try {
@@ -3085,137 +2781,13 @@ async function saveAllAssignments() {
 // ROOMS
 // =============================================
 
-function renderRooms() {
-    computeRoomStatuses();
-    const search = (document.getElementById('searchRooms')?.value || '').toLowerCase();
-    let filtered = rooms;
-
-    if (currentRoomFilter !== 'all') {
-        filtered = filtered.filter(r => r.status === currentRoomFilter);
-    }
-
-    if (search) {
-        filtered = filtered.filter(r =>
-            r.number.toLowerCase().includes(search) ||
-            r.type.toLowerCase().includes(search)
-        );
-    }
-
-    filtered.sort((a, b) => parseInt(a.number) - parseInt(b.number));
-
-    const grid = document.getElementById('roomsGrid');
-
-    if (filtered.length === 0) {
-        grid.innerHTML = `<div class="empty-state"><p>${t('rooms.noRooms')}</p></div>`;
-        return;
-    }
-
-    grid.innerHTML = filtered.map(r => `
-        <div class="room-card ${r.status}" onclick="openEditRoom('${r.id}')">
-            <div class="room-number">${r.number}</div>
-            <div class="room-type">
-                <span class="room-status-dot ${r.status}"></span>${r.type}
-            </div>
-            <div class="room-details">
-                <span class="room-capacity">${r.capacity} ${t('rooms.pax')} &middot; ${t('rooms.floor')} ${r.floor}</span>
-            </div>
-        </div>
-    `).join('');
-}
-
-function setRoomFilter(filter, el) {
-    currentRoomFilter = filter;
-    document.querySelectorAll('#page-rooms .chip').forEach(c => c.classList.remove('active'));
-    el.classList.add('active');
-    renderRooms();
-}
-
-function filterRooms() {
-    renderRooms();
-}
-
-function openNewRoomModal() {
-    document.getElementById('roomModalTitle').textContent = t('rooms.addRoom');
-    document.getElementById('roomForm').reset();
-    document.getElementById('roomId').value = '';
-    document.getElementById('deleteRoomBtn').style.display = 'none';
-    openModal('roomModal');
-}
-
-function openEditRoom(id) {
-    const r = rooms.find(x => x.id === id);
-    if (!r) return;
-
-    document.getElementById('roomModalTitle').textContent = t('common.edit') + ' ' + t('rooms.room');
-    document.getElementById('roomId').value = r.id;
-    document.getElementById('roomNumber').value = r.number;
-    document.getElementById('roomFloor').value = r.floor;
-    document.getElementById('roomType').value = r.type;
-    document.getElementById('roomCapacity').value = r.capacity;
-    document.getElementById('deleteRoomBtn').style.display = '';
-
-    openModal('roomModal');
-}
-
-async function saveRoom(e) {
-    e.preventDefault();
-
-    const id = document.getElementById('roomId').value;
-    const data = {
-        number: document.getElementById('roomNumber').value.trim(),
-        floor: parseInt(document.getElementById('roomFloor').value) || 1,
-        type: document.getElementById('roomType').value,
-        capacity: parseInt(document.getElementById('roomCapacity').value) || 1,
-        status: 'available'
-    };
-
-    try {
-        if (id) {
-            const idx = rooms.findIndex(r => r.id === id);
-            if (idx !== -1) rooms[idx] = { ...rooms[idx], ...data };
-            await apiPut(API.rooms, { ...data, id });
-            showToast(t('toast.roomUpdated'));
-        } else {
-            if (rooms.some(r => r.number === data.number)) {
-                showToast(t('toast.roomExists'), 'error');
-                return;
-            }
-            const newRoom = { id: generateId(), ...data };
-            rooms.push(newRoom);
-            await apiPost(API.rooms, newRoom);
-            showToast(t('toast.roomAdded'));
-        }
-    } catch (err) {
-        console.error(err);
-        showToast(t('toast.roomSaveFail'), 'error');
-        return;
-    }
-
-    closeModal('roomModal');
-    renderRooms();
-    renderDashboard();
-    refreshCalendar();
-}
-
-async function deleteRoom() {
-    const id = document.getElementById('roomId').value;
-    if (!id) return;
-    if (!confirm(t('confirm.deleteRoom'))) return;
-    rooms = rooms.filter(r => r.id !== id);
-    guests = guests.filter(g => g.roomId !== id);
-    try {
-        await apiDelete(API.rooms, id);
-    } catch (err) {
-        console.error(err);
-        showToast(t('toast.roomDeleteFail'), 'error');
-        return;
-    }
-    closeModal('roomModal');
-    showToast(t('toast.roomDeleted'));
-    renderRooms();
-    renderDashboard();
-    refreshCalendar();
-}
+function renderRooms() { return window.GroupStayRooms.renderRooms(); }
+function setRoomFilter(filter, el) { return window.GroupStayRooms.setRoomFilter(filter, el); }
+function filterRooms() { return window.GroupStayRooms.filterRooms(); }
+function openNewRoomModal() { return window.GroupStayRooms.openNewRoomModal(); }
+function openEditRoom(id) { return window.GroupStayRooms.openEditRoom(id); }
+async function saveRoom(e) { return window.GroupStayRooms.saveRoom(e); }
+async function deleteRoom() { return window.GroupStayRooms.deleteRoom(); }
 
 // =============================================
 // GUESTS
@@ -4440,13 +4012,6 @@ function exportCompliancePDF() {
     w.document.close();
     w.focus();
     setTimeout(() => w.print(), 400);
-}
-
-function escapeHtml(str) {
-    if (!str) return '';
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
 }
 
 // =============================================
