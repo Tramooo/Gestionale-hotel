@@ -64,6 +64,9 @@ The frontend has moved from a single-file setup toward a layered structure witho
 - `js/features/guests.js`
   Reservation guest list modal, guest table rendering, guest modal workflow, and guest CRUD helpers.
 
+- `js/features/guest-import.js`
+  Guest file import modal, spreadsheet/PDF/DOCX parsing, preview rendering, and bulk guest import workflow.
+
 ## Current backend structure
 
 - `api/*.js`
@@ -86,6 +89,7 @@ This reduces risk when changing:
 - reservation file handling
 - reservation detail modal
 - guests list and guest form
+- guest file import and parsing
 - shared UI behaviors
 
 ## Recommended next steps
@@ -94,7 +98,7 @@ This reduces risk when changing:
    - dashboard
    - compliance
    - employees
-   - guest file import / parsing
+   - management stats helpers
 
 2. Create more core services:
    - `js/core/cache.js`

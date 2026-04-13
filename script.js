@@ -215,6 +215,29 @@ window.GroupStayGuests.init({
     t
 });
 
+window.GroupStayGuestImport.init({
+    API,
+    apiPost,
+    apiPut,
+    closeModal,
+    escapeHtml,
+    formatDate,
+    generateId,
+    getAlloggiatiLuoghi: () => alloggiatiLuoghi,
+    getAlloggiatiStati: () => alloggiatiStati,
+    getGuests: () => guests,
+    hideLoading,
+    lookupAlloggiatiLuogo,
+    openFileImportModal,
+    openGuestsList,
+    parseImportDate,
+    renderDashboard,
+    setGuests: (nextGuests) => { guests = nextGuests; },
+    showLoading,
+    showToast,
+    t
+});
+
 function saveDataCache() {
     try {
         localStorage.setItem(CACHE_KEY, JSON.stringify({
@@ -3315,37 +3338,11 @@ let guestFileXlsxHeaders = [];
 let guestFileMode = ''; // 'xlsx' or 'text'
 
 function openFileImportModal(reservationId) {
-    document.getElementById('fileImportReservationId').value = reservationId;
-    // Reset state
-    guestFileParsedRows = [];
-    guestFileXlsxHeaders = [];
-    guestFileMode = '';
-    document.getElementById('guestFileInput').value = '';
-    const nameEl = document.getElementById('guestFileName');
-    nameEl.style.display = 'none';
-    nameEl.textContent = '';
-    document.getElementById('textParseSection').style.display = 'none';
-    document.getElementById('fileImportPreviewSection').style.display = 'none';
-    document.getElementById('fileImportActions').style.display = 'none';
-    document.getElementById('fileImportLoading').style.display = 'none';
-    closeModal('guestsListModal');
-    openModal('fileImportModal');
-
-    // Setup drag & drop
-    const drop = document.getElementById('fileImportDrop');
-    drop.ondragover = e => { e.preventDefault(); drop.classList.add('dragover'); };
-    drop.ondragleave = () => drop.classList.remove('dragover');
-    drop.ondrop = e => {
-        e.preventDefault();
-        drop.classList.remove('dragover');
-        const file = e.dataTransfer.files[0];
-        if (file) processGuestFile(file);
-    };
+    return window.GroupStayGuestImport.openFileImportModal(reservationId);
 }
 
 function handleGuestFileImport(e) {
-    const file = e.target.files[0];
-    if (file) processGuestFile(file);
+    return window.GroupStayGuestImport.handleGuestFileImport(e);
 }
 
 async function processGuestFile(file) {
@@ -4082,77 +4079,7 @@ function renderGuestFilePreviewTable(rows) {
 }
 
 async function executeGuestFileImport() {
-    const reservationId = document.getElementById('fileImportReservationId').value;
-    let toImport;
-
-    toImport = guestFileParsedRows.filter(g => g.firstName || g.lastName);
-
-    if (toImport.length === 0) {
-        showToast(t('toast.noValidGuests'), 'error');
-        return;
-    }
-
-    if (!confirm(t('confirm.importGuests', { n: toImport.length }))) return;
-
-    showLoading(`Importazione ospiti (0 / ${toImport.length})...`);
-    let success = 0, errors = 0;
-
-    for (const data of toImport) {
-        // Resolve birthComune raw name → alloggiati code+province if tables are loaded
-        let birthComune = data.birthComune || '';
-        let birthProvince = data.birthProvince || '';
-        if (birthComune && alloggiatiLuoghi) {
-            const entry = lookupAlloggiatiLuogo(birthComune);
-            if (entry) {
-                birthComune = entry.code;
-                if (!birthProvince) birthProvince = entry.prov;
-            }
-        }
-        const newGuest = {
-            id: generateId(),
-            reservationId,
-            ...data,
-            birthComune,
-            birthProvince,
-            roomId: '',
-        };
-        try {
-            await apiPost(API.guests, newGuest);
-            guests.push(newGuest);
-            success++;
-        } catch (err) {
-            console.error('Guest import error:', err);
-            errors++;
-        }
-        document.getElementById('loadingMessage').textContent =
-            `Importazione ospiti (${success + errors} / ${toImport.length})...`;
-    }
-
-    closeModal('fileImportModal');
-    showToast(`Imported ${success} guest(s)${errors ? ', ' + errors + ' failed' : ''}`);
-
-    // Normalize group types: ensure only the first guest is CapoGruppo (18), rest are Membro (20)
-    const resGuests = guests.filter(g => g.reservationId === reservationId);
-    const isGroup = resGuests.some(g => g.guestType === '17' || g.guestType === '18');
-    if (isGroup || resGuests.length > 1) {
-        let leaderAssigned = false;
-        for (const g of resGuests) {
-            if (!leaderAssigned && (g.guestType === '18' || g.guestType === '16')) {
-                g.guestType = '18';
-                leaderAssigned = true;
-            } else {
-                g.guestType = '20';
-            }
-        }
-        try {
-            await Promise.all(resGuests.map(g => apiPut(API.guests, g)));
-        } catch (err) { console.error('Guest type normalization error:', err); }
-    }
-
-    hideLoading();
-    // Refresh guests list
-    openGuestsList(reservationId);
-    renderDashboard();
+    return window.GroupStayGuestImport.executeGuestFileImport();
 }
 
 // ---- Bar tooltip (body-appended to avoid overflow clipping) ----
