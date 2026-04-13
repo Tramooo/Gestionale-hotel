@@ -2890,7 +2890,7 @@ select.cell-input option {
 }
 
 .menu-bb-note, .menu-loading, .menu-error {
-    font-size: 13px;
+    font-size: 16px;
     color: var(--text-secondary);
     padding: 16px;
     background: var(--bg-tertiary);
@@ -2906,18 +2906,18 @@ select.cell-input option {
 }
 
 .menu-day-header {
-    font-size: 12px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--text-secondary);
     background: var(--bg-tertiary);
-    padding: 8px 14px;
+    padding: 10px 16px;
     border-bottom: 1px solid var(--border-light);
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
 
 .menu-meal {
-    padding: 12px 14px;
+    padding: 14px 16px;
     border-bottom: 1px solid var(--border-light);
 }
 
@@ -2926,10 +2926,10 @@ select.cell-input option {
 }
 
 .menu-meal-type {
-    font-size: 12px;
+    font-size: 15px;
     font-weight: 700;
     color: var(--accent);
-    margin-bottom: 10px;
+    margin-bottom: 12px;
     text-transform: uppercase;
     letter-spacing: 0.06em;
 }
@@ -2947,14 +2947,14 @@ select.cell-input option {
 }
 
 .menu-field-label {
-    font-size: 11px;
+    font-size: 14px;
     color: var(--text-secondary);
     font-weight: 500;
 }
 
 .menu-input {
-    font-size: 13px;
-    padding: 6px 10px;
+    font-size: 17px;
+    padding: 10px 12px;
     height: auto;
 }
 
@@ -2976,7 +2976,7 @@ select.cell-input option {
 }
 
 .menu-intol-title {
-    font-size: 12px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--text-secondary);
     text-transform: uppercase;
@@ -2999,15 +2999,15 @@ select.cell-input option {
     width: 64px;
     flex-shrink: 0;
     text-align: center;
-    padding: 6px 8px;
-    font-size: 13px;
+    padding: 8px 10px;
+    font-size: 16px;
     height: auto;
 }
 
 .intol-row .intol-note {
     flex: 1;
-    font-size: 13px;
-    padding: 6px 10px;
+    font-size: 16px;
+    padding: 8px 12px;
     height: auto;
 }
 
@@ -3022,12 +3022,12 @@ select.cell-input option {
 }
 
 .menu-veggie-badge {
-    font-size: 12px;
+    font-size: 15px;
     font-weight: 600;
     color: #27ae60;
     background: #eafaf1;
     border-radius: var(--radius-sm);
-    padding: 5px 10px;
+    padding: 8px 12px;
     display: inline-block;
 }
 
@@ -4298,4 +4298,3 @@ select.cell-input option {
     font-size: 11px;
     color: var(--text-tertiary);
 }
-

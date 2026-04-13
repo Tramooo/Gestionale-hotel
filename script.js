@@ -1962,25 +1962,25 @@ function printMenu(resId) {
     <title>Menu – ${escapeHtml(r.groupName)}</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Georgia', serif; color: #1a1a1a; background: #fff; padding: 40px; max-width: 800px; margin: 0 auto; }
+        body { font-family: 'Georgia', serif; color: #1a1a1a; background: #fff; padding: 40px; max-width: 860px; margin: 0 auto; font-size: 16px; line-height: 1.45; }
         .print-header { text-align: center; margin-bottom: 36px; padding-bottom: 24px; border-bottom: 2px solid #1a1a1a; }
-        .print-hotel { font-size: 13px; letter-spacing: 0.15em; text-transform: uppercase; color: #666; margin-bottom: 8px; }
-        .print-group { font-size: 28px; font-weight: bold; margin-bottom: 6px; }
-        .print-dates { font-size: 14px; color: #555; margin-bottom: 4px; }
-        .print-plan { display: inline-block; margin-top: 10px; font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; background: #f0f0f0; padding: 4px 14px; border-radius: 20px; color: #333; }
-        .print-intol { margin-bottom: 32px; padding: 16px 20px; background: #fff8f0; border-left: 4px solid #e8a020; border-radius: 4px; }
-        .print-section-title { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #888; margin-bottom: 10px; }
+        .print-hotel { font-size: 15px; letter-spacing: 0.15em; text-transform: uppercase; color: #666; margin-bottom: 8px; }
+        .print-group { font-size: 32px; font-weight: bold; margin-bottom: 6px; }
+        .print-dates { font-size: 18px; color: #555; margin-bottom: 4px; }
+        .print-plan { display: inline-block; margin-top: 10px; font-size: 15px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; background: #f0f0f0; padding: 6px 16px; border-radius: 20px; color: #333; }
+        .print-intol { margin-bottom: 32px; padding: 18px 22px; background: #fff8f0; border-left: 4px solid #e8a020; border-radius: 4px; }
+        .print-section-title { font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #888; margin-bottom: 10px; }
         .print-intol-list { padding-left: 18px; }
-        .print-intol-list li { font-size: 14px; margin-bottom: 4px; }
+        .print-intol-list li { font-size: 17px; margin-bottom: 6px; }
         .print-day { margin-bottom: 28px; break-inside: avoid; }
-        .print-day-header { font-size: 13px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #888; border-bottom: 1px solid #ddd; padding-bottom: 6px; margin-bottom: 12px; }
-        .print-meal { margin-bottom: 16px; padding-left: 12px; border-left: 3px solid #1a1a1a; }
-        .print-meal-type { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #1a1a1a; margin-bottom: 8px; }
+        .print-day-header { font-size: 16px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #888; border-bottom: 1px solid #ddd; padding-bottom: 6px; margin-bottom: 12px; }
+        .print-meal { margin-bottom: 18px; padding-left: 14px; border-left: 3px solid #1a1a1a; }
+        .print-meal-type { font-size: 15px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #1a1a1a; margin-bottom: 8px; }
         .print-meal-table { width: 100%; border-collapse: collapse; }
-        .print-field-label { font-size: 12px; color: #888; width: 90px; padding: 3px 0; vertical-align: top; }
-        .print-field-val { font-size: 14px; color: #1a1a1a; padding: 3px 0; }
+        .print-field-label { font-size: 15px; color: #888; width: 110px; padding: 4px 0; vertical-align: top; }
+        .print-field-val { font-size: 18px; color: #1a1a1a; padding: 4px 0; }
         .print-veggie { color: #27ae60; font-style: italic; }
-        .print-footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #ddd; text-align: center; font-size: 11px; color: #aaa; }
+        .print-footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #ddd; text-align: center; font-size: 13px; color: #aaa; }
         @page { margin: 0; }
         @media print { body { padding: 20px; } }
     </style>
