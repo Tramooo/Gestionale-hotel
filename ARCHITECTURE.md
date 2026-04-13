@@ -55,6 +55,15 @@ The frontend has moved from a single-file setup toward a layered structure witho
 - `js/features/group-reservation.js`
   Group reservation form workflow and reservation deletion.
 
+- `js/features/reservation-files.js`
+  Reservation file loading, rendering, upload, download, and deletion behavior.
+
+- `js/features/reservation-detail.js`
+  Reservation detail modal rendering, revenue summary, note editing, and detail refresh hooks.
+
+- `js/features/guests.js`
+  Reservation guest list modal, guest table rendering, guest modal workflow, and guest CRUD helpers.
+
 ## Current backend structure
 
 - `api/*.js`
@@ -74,15 +83,18 @@ This reduces risk when changing:
 - reservation room selection
 - individual reservations
 - group reservation forms
+- reservation file handling
+- reservation detail modal
+- guests list and guest form
 - shared UI behaviors
 
 ## Recommended next steps
 
 1. Extract the next high-value blocks from `script.js`:
-   - reservation files
-   - reservation detail view
-   - guests list / guest form
    - dashboard
+   - compliance
+   - employees
+   - guest file import / parsing
 
 2. Create more core services:
    - `js/core/cache.js`

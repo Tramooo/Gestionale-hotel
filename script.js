@@ -175,6 +175,46 @@ window.GroupStayReservationFiles.init({
     t
 });
 
+window.GroupStayReservationDetail.init({
+    API,
+    apiPut,
+    calcReservationRevenue,
+    escapeHtml,
+    formatDateDisplay,
+    getReservations: () => reservations,
+    getRooms: () => rooms,
+    loadReservationFiles,
+    loadReservationMenus,
+    nightsBetween,
+    openModal,
+    showToast,
+    t
+});
+
+window.GroupStayGuests.init({
+    API,
+    apiDelete,
+    apiPost,
+    apiPut,
+    closeModal,
+    escapeHtml,
+    findLabelFromCode,
+    formatDateDisplay,
+    generateId,
+    getAlloggiatiLuoghi: () => alloggiatiLuoghi,
+    getAlloggiatiStati: () => alloggiatiStati,
+    getGuests: () => guests,
+    getInitials,
+    getReservations: () => reservations,
+    getRooms: () => rooms,
+    loadAlloggiatiTables,
+    openModal,
+    openReservationDetail,
+    setGuests: (nextGuests) => { guests = nextGuests; },
+    showToast,
+    t
+});
+
 function saveDataCache() {
     try {
         localStorage.setItem(CACHE_KEY, JSON.stringify({
@@ -1020,162 +1060,8 @@ async function deleteReservation(id) { return window.GroupStayGroupReservation.d
 
 // ---- Reservation Detail ----
 
-function openReservationDetail(id) {
-    const r = reservations.find(x => x.id === id);
-    if (!r) return;
-
-    document.getElementById('detailGroupName').textContent = r.groupName;
-    const statusLabel = r.status.replace('-', ' ');
-    const badge = document.getElementById('detailStatusBadge');
-    badge.textContent = statusLabel;
-    badge.className = 'status-badge ' + r.status;
-
-    const nights = nightsBetween(r.checkin, r.checkout);
-
-    const body = document.getElementById('reservationDetailBody');
-    body.innerHTML = `
-        <div class="detail-toolbar">
-            <button class="btn btn-secondary btn-sm" onclick="${r.resType === 'individual' ? `openEditIndividualReservation('${r.id}')` : `openEditReservation('${r.id}')`}">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                ${t('detail.edit')}
-            </button>
-            ${r.resType !== 'individual' ? `
-            <button class="btn btn-secondary btn-sm" onclick="openRoomAssignment('${r.id}')">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-                ${t('detail.roomPlanner')}
-            </button>` : ''}
-            <button class="btn btn-secondary btn-sm" onclick="openGuestsList('${r.id}')">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                ${t('detail.manageGuests')}
-            </button>
-            <button class="btn btn-ghost btn-sm detail-delete-btn" onclick="deleteReservation('${r.id}')">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                ${t('detail.delete')}
-            </button>
-        </div>
-
-        <div class="detail-info-card">
-            <div class="detail-info-grid">
-                ${r.resType === 'individual' && (r.phone || r.organizer) ? `
-                <div class="detail-info-item">
-                    <span class="detail-info-label">${t('ind.phone')}</span>
-                    <span class="detail-info-value">${escapeHtml(r.phone || r.organizer)}</span>
-                </div>` : ''}
-                ${r.resType === 'individual' && r.email ? `
-                <div class="detail-info-item">
-                    <span class="detail-info-label">${t('ind.email')}</span>
-                    <span class="detail-info-value">${escapeHtml(r.email)}</span>
-                </div>` : ''}
-                <div class="detail-info-item">
-                    <span class="detail-info-label">${t('res.checkin')}</span>
-                    <span class="detail-info-value">${formatDateDisplay(r.checkin)}</span>
-                </div>
-                <div class="detail-info-item">
-                    <span class="detail-info-label">${t('res.checkout')}</span>
-                    <span class="detail-info-value">${formatDateDisplay(r.checkout)}</span>
-                </div>
-                ${r.resType === 'individual' && r.roomIds && r.roomIds.length > 0 ? (() => {
-                    const rm = rooms.find(x => x.id === r.roomIds[0]);
-                    return rm ? `<div class="detail-info-item">
-                        <span class="detail-info-label">${t('ind.room')}</span>
-                        <span class="detail-info-value">Camera ${escapeHtml(rm.number)}</span>
-                    </div>` : '';
-                })() : `<div class="detail-info-item">
-                    <span class="detail-info-label">${t('res.rooms')}</span>
-                    <span class="detail-info-value">${r.roomCount}</span>
-                </div>`}
-                <div class="detail-info-item">
-                    <span class="detail-info-label">${t('res.nights')}</span>
-                    <span class="detail-info-value">${nights}</span>
-                </div>
-                ${r.resType !== 'individual' ? `
-                <div class="detail-info-item">
-                    <span class="detail-info-label">${t('res.guests')}</span>
-                    <span class="detail-info-value">${r.guestCount || 0}</span>
-                </div>` : ''}
-                <div class="detail-info-item">
-                    <span class="detail-info-label">${r.resType === 'individual' ? t('ind.pricePerNight') : t('res.pricePerPerson')}</span>
-                    <span class="detail-info-value">&euro;${(r.pricePerPerson || 0).toLocaleString()}</span>
-                </div>
-                ${r.resType !== 'individual' && r.gratuity ? `<div class="detail-info-item">
-                    <span class="detail-info-label">${t('res.gratuity')}</span>
-                    <span class="detail-info-value">${r.gratuity} (${r.gratuity > 0 ? Math.floor(r.guestCount / r.gratuity) : 0} ${t('res.freeGuests')})</span>
-                </div>` : ''}
-                ${r.resType !== 'individual' ? `<div class="detail-info-item">
-                    <span class="detail-info-label">Piano Pasti</span>
-                    <span class="detail-info-value"><span class="meal-plan-badge meal-plan-${r.mealPlan || 'BB'}">${r.mealPlan || 'BB'}</span></span>
-                </div>` : ''}
-                ${r.resType !== 'individual' ? `<div class="detail-info-item">
-                    <span class="detail-info-label">Presenze</span>
-                    <span class="detail-info-value">${(() => { const gc = r.guestCount || 0; const fg = r.gratuity > 0 ? Math.floor(gc / r.gratuity) : 0; return Math.max(0, gc - fg) * nights; })()}</span>
-                </div>` : ''}
-                <div class="detail-info-item detail-info-price">
-                    <span class="detail-info-label">${t('res.totalPrice')}</span>
-                    <span class="detail-info-value">&euro;${calcReservationRevenue(r).toLocaleString()}</span>
-                </div>
-                ${r.status === 'pending' && r.expiration ? `<div class="detail-info-item">
-                    <span class="detail-info-label">${t('detail.expires')}</span>
-                    <span class="detail-info-value">${formatDateDisplay(r.expiration)}</span>
-                </div>` : ''}
-            </div>
-        </div>
-
-        <div class="detail-notes-section">
-            <span class="detail-info-label">${t('res.notes')}</span>
-            <textarea id="detailNotesField" class="form-control" rows="4" placeholder="${t('detail.addNotes')}">${escapeHtml(r.notes || '')}</textarea>
-            <button class="btn btn-sm btn-primary" onclick="saveDetailNotes('${r.id}')">${t('detail.saveNotes')}</button>
-        </div>
-
-        ${r.resType !== 'individual' ? `
-        <div class="detail-menu-section">
-            <div class="detail-menu-header">
-                <div class="detail-menu-title-row">
-                    <span class="detail-info-label">Menu</span>
-                    <span class="meal-plan-badge meal-plan-${r.mealPlan || 'BB'}">${r.mealPlan || 'BB'}</span>
-                    <button class="btn btn-sm btn-secondary" style="margin-left:auto" onclick="printMenu('${r.id}')">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-                        Stampa Menu
-                    </button>
-                </div>
-            </div>
-            <div id="menuContainer" class="menu-container">
-                <div class="menu-loading">Caricamento menu...</div>
-            </div>
-        </div>` : ''}
-
-        <div class="detail-files-section">
-            <div class="detail-files-header">
-                <span class="detail-info-label">${t('detail.files')}</span>
-                <button class="btn btn-sm btn-secondary" onclick="uploadReservationFile('${r.id}')">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    ${t('detail.uploadFile')}
-                </button>
-            </div>
-            <div id="reservationFilesContainer" class="files-container">
-                <div class="files-empty">${t('detail.noFiles')}</div>
-            </div>
-            <span class="files-hint">${t('detail.fileMaxSize')}</span>
-        </div>
-    `;
-
-    openModal('reservationDetailModal');
-    loadReservationFiles(r.id);
-    if (r.resType !== 'individual') loadReservationMenus(r);
-}
-
-async function saveDetailNotes(id) {
-    const r = reservations.find(x => x.id === id);
-    if (!r) return;
-    const notes = document.getElementById('detailNotesField').value.trim();
-    r.notes = notes;
-    try {
-        await apiPut(API.reservations, { ...r });
-        showToast(t('toast.notesSaved'));
-    } catch (err) {
-        console.error(err);
-        showToast(t('toast.notesSaveFail'), 'error');
-    }
-}
+function openReservationDetail(id) { return window.GroupStayReservationDetail.openReservationDetail(id); }
+async function saveDetailNotes(id) { return window.GroupStayReservationDetail.saveDetailNotes(id); }
 
 // ---- Reservation Files ----
 
@@ -1199,172 +1085,11 @@ async function deleteReservationFile(fileId, reservationId) { return window.Grou
 
 // ---- Guests List Modal ----
 
-function getGuestMissingFields(g) {
-    const missing = [];
-    if (!g.firstName) missing.push(t('field.firstName'));
-    if (!g.lastName) missing.push(t('field.lastName'));
-    if (!g.sex) missing.push(t('field.sex'));
-    if (!g.birthDate) missing.push(t('field.birthDate'));
-    const isForeignBorn = g.birthCountry && g.birthCountry !== '100000100' &&
-        !['italia', 'italy'].includes((g.birthCountry || '').toLowerCase());
-    if (!isForeignBorn && !g.birthComune) missing.push(t('field.birthComune'));
-    if (!g.citizenship) missing.push(t('field.citizenship'));
-    // Document required for: Singolo (16), CapoFamiglia (17), CapoGruppo (18)
-    if ((g.guestType === '16' || g.guestType === '17' || g.guestType === '18') && !g.docNumber) missing.push(t('field.docNumber'));
-    if ((g.guestType === '16' || g.guestType === '17' || g.guestType === '18') && !g.docType) missing.push(t('field.docType'));
-    return missing;
-}
-
-function openGuestsList(reservationId) {
-    const r = reservations.find(x => x.id === reservationId);
-    if (!r) return;
-
-    const resGuests = guests.filter(g => g.reservationId === reservationId);
-
-    // Check if group/family mode (any leader type present: 17=CapoFam, 18=CapoGruppo)
-    const hasGroupTypes = resGuests.some(g => g.guestType === '17' || g.guestType === '18');
-    const isGroup = hasGroupTypes || resGuests.length > 1;
-
-    // Count total errors
-    let totalErrors = 0;
-    resGuests.forEach(g => { totalErrors += getGuestMissingFields(g).length; });
-
-    document.getElementById('guestsListTitle').textContent = `${t('detail.manageGuests')} — ${r.groupName}`;
-    const body = document.getElementById('guestsListBody');
-
-    // Build guest list HTML separately to catch errors per-guest
-    let guestListHtml = '';
-    if (resGuests.length === 0) {
-        guestListHtml = `<div class="empty-state small"><p>${t('guestList.noGuests')}</p></div>`;
-    } else {
-        for (const g of resGuests) {
-            try {
-                const room = g.roomId ? rooms.find(rm => rm.id === g.roomId) : null;
-                const missing = getGuestMissingFields(g);
-                const isLeader = g.guestType === '17' || g.guestType === '18';
-                const guestTypeLabel = g.guestType === '17' ? 'Capofamiglia' : g.guestType === '18' ? 'Capogruppo' : g.guestType === '19' ? 'Familiare' : g.guestType === '20' ? 'Membro' : '';
-                guestListHtml += `
-                    <div class="detail-guest-item ${missing.length > 0 ? 'guest-has-errors' : ''}">
-                        <div class="guest-avatar">${getInitials((g.firstName || '') + ' ' + (g.lastName || ''))}</div>
-                        <div class="guest-info" style="flex:1;min-width:0">
-                            <div style="display:flex;align-items:center;gap:6px">
-                                <strong>${escapeHtml((g.firstName || '') + ' ' + (g.lastName || ''))}</strong>
-                                ${guestTypeLabel ? `<span class="guest-type-badge ${isLeader ? 'leader' : 'member'}">${guestTypeLabel}</span>` : ''}
-                            </div>
-                            <span>${room ? t('rooms.room') + ' ' + room.number : t('guestList.noRoomAssigned')}${g.docNumber ? ' &middot; ' + escapeHtml(g.docType || '') + ': ' + escapeHtml(g.docNumber) : ''}</span>
-                            ${missing.length > 0 ? `<div class="guest-missing-fields">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                                ${t('guest.missingFields')}: ${missing.join(', ')}
-                            </div>` : ''}
-                        </div>
-                        <div style="display:flex;gap:4px;align-items:center;flex-shrink:0">
-                            ${isGroup && !isLeader ? `<button class="btn btn-ghost btn-sm" onclick="setGuestAsLeader('${g.id}', '${reservationId}')" title="${t('guest.setLeader')}">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                            </button>` : ''}
-                            <button class="btn btn-ghost btn-sm" onclick="openEditGuestModal('${g.id}')">${t('guestList.edit')}</button>
-                            <button class="btn btn-ghost btn-sm" onclick="deleteGuest('${g.id}', '${reservationId}')">${t('guestList.remove')}</button>
-                        </div>
-                    </div>
-                `;
-            } catch (e) {
-                console.error('Error rendering guest', g.id, e);
-                guestListHtml += `<div class="detail-guest-item" style="color:red">Error rendering guest ${escapeHtml((g.firstName || '') + ' ' + (g.lastName || ''))}: ${escapeHtml(e.message)}</div>`;
-            }
-        }
-    }
-
-    body.innerHTML = `
-        <div class="schedine-header">
-            <div class="schedine-header-left">
-                <h3 style="margin:0">${t('detail.schedine')}</h3>
-                ${totalErrors > 0 ? `
-                    <span class="schedine-error-badge" title="${totalErrors} ${t('guest.schedineErrors')}">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                        ${totalErrors} ${t('guest.schedineErrors')}
-                    </span>
-                ` : `
-                    <span class="schedine-ok-badge">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                        ${t('guest.noErrors')}
-                    </span>
-                `}
-            </div>
-            <div style="display:flex;gap:8px;align-items:center">
-                <button class="btn btn-sm btn-secondary" onclick="alloggiatiTest('${reservationId}')" ${resGuests.length === 0 ? 'disabled' : ''}>${t('detail.test')}</button>
-                <button class="btn btn-sm btn-primary" onclick="alloggiatiSend('${reservationId}')" ${totalErrors > 0 || resGuests.length === 0 ? 'disabled' : ''}>${t('detail.sendToPolice')}</button>
-            </div>
-        </div>
-        <div id="alloggiatiResults"></div>
-
-        <div class="guest-reg-type" style="margin:16px 0 12px">
-            <span style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-right:10px">${t('guest.regType')}:</span>
-            <button class="btn btn-sm ${!isGroup ? 'btn-primary' : 'btn-secondary'}" onclick="setAllGuestsType('${reservationId}', 'single')">${t('guest.regSingle')}</button>
-            <button class="btn btn-sm ${isGroup ? 'btn-primary' : 'btn-secondary'}" onclick="setAllGuestsType('${reservationId}', 'group')">${t('guest.regGroup')}</button>
-        </div>
-
-        <div style="margin-bottom:12px">
-            <div class="guest-search-wrap">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input type="text" id="guestSearchInput" placeholder="${t('guestList.search')}" oninput="filterGuestsList()">
-            </div>
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-                <span style="color:var(--text-secondary)">${resGuests.length} ${resGuests.length !== 1 ? t('cal.guestPlural') : t('cal.guestSingular')}</span>
-                <div style="display:flex;gap:8px">
-                    ${resGuests.length > 0 ? `<button class="btn btn-sm btn-ghost detail-delete-btn" onclick="removeAllGuests('${reservationId}')">${t('guestList.removeAll')}</button>` : ''}
-                    <button class="btn btn-sm btn-secondary" onclick="openFileImportModal('${reservationId}')">${t('guestList.importFromFile')}</button>
-                    <button class="btn btn-sm btn-primary" onclick="openAddGuestModal('${reservationId}')">${t('guestList.addGuest')}</button>
-                </div>
-            </div>
-        </div>
-        <div class="detail-guests-list">
-            ${guestListHtml}
-        </div>
-    `;
-
-    openModal('guestsListModal');
-}
-
-function filterGuestsList() {
-    const query = (document.getElementById('guestSearchInput')?.value || '').toLowerCase();
-    document.querySelectorAll('.detail-guests-list .detail-guest-item').forEach(el => {
-        const name = el.querySelector('strong')?.textContent.toLowerCase() || '';
-        el.style.display = name.includes(query) ? '' : 'none';
-    });
-}
-
-async function setAllGuestsType(reservationId, mode) {
-    const resGuests = guests.filter(g => g.reservationId === reservationId);
-    if (resGuests.length === 0) return;
-
-    if (mode === 'single') {
-        for (const g of resGuests) { g.guestType = '16'; }
-    } else {
-        // Exactly one leader (CapoGruppo=18): keep existing if there's exactly one, else use first guest
-        const leaders = resGuests.filter(g => g.guestType === '18');
-        const leaderId = leaders.length === 1 ? leaders[0].id : resGuests[0].id;
-        for (const g of resGuests) {
-            g.guestType = g.id === leaderId ? '18' : '20';
-        }
-    }
-
-    try {
-        await Promise.all(resGuests.map(g => apiPut(API.guests, g)));
-    } catch (err) { console.error(err); }
-
-    openGuestsList(reservationId);
-}
-
-async function setGuestAsLeader(guestId, reservationId) {
-    const resGuests = guests.filter(g => g.reservationId === reservationId);
-    for (const g of resGuests) {
-        g.guestType = g.id === guestId ? '18' : '20';
-    }
-    try {
-        await Promise.all(resGuests.map(g => apiPut(API.guests, g)));
-    } catch (err) { console.error(err); }
-
-    openGuestsList(reservationId);
-}
+function getGuestMissingFields(g) { return window.GroupStayGuests.getGuestMissingFields(g); }
+function openGuestsList(reservationId) { return window.GroupStayGuests.openGuestsList(reservationId); }
+function filterGuestsList() { return window.GroupStayGuests.filterGuestsList(); }
+async function setAllGuestsType(reservationId, mode) { return window.GroupStayGuests.setAllGuestsType(reservationId, mode); }
+async function setGuestAsLeader(guestId, reservationId) { return window.GroupStayGuests.setGuestAsLeader(guestId, reservationId); }
 
 // ---- Alloggiati Web ----
 
@@ -2201,224 +1926,13 @@ async function deleteRoom() { return window.GroupStayRooms.deleteRoom(); }
 // GUESTS
 // =============================================
 
-function renderGuests() {
-    const search = (document.getElementById('searchGuests')?.value || '').toLowerCase();
-    let allGuests = guests.map(g => {
-        const res = reservations.find(r => r.id === g.reservationId);
-        const room = g.roomId ? rooms.find(r => r.id === g.roomId) : null;
-        return { ...g, reservation: res, room };
-    });
-
-    if (search) {
-        allGuests = allGuests.filter(g =>
-            (g.firstName + ' ' + g.lastName).toLowerCase().includes(search) ||
-            (g.reservation?.groupName || '').toLowerCase().includes(search) ||
-            (g.room?.number || '').toLowerCase().includes(search)
-        );
-    }
-
-    const tbody = document.getElementById('guestsTableBody');
-
-    if (allGuests.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="empty-state small">${t('guests.noGuests')}</td></tr>`;
-        return;
-    }
-
-    tbody.innerHTML = allGuests.map(g => {
-        const statusLabel = g.reservation ? g.reservation.status.replace('-', ' ') : t('guests.unknown');
-        return `
-            <tr>
-                <td>
-                    <div class="guest-name-cell">
-                        <div class="guest-avatar">${getInitials(g.firstName + ' ' + g.lastName)}</div>
-                        ${escapeHtml(g.firstName + ' ' + g.lastName)}
-                    </div>
-                </td>
-                <td>${escapeHtml(g.reservation?.groupName || '—')}</td>
-                <td>${g.room ? g.room.number : '—'}</td>
-                <td>${g.reservation ? formatDateDisplay(g.reservation.checkin) : '—'}</td>
-                <td>${g.reservation ? formatDateDisplay(g.reservation.checkout) : '—'}</td>
-                <td><span class="status-badge ${g.reservation?.status || ''}">${statusLabel}</span></td>
-                <td>
-                    <button class="btn btn-ghost btn-sm" onclick="deleteGuest('${g.id}', '${g.reservationId}')">${t('guestList.remove')}</button>
-                </td>
-            </tr>
-        `;
-    }).join('');
-}
-
-function filterGuests() {
-    renderGuests();
-}
-
-function openAddGuestModal(reservationId) {
-    document.getElementById('guestForm').reset();
-    document.getElementById('guestId').value = '';
-    document.getElementById('guestReservationId').value = reservationId;
-
-    // Clear search fields and hidden code fields
-    ['guestCitizenshipSearch', 'guestBirthCountrySearch', 'guestBirthComuneSearch', 'guestDocIssuedPlaceSearch',
-     'guestCitizenship', 'guestBirthCountry', 'guestBirthComune', 'guestDocIssuedPlace'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = '';
-    });
-
-    // Populate room dropdown
-    const select = document.getElementById('guestRoom');
-    select.innerHTML = `<option value="">${t('guest.unassigned')}</option>`;
-    rooms.filter(r => r.status === 'available' || r.status === 'occupied').forEach(r => {
-        select.innerHTML += `<option value="${r.id}">${t('rooms.room')} ${r.number} (${r.type})</option>`;
-    });
-
-    closeModal('guestsListModal');
-    openModal('guestModal');
-    loadAlloggiatiTables(); // load in background
-}
-
-function openEditGuestModal(guestId) {
-    const g = guests.find(x => x.id === guestId);
-    if (!g) return;
-
-    document.getElementById('guestForm').reset();
-    document.getElementById('guestId').value = g.id;
-    document.getElementById('guestReservationId').value = g.reservationId;
-    document.getElementById('guestFirstName').value = g.firstName || '';
-    document.getElementById('guestLastName').value = g.lastName || '';
-    document.getElementById('guestEmail').value = g.email || '';
-    document.getElementById('guestPhone').value = g.phone || '';
-    document.getElementById('guestDocType').value = g.docType || '';
-    document.getElementById('guestDocNumber').value = g.docNumber || '';
-    document.getElementById('guestNotes').value = g.notes || '';
-    document.getElementById('guestSex').value = g.sex || '';
-    document.getElementById('guestBirthDate').value = g.birthDate || '';
-    document.getElementById('guestBirthComune').value = g.birthComune || '';
-    document.getElementById('guestBirthProvince').value = g.birthProvince || '';
-    document.getElementById('guestBirthCountry').value = g.birthCountry || '';
-    document.getElementById('guestCitizenship').value = g.citizenship || '';
-    document.getElementById('guestDocIssuedPlace').value = g.docIssuedPlace || '';
-    document.getElementById('guestType').value = g.guestType || '16';
-
-    // Populate search fields with resolved names
-    const setSearch = (searchId, code, list) => {
-        const el = document.getElementById(searchId);
-        if (!el) return;
-        const name = findLabelFromCode(list, code);
-        el.value = name || code || '';
-    };
-    // Do this after tables load
-    loadAlloggiatiTables().then(() => {
-        setSearch('guestCitizenshipSearch', g.citizenship, alloggiatiStati);
-        setSearch('guestBirthCountrySearch', g.birthCountry, alloggiatiStati);
-        setSearch('guestBirthComuneSearch', g.birthComune, alloggiatiLuoghi);
-        setSearch('guestDocIssuedPlaceSearch', g.docIssuedPlace, alloggiatiLuoghi);
-
-        // Auto-fill province if missing, derived from the luoghi entry
-        const provEl = document.getElementById('guestBirthProvince');
-        if (provEl && !provEl.value && alloggiatiLuoghi) {
-            const entry = alloggiatiLuoghi.find(l => l.code === g.birthComune);
-            if (entry && entry.prov) provEl.value = entry.prov;
-        }
-    }).catch(() => {
-        // If tables fail to load, show raw codes
-        document.getElementById('guestCitizenshipSearch').value = g.citizenship || '';
-        document.getElementById('guestBirthCountrySearch').value = g.birthCountry || '';
-        document.getElementById('guestBirthComuneSearch').value = g.birthComune || '';
-        document.getElementById('guestDocIssuedPlaceSearch').value = g.docIssuedPlace || '';
-    });
-
-    // Populate room dropdown
-    const select = document.getElementById('guestRoom');
-    select.innerHTML = `<option value="">${t('guest.unassigned')}</option>`;
-    rooms.filter(r => r.status === 'available' || r.status === 'occupied').forEach(r => {
-        select.innerHTML += `<option value="${r.id}" ${r.id === g.roomId ? 'selected' : ''}>${t('rooms.room')} ${r.number} (${r.type})</option>`;
-    });
-
-    closeModal('guestsListModal');
-    openModal('guestModal');
-}
-
-async function saveGuest(e) {
-    e.preventDefault();
-
-    const id = document.getElementById('guestId').value;
-    const data = {
-        reservationId: document.getElementById('guestReservationId').value,
-        firstName: document.getElementById('guestFirstName').value.trim(),
-        lastName: document.getElementById('guestLastName').value.trim(),
-        email: document.getElementById('guestEmail').value.trim(),
-        phone: document.getElementById('guestPhone').value.trim(),
-        docType: document.getElementById('guestDocType').value,
-        docNumber: document.getElementById('guestDocNumber').value.trim(),
-        roomId: document.getElementById('guestRoom').value,
-        notes: document.getElementById('guestNotes').value.trim(),
-        sex: document.getElementById('guestSex').value,
-        birthDate: document.getElementById('guestBirthDate').value,
-        birthComune: document.getElementById('guestBirthComune').value.trim(),
-        birthProvince: document.getElementById('guestBirthProvince').value.trim().toUpperCase(),
-        birthCountry: document.getElementById('guestBirthCountry').value.trim(),
-        citizenship: document.getElementById('guestCitizenship').value.trim(),
-        docIssuedPlace: document.getElementById('guestDocIssuedPlace').value.trim(),
-        guestType: document.getElementById('guestType').value
-    };
-
-    try {
-        if (id) {
-            const idx = guests.findIndex(g => g.id === id);
-            if (idx !== -1) guests[idx] = { ...guests[idx], ...data };
-            await apiPut(API.guests, { ...data, id });
-            showToast(t('toast.guestUpdated'));
-        } else {
-            const newGuest = { id: generateId(), ...data };
-            guests.push(newGuest);
-            await apiPost(API.guests, newGuest);
-            showToast(t('toast.guestAdded'));
-        }
-    } catch (err) {
-        console.error('Save guest error:', err);
-        showToast(t('toast.guestSaveFail') + ': ' + err.message, 'error');
-        return;
-    }
-
-    closeModal('guestModal');
-
-    // Reopen guests list and refresh reservation detail
-    openGuestsList(data.reservationId);
-    openReservationDetail(data.reservationId);
-    renderGuests();
-}
-
-async function removeAllGuests(reservationId) {
-    if (!confirm(t('confirm.removeAllGuests'))) return;
-    const resGuests = guests.filter(g => g.reservationId === reservationId);
-    try {
-        await Promise.all(resGuests.map(g => apiDelete(API.guests, g.id)));
-    } catch (err) {
-        console.error(err);
-        showToast(t('toast.guestRemoveFail'), 'error');
-        return;
-    }
-    guests = guests.filter(g => g.reservationId !== reservationId);
-    showToast(t('toast.allGuestsRemoved'));
-    openGuestsList(reservationId);
-}
-
-async function deleteGuest(guestId, reservationId) {
-    if (!confirm(t('confirm.removeGuest'))) return;
-    guests = guests.filter(g => g.id !== guestId);
-    try {
-        await apiDelete(API.guests, guestId);
-    } catch (err) {
-        console.error(err);
-        showToast(t('toast.guestRemoveFail'), 'error');
-        return;
-    }
-    showToast(t('toast.guestRemoved'));
-
-    // Refresh guests list and reservation detail
-    openGuestsList(reservationId);
-    openReservationDetail(reservationId);
-    renderGuests();
-}
+function renderGuests() { return window.GroupStayGuests.renderGuests(); }
+function filterGuests() { return window.GroupStayGuests.filterGuests(); }
+function openAddGuestModal(reservationId) { return window.GroupStayGuests.openAddGuestModal(reservationId); }
+function openEditGuestModal(guestId) { return window.GroupStayGuests.openEditGuestModal(guestId); }
+async function saveGuest(e) { return window.GroupStayGuests.saveGuest(e); }
+async function removeAllGuests(reservationId) { return window.GroupStayGuests.removeAllGuests(reservationId); }
+async function deleteGuest(guestId, reservationId) { return window.GroupStayGuests.deleteGuest(guestId, reservationId); }
 
 // =============================================
 // PLANNING BOARD CALENDAR (4-panel grid layout)
