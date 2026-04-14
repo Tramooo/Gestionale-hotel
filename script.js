@@ -1407,13 +1407,13 @@ function setupAlloggiatiSearchField(searchId, hiddenId, listSource) {
     searchEl.addEventListener('blur', resolveCode);
 
     // Filter datalist for comuni (large list) on input
-    if (searchId === 'guestBirthComuneSearch' || searchId === 'guestDocIssuedPlaceSearch') {
+    if (searchId === 'guestBirthComuneSearch' || searchId === 'guestResidenceComuneSearch' || searchId === 'guestDocIssuedPlaceSearch') {
         searchEl.addEventListener('input', () => {
             const query = searchEl.value.toLowerCase().trim();
             if (query.length < 2 || !alloggiatiLuoghi) return;
-            const listId = searchId === 'guestBirthComuneSearch' ? 'comuniList' : 'luoghiList';
+            const listId = (searchId === 'guestBirthComuneSearch' || searchId === 'guestResidenceComuneSearch') ? 'comuniList' : 'luoghiList';
             const dlEl = document.getElementById(listId);
-            const source = searchId === 'guestBirthComuneSearch'
+            const source = (searchId === 'guestBirthComuneSearch' || searchId === 'guestResidenceComuneSearch')
                 ? alloggiatiLuoghi.filter(l => !alloggiatiStati.includes(l))
                 : alloggiatiLuoghi;
             const filtered = source.filter(l => l.label.toLowerCase().includes(query)).slice(0, 200);
