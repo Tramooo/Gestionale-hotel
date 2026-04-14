@@ -1491,6 +1491,11 @@ function renderAlloggiatiResults(container, data, mode) {
         html += `<div style="margin-bottom:8px">
             <span style="color:${color};font-weight:bold">${icon} ${mode === 'test' ? 'Test' : 'Send'}: ${data.validCount}/${data.totalCount} valid</span>
         </div>`;
+        if (mode === 'test' && data.methodUsed) {
+            html += `<div style="margin-bottom:8px;font-size:11px;color:var(--text-secondary)">
+                metodo="${escapeHtml(data.methodUsed)}"${data.apartmentMode ? ` | appartamento="${escapeHtml(data.apartmentId || '')}"` : ''}
+            </div>`;
+        }
         if (data.details && data.details.length > 0) {
             html += '<div class="alloggiati-records">';
             data.details.forEach(d => {
@@ -1524,6 +1529,17 @@ function renderAlloggiatiResults(container, data, mode) {
                 </div>`;
             });
             html += '</div>';
+        }
+        if (mode === 'test' && Array.isArray(data.birthDiagnostics) && data.birthDiagnostics.length > 0) {
+            html += `<div style="margin-top:10px;padding:10px;background:var(--bg-tertiary);border-radius:8px">
+                <div style="font-size:12px;font-weight:600;margin-bottom:6px">Diagnostica Luogo di Nascita</div>
+                ${data.birthDiagnostics.map((item) => `
+                    <div style="font-size:10px;font-family:monospace;color:${item.esito ? 'var(--green)' : 'var(--text-secondary)'};margin-bottom:6px;word-break:break-all">
+                        variante="${escapeHtml(item.label)}" | esito="${item.esito ? 'OK' : 'KO'}" | comune="${escapeHtml(item.recBirthComune)}" | prov="${escapeHtml(item.recBirthProvince)}" | paese="${escapeHtml(item.recBirthCountry)}" | birthBlock="${escapeHtml(item.birthBlock)}"${item.errorDesc ? ` | errore="${escapeHtml(item.errorDesc)}${item.errorDetail ? ': ' + escapeHtml(item.errorDetail) : ''}"` : ''}
+                    </div>
+                `).join('')}
+                ${data.birthDiagnosticsError ? `<div style="font-size:10px;color:var(--red)">diagnostica fallita: ${escapeHtml(data.birthDiagnosticsError)}</div>` : ''}
+            </div>`;
         }
         if (mode === 'test' && data.rawXml) {
             console.log('[Alloggiati raw SOAP response]', data.rawXml);

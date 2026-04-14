@@ -24,6 +24,13 @@ async function soapCall(action, body) {
   return text;
 }
 
+function normalizeApartmentId(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (/^\d{1,6}$/.test(raw)) return raw.padStart(6, '0');
+  return raw;
+}
+
 function extractTag(xml, tag) {
   const re = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, 'i');
   const m = xml.match(re);
@@ -207,10 +214,80 @@ function buildRecord(rawGuest, checkinDate, checkoutDate) {
   return record; // should be exactly 168 chars
 }
 
+async function runBirthBlockDiagnostics({ action, normalizedGuests, records, failingDetails, reservation, methodName, token, UTENTE }) {
+  if (action !== 'test' || !Array.isArray(failingDetails) || failingDetails.length === 0) return [];
+
+  const firstFailIndex = failingDetails.findIndex((detail) => {
+    const text = `${detail?.errorDesc || ''} ${detail?.errorDetail || ''}`.toLowerCase();
+    return text.includes('comune di nascita');
+  });
+  if (firstFailIndex === -1) return [];
+
+  const guest = normalizedGuests[firstFailIndex];
+  if (!guest || guest.birthCountry !== '100000100') return [];
+
+  const variants = [
+    {
+      key: 'standard',
+      label: 'Standard',
+      guest
+    },
+    {
+      key: 'blank_state',
+      label: 'Stato nascita blank',
+      guest: { ...guest, birthCountry: '' }
+    },
+    {
+      key: 'blank_province',
+      label: 'Provincia nascita blank',
+      guest: { ...guest, birthProvince: '' }
+    },
+    {
+      key: 'blank_comune_province_keep_state',
+      label: 'Solo stato nascita',
+      guest: { ...guest, birthComune: '', birthProvince: '' }
+    }
+  ];
+
+  const results = [];
+  for (const variant of variants) {
+    const record = buildRecord(variant.guest, reservation.checkin, reservation.checkout);
+    const xml = await soapCall(methodName, `
+      <all:${methodName}>
+        <all:Utente>${UTENTE}</all:Utente>
+        <all:token>${token}</all:token>
+        <all:ElencoSchedine>
+          <all:string>${record}</all:string>
+        </all:ElencoSchedine>
+      </all:${methodName}>`);
+
+    const allEsiti = extractAllEsiti(xml);
+    const dettaglio = allEsiti.length > 1 ? allEsiti.slice(1) : allEsiti;
+    const detail = dettaglio[0] || extractEsito(xml, `${methodName}Result`);
+
+    results.push({
+      key: variant.key,
+      label: variant.label,
+      record,
+      birthBlock: record.substring(95, 134),
+      recBirthComune: record.substring(105, 114),
+      recBirthProvince: record.substring(114, 116),
+      recBirthCountry: record.substring(116, 125),
+      esito: !!detail?.esito,
+      errorDesc: detail?.errorDesc || '',
+      errorDetail: detail?.errorDetail || ''
+    });
+  }
+
+  return results;
+}
+
 export default async function handler(req, res) {
   const UTENTE = process.env.ALLOGGIATI_UTENTE;
   const PASSWORD = process.env.ALLOGGIATI_PASSWORD;
   const WSKEY = process.env.ALLOGGIATI_WSKEY;
+  const APARTMENT_ID = normalizeApartmentId(process.env.ALLOGGIATI_IDAPPARTAMENTO);
+  const FORCE_APARTMENT_MODE = String(process.env.ALLOGGIATI_GESTIONE_APPARTAMENTI || '').trim().toLowerCase() === 'true';
 
   if (!UTENTE || !PASSWORD || !WSKEY) {
     return res.status(500).json({ error: 'Alloggiati credentials not configured. Set ALLOGGIATI_UTENTE, ALLOGGIATI_PASSWORD, ALLOGGIATI_WSKEY env vars.' });
@@ -354,8 +431,23 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Token is required for test/send. Call ?action=token first.' });
       }
 
-      const methodName = action === 'test' ? 'Test' : 'Send';
       const schedineXml = records.map(r => `<all:string>${r}</all:string>`).join('\n');
+      const shouldUseApartmentMode = FORCE_APARTMENT_MODE || !!APARTMENT_ID;
+
+      if (FORCE_APARTMENT_MODE && !APARTMENT_ID) {
+        return res.status(500).json({ error: 'Apartment mode is enabled but ALLOGGIATI_IDAPPARTAMENTO is missing.' });
+      }
+
+      const methodName = shouldUseApartmentMode
+        ? (action === 'test' ? 'GestioneAppartamenti_Test' : 'GestioneAppartamenti_Send')
+        : (action === 'test' ? 'Test' : 'Send');
+      const resultTag = shouldUseApartmentMode
+        ? `${methodName}Result`
+        : `${methodName}Result`;
+
+      const apartmentNode = shouldUseApartmentMode
+        ? `\n          <all:IdAppartamento>${APARTMENT_ID}</all:IdAppartamento>`
+        : '';
 
       const xml = await soapCall(methodName, `
         <all:${methodName}>
@@ -363,10 +455,9 @@ export default async function handler(req, res) {
           <all:token>${token}</all:token>
           <all:ElencoSchedine>
             ${schedineXml}
-          </all:ElencoSchedine>
+          </all:ElencoSchedine>${apartmentNode}
         </all:${methodName}>`);
 
-      const resultTag = `${methodName}Result`;
       const esito = extractEsito(xml, resultTag);
       const validCount = extractTag(xml, 'SchedineValide');
 
@@ -375,8 +466,11 @@ export default async function handler(req, res) {
       // The first EsitoOperazioneServizio is the overall result, the rest are per-row in Dettaglio
       const dettaglio = allEsiti.length > 1 ? allEsiti.slice(1) : allEsiti;
 
-      return res.status(200).json({
+      const responsePayload = {
         success: esito.esito,
+        methodUsed: methodName,
+        apartmentMode: shouldUseApartmentMode,
+        apartmentId: shouldUseApartmentMode ? APARTMENT_ID : '',
         validCount: parseInt(validCount) || 0,
         totalCount: records.length,
         details: dettaglio.map((d, i) => {
@@ -404,7 +498,26 @@ export default async function handler(req, res) {
         }),
         rawXml: action === 'test' ? xml.substring(0, 3000) : undefined,
         overallResult: esito
-      });
+      };
+
+      if (action === 'test' && !shouldUseApartmentMode) {
+        try {
+          responsePayload.birthDiagnostics = await runBirthBlockDiagnostics({
+            action,
+            normalizedGuests,
+            records,
+            failingDetails: dettaglio,
+            reservation,
+            methodName,
+            token,
+            UTENTE
+          });
+        } catch (diagnosticError) {
+          responsePayload.birthDiagnosticsError = diagnosticError.message;
+        }
+      }
+
+      return res.status(200).json(responsePayload);
     }
 
     // ---- Download receipt ----
