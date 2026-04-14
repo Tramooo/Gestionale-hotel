@@ -369,7 +369,9 @@ async function runGroupDiagnostics({ action, normalizedGuests, records, failingD
       return {
         guestName: `${guest?.firstName || ''} ${guest?.lastName || ''}`.trim(),
         guestType: guest?.guestType,
+        sex: guest?.sex || '',
         birthDate: guest?.birthDate || '',
+        record,
         recBirthBlock: record.substring(95, 134),
         recBirthComune: record.substring(105, 114),
         recBirthProvince: record.substring(114, 116),
@@ -379,7 +381,29 @@ async function runGroupDiagnostics({ action, normalizedGuests, records, failingD
         errorDesc: detail?.errorDesc || '',
         errorDetail: detail?.errorDetail || ''
       };
-    })
+    }),
+    sameComuneComparisons: (() => {
+      const failedRecord = groupRecords[firstFailIndex - leaderIndex] || '';
+      const failedComune = failedRecord.substring(105, 114);
+      if (!failedComune) return [];
+
+      return dettaglio
+        .map((detail, index) => ({
+          guestName: `${groupGuests[index]?.firstName || ''} ${groupGuests[index]?.lastName || ''}`.trim(),
+          guestType: groupGuests[index]?.guestType,
+          sex: groupGuests[index]?.sex || '',
+          birthDate: groupGuests[index]?.birthDate || '',
+          record: groupRecords[index] || '',
+          recBirthComune: (groupRecords[index] || '').substring(105, 114),
+          recBirthProvince: (groupRecords[index] || '').substring(114, 116),
+          recBirthCountry: (groupRecords[index] || '').substring(116, 125),
+          recCitizenship: (groupRecords[index] || '').substring(125, 134),
+          esito: !!detail?.esito,
+          errorDesc: detail?.errorDesc || '',
+          errorDetail: detail?.errorDetail || ''
+        }))
+        .filter((row, index) => row.recBirthComune === failedComune && index !== (firstFailIndex - leaderIndex));
+    })()
   };
 }
 
