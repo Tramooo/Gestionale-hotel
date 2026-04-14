@@ -403,6 +403,45 @@ async function runGroupDiagnostics({ action, normalizedGuests, records, failingD
           errorDetail: detail?.errorDetail || ''
         }))
         .filter((row, index) => row.recBirthComune === failedComune && index !== (firstFailIndex - leaderIndex));
+    })(),
+    failedVsOkDiff: (() => {
+      const failedRelativeIndex = firstFailIndex - leaderIndex;
+      const failedRecord = groupRecords[failedRelativeIndex] || '';
+      if (!failedRecord) return null;
+
+      const comparisons = dettaglio
+        .map((detail, index) => ({
+          guestName: `${groupGuests[index]?.firstName || ''} ${groupGuests[index]?.lastName || ''}`.trim(),
+          guestType: groupGuests[index]?.guestType,
+          record: groupRecords[index] || '',
+          recBirthComune: (groupRecords[index] || '').substring(105, 114),
+          esito: !!detail?.esito
+        }))
+        .filter((row, index) => row.esito && row.recBirthComune === failedRecord.substring(105, 114) && index !== failedRelativeIndex);
+
+      const reference = comparisons[0];
+      if (!reference || !reference.record) return null;
+
+      const diffs = [];
+      for (let i = 0; i < Math.max(failedRecord.length, reference.record.length); i += 1) {
+        const failedChar = failedRecord[i] || '';
+        const okChar = reference.record[i] || '';
+        if (failedChar !== okChar) {
+          diffs.push({
+            pos: i,
+            failed: failedChar === ' ' ? '␠' : failedChar,
+            ok: okChar === ' ' ? '␠' : okChar
+          });
+        }
+      }
+
+      return {
+        failedGuestName: `${failedGuest.firstName || ''} ${failedGuest.lastName || ''}`.trim(),
+        okGuestName: reference.guestName,
+        okGuestType: reference.guestType,
+        totalDiffs: diffs.length,
+        diffs: diffs.slice(0, 80)
+      };
     })()
   };
 }

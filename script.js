@@ -1561,6 +1561,15 @@ function renderAlloggiatiResults(container, data, mode) {
                             ospite="${escapeHtml(row.guestName)}" | tipo="${escapeHtml(row.guestType)}" | esito="${row.esito ? 'OK' : 'KO'}"${row.sex ? ` | sesso="${escapeHtml(row.sex)}"` : ''}${row.birthDate ? ` | dataNascita="${escapeHtml(row.birthDate)}"` : ''}${row.recBirthComune ? ` | comune="${escapeHtml(row.recBirthComune)}"` : ''}${row.recBirthProvince ? ` | prov="${escapeHtml(row.recBirthProvince)}"` : ''}${row.recBirthCountry ? ` | paese="${escapeHtml(row.recBirthCountry)}"` : ''}${row.recCitizenship ? ` | citt="${escapeHtml(row.recCitizenship)}"` : ''}
                         </div>
                     `).join('')}
+                ` : ''}
+                ${data.groupDiagnostics.failedVsOkDiff ? `
+                    <div style="font-size:11px;font-weight:600;margin:8px 0 4px">Diff Record KO vs OK</div>
+                    <div style="font-size:10px;font-family:monospace;color:var(--text-secondary);margin-bottom:4px;word-break:break-all">
+                        ko="${escapeHtml(data.groupDiagnostics.failedVsOkDiff.failedGuestName)}" | ok="${escapeHtml(data.groupDiagnostics.failedVsOkDiff.okGuestName)}" | totalDiffs="${escapeHtml(data.groupDiagnostics.failedVsOkDiff.totalDiffs)}"
+                    </div>
+                    <div style="font-size:10px;font-family:monospace;color:var(--text-tertiary);word-break:break-all">
+                        ${(data.groupDiagnostics.failedVsOkDiff.diffs || []).map((diff) => `[${escapeHtml(diff.pos)}:${escapeHtml(diff.failed)}→${escapeHtml(diff.ok)}]`).join(' ')}
+                    </div>
                 ` : ''}` : ''}
                 ${data.groupDiagnosticsError ? `<div style="font-size:10px;color:var(--red)">diagnostica gruppo fallita: ${escapeHtml(data.groupDiagnosticsError)}</div>` : ''}
             </div>`;
