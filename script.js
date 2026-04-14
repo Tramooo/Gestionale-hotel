@@ -1437,6 +1437,33 @@ async function getAlloggiatiToken() {
 function renderAlloggiatiResults(container, data, mode) {
     if (!data) return;
 
+    const escapeHtml = (value) => String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
+    const getAlloggiatiErrorFocus = (detail) => {
+        const text = `${detail?.errorDesc || ''} ${detail?.errorDetail || ''}`.toLowerCase();
+        if (text.includes('comune di nascita')) return 'birthComune';
+        if (text.includes('provincia di nascita')) return 'birthProvince';
+        if (text.includes('stato di nascita')) return 'birthCountry';
+        if (text.includes('cittadinanza')) return 'citizenship';
+        if (text.includes('tipo documento')) return 'docType';
+        if (text.includes('numero documento')) return 'docNumber';
+        if (text.includes('rilascio')) return 'docPlace';
+        return '';
+    };
+
+    const emphasizeDebugField = (label, value, isFocused = false) => {
+        const safeLabel = escapeHtml(label);
+        const safeValue = escapeHtml(value);
+        return isFocused
+            ? `<strong style="color:var(--red)">${safeLabel}="${safeValue}"</strong>`
+            : `${safeLabel}="${safeValue}"`;
+    };
+
     let html = '';
     if (mode === 'preview') {
         html += `<div class="alloggiati-preview">
@@ -1476,8 +1503,16 @@ function renderAlloggiatiResults(container, data, mode) {
                 if (mode === 'test' && !ok && d.recDocType !== undefined) {
                     const birthComuneLabel = d.recBirthComune ? findLabelFromCode(alloggiatiLuoghi, d.recBirthComune) : '';
                     const docPlaceLabel = d.recDocPlace ? findLabelFromCode(alloggiatiLuoghi, d.recDocPlace) : '';
+                    const focusedField = getAlloggiatiErrorFocus(d);
+                    const birthBlock = d.recBirthBlock || '';
+                    const birthBlockMap = birthBlock
+                        ? `[95-104]=${escapeHtml(birthBlock.substring(0, 10))} | [105-113]=${escapeHtml(birthBlock.substring(10, 19))} | [114-115]=${escapeHtml(birthBlock.substring(19, 21))} | [116-124]=${escapeHtml(birthBlock.substring(21, 30))} | [125-133]=${escapeHtml(birthBlock.substring(30, 39))}`
+                        : '';
                     debugRow = `<div style="font-size:10px;font-family:monospace;color:var(--text-secondary);margin-top:2px;word-break:break-all">
-                        dataNascita="${d.birthDate || ''}" | tipo="${d.recGuestType}" | comune="${d.recBirthComune}"${birthComuneLabel ? ` (${birthComuneLabel})` : ''} | prov="${d.recBirthProvince}" | paese="${d.recBirthCountry}" | citt="${d.recCitizenship}" | docTipo="${d.recDocType}" | docNum="${d.recDocNumber?.trim()}" | docLuogo="${d.recDocPlace}"${docPlaceLabel ? ` (${docPlaceLabel})` : ''} | len=${d.recLength}
+                        ${emphasizeDebugField('dataNascita', d.birthDate || '', false)} | ${emphasizeDebugField('tipo', d.recGuestType, false)} | ${emphasizeDebugField('comune', `${d.recBirthComune}${birthComuneLabel ? ` (${birthComuneLabel})` : ''}`, focusedField === 'birthComune')} | ${emphasizeDebugField('prov', d.recBirthProvince, focusedField === 'birthProvince')} | ${emphasizeDebugField('paese', d.recBirthCountry, focusedField === 'birthCountry')} | ${emphasizeDebugField('citt', d.recCitizenship, focusedField === 'citizenship')} | ${emphasizeDebugField('docTipo', d.recDocType, focusedField === 'docType')} | ${emphasizeDebugField('docNum', d.recDocNumber?.trim(), focusedField === 'docNumber')} | ${emphasizeDebugField('docLuogo', `${d.recDocPlace}${docPlaceLabel ? ` (${docPlaceLabel})` : ''}`, focusedField === 'docPlace')} | len=${escapeHtml(d.recLength)}
+                    </div>
+                    <div style="font-size:10px;font-family:monospace;color:var(--text-tertiary);margin-top:2px;word-break:break-all">
+                        birthBlock="${escapeHtml(birthBlock)}"${birthBlockMap ? ` | ${birthBlockMap}` : ''}
                     </div>`;
                 }
                 html += `<div class="alloggiati-record-item ${ok ? 'success' : 'error'}">

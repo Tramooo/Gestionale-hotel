@@ -387,8 +387,10 @@ export default async function handler(req, res) {
             guestType: g?.guestType,
             docType: g?.docType,
             birthDate: g?.birthDate,
+            errorFieldHint: d?.errorDesc || d?.errorDetail || '',
             // Slices of the fixed-width record for key fields (test only)
             recGuestType:     action === 'test' ? rec.substring(0, 2)    : undefined,
+            recBirthBlock:    action === 'test' ? rec.substring(95, 134) : undefined,
             recBirthComune:   action === 'test' ? rec.substring(105, 114): undefined,
             recBirthProvince: action === 'test' ? rec.substring(114, 116): undefined,
             recBirthCountry:  action === 'test' ? rec.substring(116, 125): undefined,
