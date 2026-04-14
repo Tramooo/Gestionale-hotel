@@ -1058,13 +1058,8 @@
                         </div>
                         <div class="form-group">
                             <label data-i18n="guest.guestType">Tipo Alloggiato</label>
-                            <select id="guestType">
-                                <option value="16">Ospite Singolo (16)</option>
-                                <option value="17">Capofamiglia (17)</option>
-                                <option value="18">Capogruppo (18)</option>
-                                <option value="19">Familiare (19)</option>
-                                <option value="20">Membro Gruppo (20)</option>
-                            </select>
+                            <input type="hidden" id="guestType">
+                            <div id="guestTypeDisplay" style="padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--bg-secondary);color:var(--text-secondary)">Membro Gruppo (20)</div>
                         </div>
                     </div>
 
@@ -1083,8 +1078,14 @@
                         </div>
                     </div>
 
-                    <p style="font-size:12px;color:var(--text-tertiary);margin:16px 0 12px" data-i18n="guest.document">Documento</p>
+                    <div id="guestLeaderFields">
+                    <p style="font-size:12px;color:var(--text-tertiary);margin:16px 0 12px">Dati Capogruppo / Ospite con Documento</p>
                     <div class="form-grid">
+                        <div class="form-group">
+                            <label data-i18n="field.residenceComune">Residenza</label>
+                            <input type="text" id="guestResidenceComuneSearch" placeholder="Cerca comune..." list="luoghiList" autocomplete="off">
+                            <input type="hidden" id="guestResidenceComune">
+                        </div>
                         <div class="form-group">
                             <label data-i18n="guest.docType">Tipo Documento (Codice)</label>
                             <select id="guestDocType">
@@ -1106,27 +1107,7 @@
                             <input type="hidden" id="guestDocIssuedPlace">
                         </div>
                     </div>
-
-                    <p style="font-size:12px;color:var(--text-tertiary);margin:16px 0 12px" data-i18n="guest.other">Altro</p>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label data-i18n="guest.email">Email</label>
-                            <input type="email" id="guestEmail">
-                        </div>
-                        <div class="form-group">
-                            <label data-i18n="guest.phone">Telefono</label>
-                            <input type="tel" id="guestPhone">
-                        </div>
-                        <div class="form-group">
-                            <label data-i18n="guest.assignedRoom">Camera Assegnata</label>
-                            <select id="guestRoom">
-                                <option value="" data-i18n="guest.unassigned">Non assegnata</option>
-                            </select>
-                        </div>
-                        <div class="form-group full">
-                            <label data-i18n="res.notes">Note</label>
-                            <textarea id="guestNotes" rows="2" data-i18n-placeholder="guest.notesPlaceholder" placeholder="Allergie, preferenze..."></textarea>
-                        </div>
+                    </div>
                     </div>
                     <div class="modal-actions">
                         <button type="button" class="btn btn-ghost" onclick="closeModal('guestModal')" data-i18n="common.cancel">Annulla</button>

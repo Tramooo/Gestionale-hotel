@@ -17,8 +17,10 @@
             !['italia', 'italy'].includes((guest.birthCountry || '').toLowerCase());
         if (!isForeignBorn && !guest.birthComune) missing.push(t('field.birthComune'));
         if (!guest.citizenship) missing.push(t('field.citizenship'));
-        if ((guest.guestType === '16' || guest.guestType === '17' || guest.guestType === '18') && !guest.docNumber) missing.push(t('field.docNumber'));
-        if ((guest.guestType === '16' || guest.guestType === '17' || guest.guestType === '18') && !guest.docType) missing.push(t('field.docType'));
+        if (requiresDocumentFields(guest.guestType) && !guest.residenceComune) missing.push(t('field.residenceComune'));
+        if (requiresDocumentFields(guest.guestType) && !guest.docNumber) missing.push(t('field.docNumber'));
+        if (requiresDocumentFields(guest.guestType) && !guest.docType) missing.push(t('field.docType'));
+        if (requiresDocumentFields(guest.guestType) && !guest.docIssuedPlace) missing.push(t('field.docIssuedPlace'));
         return missing;
     }
 
@@ -256,10 +258,12 @@
             'guestCitizenshipSearch',
             'guestBirthCountrySearch',
             'guestBirthComuneSearch',
+            'guestResidenceComuneSearch',
             'guestDocIssuedPlaceSearch',
             'guestCitizenship',
             'guestBirthCountry',
             'guestBirthComune',
+            'guestResidenceComune',
             'guestDocIssuedPlace'
         ].forEach((id) => {
             const element = document.getElementById(id);
@@ -267,13 +271,64 @@
         });
     }
 
+    function requiresDocumentFields(guestType) {
+        return guestType === '16' || guestType === '17' || guestType === '18';
+    }
+
+    function updateGuestTypeUI(guestType) {
+        const normalizedType = guestType || '20';
+        const leaderFields = document.getElementById('guestLeaderFields');
+        const typeDisplay = document.getElementById('guestTypeDisplay');
+        const needsDocs = requiresDocumentFields(normalizedType);
+        const labels = {
+            '16': 'Ospite Singolo (16)',
+            '17': 'Capofamiglia (17)',
+            '18': 'Capogruppo (18)',
+            '19': 'Familiare (19)',
+            '20': 'Membro Gruppo (20)'
+        };
+
+        if (typeDisplay) typeDisplay.textContent = labels[normalizedType] || labels['20'];
+        if (leaderFields) leaderFields.style.display = needsDocs ? '' : 'none';
+
+        [
+            'guestResidenceComuneSearch',
+            'guestDocType',
+            'guestDocNumber',
+            'guestDocIssuedPlaceSearch'
+        ].forEach((id) => {
+            const field = document.getElementById(id);
+            if (field) field.required = needsDocs;
+        });
+    }
+
+    function syncResidenceToDocIssuedPlace() {
+        const residenceSearch = document.getElementById('guestResidenceComuneSearch');
+        const residenceCode = document.getElementById('guestResidenceComune');
+        const docPlaceSearch = document.getElementById('guestDocIssuedPlaceSearch');
+        const docPlaceCode = document.getElementById('guestDocIssuedPlace');
+        const guestType = document.getElementById('guestType')?.value || '20';
+        if (!residenceSearch || !residenceCode || !docPlaceSearch || !docPlaceCode) return;
+        if (!requiresDocumentFields(guestType)) return;
+        if (!residenceCode.value) return;
+
+        docPlaceCode.value = residenceCode.value;
+        docPlaceSearch.value = residenceSearch.value;
+    }
+
     function openAddGuestModal(reservationId) {
-        const { closeModal, loadAlloggiatiTables, openModal } = requireDeps();
+        const { closeModal, getGuests, getReservations, loadAlloggiatiTables, openModal } = requireDeps();
         document.getElementById('guestForm').reset();
         document.getElementById('guestId').value = '';
         document.getElementById('guestReservationId').value = reservationId;
         clearGuestSearchFields();
-        document.getElementById('guestRoom').innerHTML = buildRoomOptions();
+        const reservation = getReservations().find((entry) => entry.id === reservationId);
+        const reservationGuests = getGuests().filter((guest) => guest.reservationId === reservationId);
+        const defaultType = reservationGuests.length > 0
+            ? '20'
+            : (reservation?.resType === 'group' || Number(reservation?.guestCount || 0) > 1 ? '18' : '16');
+        document.getElementById('guestType').value = defaultType;
+        updateGuestTypeUI(defaultType);
         closeModal('guestsListModal');
         openModal('guestModal');
         loadAlloggiatiTables();
@@ -284,7 +339,6 @@
             closeModal,
             findLabelFromCode,
             getGuests,
-            getRooms,
             getAlloggiatiLuoghi,
             getAlloggiatiStati,
             loadAlloggiatiTables,
@@ -298,19 +352,18 @@
         document.getElementById('guestReservationId').value = guest.reservationId;
         document.getElementById('guestFirstName').value = guest.firstName || '';
         document.getElementById('guestLastName').value = guest.lastName || '';
-        document.getElementById('guestEmail').value = guest.email || '';
-        document.getElementById('guestPhone').value = guest.phone || '';
         document.getElementById('guestDocType').value = guest.docType || '';
         document.getElementById('guestDocNumber').value = guest.docNumber || '';
-        document.getElementById('guestNotes').value = guest.notes || '';
         document.getElementById('guestSex').value = guest.sex || '';
         document.getElementById('guestBirthDate').value = guest.birthDate || '';
         document.getElementById('guestBirthComune').value = guest.birthComune || '';
         document.getElementById('guestBirthProvince').value = guest.birthProvince || '';
         document.getElementById('guestBirthCountry').value = guest.birthCountry || '';
         document.getElementById('guestCitizenship').value = guest.citizenship || '';
+        document.getElementById('guestResidenceComune').value = guest.residenceComune || '';
         document.getElementById('guestDocIssuedPlace').value = guest.docIssuedPlace || '';
         document.getElementById('guestType').value = guest.guestType || '16';
+        updateGuestTypeUI(guest.guestType || '16');
 
         const setSearch = (searchId, code, list) => {
             const element = document.getElementById(searchId);
@@ -323,6 +376,7 @@
             setSearch('guestCitizenshipSearch', guest.citizenship, getAlloggiatiStati());
             setSearch('guestBirthCountrySearch', guest.birthCountry, getAlloggiatiStati());
             setSearch('guestBirthComuneSearch', guest.birthComune, getAlloggiatiLuoghi());
+            setSearch('guestResidenceComuneSearch', guest.residenceComune, getAlloggiatiLuoghi());
             setSearch('guestDocIssuedPlaceSearch', guest.docIssuedPlace, getAlloggiatiLuoghi());
 
             const provinceElement = document.getElementById('guestBirthProvince');
@@ -334,10 +388,10 @@
             document.getElementById('guestCitizenshipSearch').value = guest.citizenship || '';
             document.getElementById('guestBirthCountrySearch').value = guest.birthCountry || '';
             document.getElementById('guestBirthComuneSearch').value = guest.birthComune || '';
+            document.getElementById('guestResidenceComuneSearch').value = guest.residenceComune || '';
             document.getElementById('guestDocIssuedPlaceSearch').value = guest.docIssuedPlace || '';
         });
 
-        document.getElementById('guestRoom').innerHTML = buildRoomOptions(guest.roomId);
         closeModal('guestsListModal');
         openModal('guestModal');
     }
@@ -358,24 +412,28 @@
         const originalGuests = getGuests();
 
         const id = document.getElementById('guestId').value;
+        const guestType = document.getElementById('guestType').value || '20';
+        const existingGuest = id ? originalGuests.find((guest) => guest.id === id) : null;
+        syncResidenceToDocIssuedPlace();
         const data = {
             reservationId: document.getElementById('guestReservationId').value,
             firstName: document.getElementById('guestFirstName').value.trim(),
             lastName: document.getElementById('guestLastName').value.trim(),
-            email: document.getElementById('guestEmail').value.trim(),
-            phone: document.getElementById('guestPhone').value.trim(),
+            email: existingGuest?.email || '',
+            phone: existingGuest?.phone || '',
             docType: document.getElementById('guestDocType').value,
             docNumber: document.getElementById('guestDocNumber').value.trim(),
-            roomId: document.getElementById('guestRoom').value,
-            notes: document.getElementById('guestNotes').value.trim(),
+            roomId: existingGuest?.roomId || '',
+            notes: existingGuest?.notes || '',
             sex: document.getElementById('guestSex').value,
             birthDate: document.getElementById('guestBirthDate').value,
             birthComune: document.getElementById('guestBirthComune').value.trim(),
             birthProvince: document.getElementById('guestBirthProvince').value.trim().toUpperCase(),
             birthCountry: document.getElementById('guestBirthCountry').value.trim(),
             citizenship: document.getElementById('guestCitizenship').value.trim(),
+            residenceComune: document.getElementById('guestResidenceComune').value.trim(),
             docIssuedPlace: document.getElementById('guestDocIssuedPlace').value.trim(),
-            guestType: document.getElementById('guestType').value
+            guestType
         };
 
         const nextGuests = [...originalGuests];

@@ -1374,6 +1374,15 @@ function setupAlloggiatiSearchField(searchId, hiddenId, listSource) {
                     provEl.value = m ? m[1] : '';
                 }
             }
+            if (searchId === 'guestResidenceComuneSearch') {
+                const docPlaceSearch = document.getElementById('guestDocIssuedPlaceSearch');
+                const docPlaceHidden = document.getElementById('guestDocIssuedPlace');
+                const guestType = document.getElementById('guestType')?.value || '20';
+                if (docPlaceSearch && docPlaceHidden && (guestType === '16' || guestType === '17' || guestType === '18')) {
+                    docPlaceSearch.value = searchEl.value;
+                    docPlaceHidden.value = code;
+                }
+            }
         } else if (listSource === 'stati') {
             // For country fields: only accept if it's a valid 9-digit code or empty — never accept free text
             const raw = searchEl.value.trim();
@@ -1420,6 +1429,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupAlloggiatiSearchField('guestCitizenshipSearch', 'guestCitizenship', 'stati');
     setupAlloggiatiSearchField('guestBirthCountrySearch', 'guestBirthCountry', 'stati');
     setupAlloggiatiSearchField('guestBirthComuneSearch', 'guestBirthComune', 'luoghi');
+    setupAlloggiatiSearchField('guestResidenceComuneSearch', 'guestResidenceComune', 'luoghi');
     setupAlloggiatiSearchField('guestDocIssuedPlaceSearch', 'guestDocIssuedPlace', 'luoghi');
 });
 
