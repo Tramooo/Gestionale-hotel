@@ -1585,6 +1585,22 @@ function renderAlloggiatiResults(container, data, mode) {
                 ${data.failingGuestDiagnosticsError ? `<div style="font-size:10px;color:var(--red)">diagnostica ospite fallita: ${escapeHtml(data.failingGuestDiagnosticsError)}</div>` : ''}
             </div>`;
         }
+        if (mode === 'test' && (data.leaderMemberPairDiagnostics || data.leaderMemberPairDiagnosticsError)) {
+            html += `<div style="margin-top:10px;padding:10px;background:var(--bg-tertiary);border-radius:8px">
+                <div style="font-size:12px;font-weight:600;margin-bottom:6px">Diagnostica Leader + Membro</div>
+                ${data.leaderMemberPairDiagnostics ? `
+                    <div style="font-size:10px;font-family:monospace;color:var(--text-secondary);margin-bottom:6px;word-break:break-all">
+                        leader="${escapeHtml(data.leaderMemberPairDiagnostics.leaderName || '')}" | tipoLeader="${escapeHtml(data.leaderMemberPairDiagnostics.leaderType || '')}" | coppie="${escapeHtml(data.leaderMemberPairDiagnostics.totalPairs || '')}"${data.leaderMemberPairDiagnostics.firstRealFailure ? ` | primoKOReale="${escapeHtml(data.leaderMemberPairDiagnostics.firstRealFailure.guestName)}"` : ''}
+                    </div>
+                    ${Array.isArray(data.leaderMemberPairDiagnostics.rows) ? data.leaderMemberPairDiagnostics.rows.map((row) => `
+                        <div style="font-size:10px;font-family:monospace;color:${row.esito ? 'var(--green)' : 'var(--text-secondary)'};margin-bottom:4px;word-break:break-all">
+                            ospite="${escapeHtml(row.guestName)}" | tipo="${escapeHtml(row.guestType)}" | esito="${row.esito ? 'OK' : 'KO'}" | comune="${escapeHtml(row.recBirthComune || '')}" | prov="${escapeHtml(row.recBirthProvince || '')}" | paese="${escapeHtml(row.recBirthCountry || '')}" | citt="${escapeHtml(row.recCitizenship || '')}"${row.errorDesc ? ` | errore="${escapeHtml(row.errorDesc)}${row.errorDetail ? ': ' + escapeHtml(row.errorDetail) : ''}"` : ''}
+                        </div>
+                    `).join('') : ''}
+                ` : ''}
+                ${data.leaderMemberPairDiagnosticsError ? `<div style="font-size:10px;color:var(--red)">diagnostica leader+membro fallita: ${escapeHtml(data.leaderMemberPairDiagnosticsError)}</div>` : ''}
+            </div>`;
+        }
         if (mode === 'test' && data.rawXml) {
             console.log('[Alloggiati raw SOAP response]', data.rawXml);
         }

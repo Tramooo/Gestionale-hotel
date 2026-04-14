@@ -519,6 +519,77 @@ function shiftIsoDate(value, days) {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
 }
 
+async function runLeaderMemberPairDiagnostics({ action, normalizedGuests, records, failingDetails, methodName, token, UTENTE }) {
+  if (action !== 'test' || !Array.isArray(failingDetails) || failingDetails.length === 0) return null;
+
+  const firstFailIndex = failingDetails.findIndex((detail) => !detail?.esito);
+  if (firstFailIndex === -1) return null;
+
+  let leaderIndex = firstFailIndex;
+  while (leaderIndex >= 0) {
+    const guestType = String(normalizedGuests[leaderIndex]?.guestType || '');
+    if (guestType === '17' || guestType === '18') break;
+    if (guestType === '16') break;
+    leaderIndex -= 1;
+  }
+
+  const leader = normalizedGuests[leaderIndex];
+  const leaderRecord = records[leaderIndex] || '';
+  if (!leader || !leaderRecord || !['17', '18'].includes(String(leader.guestType || ''))) {
+    return { note: 'Leader non trovato per la diagnostica coppie leader+membro.' };
+  }
+
+  let endIndex = leaderIndex + 1;
+  while (endIndex < normalizedGuests.length) {
+    const guestType = String(normalizedGuests[endIndex]?.guestType || '');
+    if (['17', '18', '16'].includes(guestType)) break;
+    endIndex += 1;
+  }
+
+  const pairResults = [];
+  for (let index = leaderIndex + 1; index < endIndex; index += 1) {
+    const member = normalizedGuests[index];
+    const memberRecord = records[index] || '';
+    if (!member || !memberRecord) continue;
+
+    const xml = await soapCall(methodName, `
+      <all:${methodName}>
+        <all:Utente>${UTENTE}</all:Utente>
+        <all:token>${token}</all:token>
+        <all:ElencoSchedine>
+          <all:string>${leaderRecord}</all:string>
+          <all:string>${memberRecord}</all:string>
+        </all:ElencoSchedine>
+      </all:${methodName}>`);
+
+    const allEsiti = extractAllEsiti(xml);
+    const dettaglio = allEsiti.length > 1 ? allEsiti.slice(1) : allEsiti;
+    const leaderDetail = dettaglio[0] || null;
+    const memberDetail = dettaglio[1] || dettaglio[0] || extractEsito(xml, `${methodName}Result`);
+
+    pairResults.push({
+      guestName: `${member.firstName || ''} ${member.lastName || ''}`.trim(),
+      guestType: member.guestType,
+      esito: !!memberDetail?.esito,
+      leaderEsito: leaderDetail ? !!leaderDetail.esito : true,
+      errorDesc: memberDetail?.errorDesc || '',
+      errorDetail: memberDetail?.errorDetail || '',
+      recBirthComune: memberRecord.substring(105, 114),
+      recBirthProvince: memberRecord.substring(114, 116),
+      recBirthCountry: memberRecord.substring(116, 125),
+      recCitizenship: memberRecord.substring(125, 134)
+    });
+  }
+
+  return {
+    leaderName: `${leader.firstName || ''} ${leader.lastName || ''}`.trim(),
+    leaderType: leader.guestType,
+    totalPairs: pairResults.length,
+    firstRealFailure: pairResults.find((row) => !row.esito) || null,
+    rows: pairResults
+  };
+}
+
 export default async function handler(req, res) {
   const UTENTE = process.env.ALLOGGIATI_UTENTE;
   const PASSWORD = process.env.ALLOGGIATI_PASSWORD;
@@ -796,6 +867,19 @@ export default async function handler(req, res) {
           });
         } catch (diagnosticError) {
           responsePayload.failingGuestDiagnosticsError = diagnosticError.message;
+        }
+        try {
+          responsePayload.leaderMemberPairDiagnostics = await runLeaderMemberPairDiagnostics({
+            action,
+            normalizedGuests,
+            records,
+            failingDetails: dettaglio,
+            methodName,
+            token,
+            UTENTE
+          });
+        } catch (diagnosticError) {
+          responsePayload.leaderMemberPairDiagnosticsError = diagnosticError.message;
         }
       }
 
