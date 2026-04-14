@@ -1477,7 +1477,7 @@ function renderAlloggiatiResults(container, data, mode) {
                     const birthComuneLabel = d.recBirthComune ? findLabelFromCode(alloggiatiLuoghi, d.recBirthComune) : '';
                     const docPlaceLabel = d.recDocPlace ? findLabelFromCode(alloggiatiLuoghi, d.recDocPlace) : '';
                     debugRow = `<div style="font-size:10px;font-family:monospace;color:var(--text-secondary);margin-top:2px;word-break:break-all">
-                        dataNascita="${d.birthDate || ''}" | tipo="${d.recGuestType}" | comune="${d.recBirthComune}"${birthComuneLabel ? ` (${birthComuneLabel})` : ''} | prov="${d.recBirthProvince}" | paese="${d.recBirthCountry}" | citt="${d.recCitizenship}" | <strong>docTipo="${d.recDocType}"</strong> | docNum="${d.recDocNumber?.trim()}" | docLuogo="${d.recDocPlace}"${docPlaceLabel ? ` (${docPlaceLabel})` : ''} | len=${d.recLength}
+                        dataNascita="${d.birthDate || ''}" | tipo="${d.recGuestType}" | comune="${d.recBirthComune}"${birthComuneLabel ? ` (${birthComuneLabel})` : ''} | prov="${d.recBirthProvince}" | paese="${d.recBirthCountry}" | citt="${d.recCitizenship}" | docTipo="${d.recDocType}" | docNum="${d.recDocNumber?.trim()}" | docLuogo="${d.recDocPlace}"${docPlaceLabel ? ` (${docPlaceLabel})` : ''} | len=${d.recLength}
                     </div>`;
                 }
                 html += `<div class="alloggiati-record-item ${ok ? 'success' : 'error'}">
