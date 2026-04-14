@@ -446,6 +446,79 @@ async function runGroupDiagnostics({ action, normalizedGuests, records, failingD
   };
 }
 
+async function runFailingGuestFieldDiagnostics({ action, normalizedGuests, records, failingDetails, reservation, methodName, token, UTENTE }) {
+  if (action !== 'test' || !Array.isArray(failingDetails) || failingDetails.length === 0) return [];
+
+  const firstFailIndex = failingDetails.findIndex((detail) => !detail?.esito);
+  if (firstFailIndex === -1) return [];
+
+  const guest = normalizedGuests[firstFailIndex];
+  if (!guest) return [];
+
+  let leaderIndex = firstFailIndex;
+  while (leaderIndex >= 0) {
+    const guestType = String(normalizedGuests[leaderIndex]?.guestType || '');
+    if (guestType === '17' || guestType === '18') break;
+    if (guestType === '16') break;
+    leaderIndex -= 1;
+  }
+
+  const leader = normalizedGuests[leaderIndex];
+  const leaderRecord = records[leaderIndex] || '';
+  const includeLeader = !!leader && ['17', '18'].includes(String(leader.guestType || '')) && !!leaderRecord;
+
+  const variants = [
+    { key: 'standard', label: 'Standard', guest },
+    { key: 'same_doc_place_as_leader', label: 'Luogo doc leader', guest: { ...guest, docIssuedPlace: leader?.docIssuedPlace || guest.docIssuedPlace } },
+    { key: 'same_birth_country_as_leader', label: 'Stato nascita leader', guest: { ...guest, birthCountry: leader?.birthCountry || guest.birthCountry } },
+    { key: 'same_citizenship_as_leader', label: 'Cittadinanza leader', guest: { ...guest, citizenship: leader?.citizenship || guest.citizenship } }
+  ];
+
+  const results = [];
+  for (const variant of variants) {
+    const record = buildRecord(variant.guest, reservation.checkin, reservation.checkout);
+    const payloadRecords = includeLeader ? [leaderRecord, record] : [record];
+    const payloadGuests = includeLeader ? [leader, variant.guest] : [variant.guest];
+    const xml = await soapCall(methodName, `
+      <all:${methodName}>
+        <all:Utente>${UTENTE}</all:Utente>
+        <all:token>${token}</all:token>
+        <all:ElencoSchedine>
+          ${payloadRecords.map((row) => `<all:string>${row}</all:string>`).join('\n')}
+        </all:ElencoSchedine>
+      </all:${methodName}>`);
+
+    const allEsiti = extractAllEsiti(xml);
+    const dettaglio = allEsiti.length > 1 ? allEsiti.slice(1) : allEsiti;
+    const detail = dettaglio[payloadRecords.length - 1] || dettaglio[0] || extractEsito(xml, `${methodName}Result`);
+
+    results.push({
+      label: variant.label,
+      esito: !!detail?.esito,
+      errorDesc: detail?.errorDesc || '',
+      errorDetail: detail?.errorDetail || '',
+      testedWithLeader: includeLeader,
+      leaderName: includeLeader ? `${payloadGuests[0]?.firstName || ''} ${payloadGuests[0]?.lastName || ''}`.trim() : '',
+      sex: variant.guest.sex,
+      birthDate: variant.guest.birthDate,
+      docIssuedPlace: variant.guest.docIssuedPlace,
+      birthCountry: variant.guest.birthCountry,
+      citizenship: variant.guest.citizenship,
+      birthBlock: record.substring(95, 134)
+    });
+  }
+
+  return results;
+}
+
+function shiftIsoDate(value, days) {
+  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return value;
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  date.setUTCDate(date.getUTCDate() + days);
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+}
+
 export default async function handler(req, res) {
   const UTENTE = process.env.ALLOGGIATI_UTENTE;
   const PASSWORD = process.env.ALLOGGIATI_PASSWORD;
@@ -709,6 +782,20 @@ export default async function handler(req, res) {
           });
         } catch (diagnosticError) {
           responsePayload.groupDiagnosticsError = diagnosticError.message;
+        }
+        try {
+          responsePayload.failingGuestDiagnostics = await runFailingGuestFieldDiagnostics({
+            action,
+            normalizedGuests,
+            records,
+            failingDetails: dettaglio,
+            reservation,
+            methodName,
+            token,
+            UTENTE
+          });
+        } catch (diagnosticError) {
+          responsePayload.failingGuestDiagnosticsError = diagnosticError.message;
         }
       }
 

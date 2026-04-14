@@ -1574,6 +1574,17 @@ function renderAlloggiatiResults(container, data, mode) {
                 ${data.groupDiagnosticsError ? `<div style="font-size:10px;color:var(--red)">diagnostica gruppo fallita: ${escapeHtml(data.groupDiagnosticsError)}</div>` : ''}
             </div>`;
         }
+        if (mode === 'test' && (Array.isArray(data.failingGuestDiagnostics) || data.failingGuestDiagnosticsError)) {
+            html += `<div style="margin-top:10px;padding:10px;background:var(--bg-tertiary);border-radius:8px">
+                <div style="font-size:12px;font-weight:600;margin-bottom:6px">Diagnostica Ospite KO</div>
+                ${Array.isArray(data.failingGuestDiagnostics) ? data.failingGuestDiagnostics.map((row) => `
+                    <div style="font-size:10px;font-family:monospace;color:${row.esito ? 'var(--green)' : 'var(--text-secondary)'};margin-bottom:4px;word-break:break-all">
+                        variante="${escapeHtml(row.label)}" | esito="${row.esito ? 'OK' : 'KO'}"${row.testedWithLeader ? ` | conLeader="${escapeHtml(row.leaderName || '')}"` : ''} | birthCountry="${escapeHtml(row.birthCountry || '')}" | citt="${escapeHtml(row.citizenship || '')}" | docLuogo="${escapeHtml(row.docIssuedPlace || '')}" | birthBlock="${escapeHtml(row.birthBlock || '')}"${row.errorDesc ? ` | errore="${escapeHtml(row.errorDesc)}${row.errorDetail ? ': ' + escapeHtml(row.errorDetail) : ''}"` : ''}
+                    </div>
+                `).join('') : ''}
+                ${data.failingGuestDiagnosticsError ? `<div style="font-size:10px;color:var(--red)">diagnostica ospite fallita: ${escapeHtml(data.failingGuestDiagnosticsError)}</div>` : ''}
+            </div>`;
+        }
         if (mode === 'test' && data.rawXml) {
             console.log('[Alloggiati raw SOAP response]', data.rawXml);
         }
