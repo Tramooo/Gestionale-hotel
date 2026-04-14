@@ -389,10 +389,9 @@ function loadDataCache() {
 
 async function loadAllData() {
     try {
-        // Run /api/init only once per session
-        if (!sessionStorage.getItem('gs_init_done')) {
-            try { await apiPost(API.init, {}); sessionStorage.setItem('gs_init_done', '1'); } catch (e) {}
-        }
+        // Keep schema migrations idempotent and run them on each load
+        // so freshly added columns are available even in an existing session.
+        try { await apiPost(API.init, {}); } catch (e) {}
 
         const [resData, roomData, guestData, empData, certsData, docsData] = await Promise.all([
             apiGet(API.reservations),

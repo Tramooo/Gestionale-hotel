@@ -3,9 +3,18 @@ import { neon } from '@neondatabase/serverless';
 export default async function handler(req, res) {
   const sql = neon(process.env.DATABASE_URL);
 
+  async function getEmployeesWithSafeOrdering() {
+    try {
+      return await sql`SELECT * FROM employees ORDER BY COALESCE(display_order, 0), last_name, first_name`;
+    } catch (error) {
+      if (!String(error.message || '').toLowerCase().includes('display_order')) throw error;
+      return await sql`SELECT * FROM employees ORDER BY last_name, first_name`;
+    }
+  }
+
   try {
     if (req.method === 'GET') {
-      const employees = await sql`SELECT * FROM employees ORDER BY COALESCE(display_order, 0), last_name, first_name`;
+      const employees = await getEmployeesWithSafeOrdering();
       const workEntries = await sql`SELECT * FROM work_entries ORDER BY work_date DESC`;
       const monthOverrides = await sql`SELECT * FROM employee_month_overrides ORDER BY year_month DESC`;
       return res.status(200).json({
