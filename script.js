@@ -1546,7 +1546,7 @@ function renderAlloggiatiResults(container, data, mode) {
                 <div style="font-size:12px;font-weight:600;margin-bottom:6px">Diagnostica Gruppo</div>
                 ${data.groupDiagnostics ? `
                 <div style="font-size:10px;font-family:monospace;color:var(--text-secondary);margin-bottom:6px;word-break:break-all">
-                    ${data.groupDiagnostics.guestName ? `ospite="${escapeHtml(data.groupDiagnostics.guestName)}" | ` : ''}${data.groupDiagnostics.guestType ? `tipo="${escapeHtml(data.groupDiagnostics.guestType)}" | ` : ''}records="${escapeHtml(data.groupDiagnostics.totalRecords || '')}" | sequence="${escapeHtml((data.groupDiagnostics.sequence || []).join(','))}"${data.groupDiagnostics.note ? ` | nota="${escapeHtml(data.groupDiagnostics.note)}"` : ''}${data.groupDiagnostics.esito !== undefined ? ` | esito="${data.groupDiagnostics.esito ? 'OK' : 'KO'}"` : ''}${data.groupDiagnostics.errorDesc ? ` | errore="${escapeHtml(data.groupDiagnostics.errorDesc)}${data.groupDiagnostics.errorDetail ? ': ' + escapeHtml(data.groupDiagnostics.errorDetail) : ''}"` : ''}
+                    ${data.groupDiagnostics.failedGuestName ? `rigaFallita="${escapeHtml(data.groupDiagnostics.failedGuestName)}" | ` : ''}${data.groupDiagnostics.failedGuestType ? `tipoFallita="${escapeHtml(data.groupDiagnostics.failedGuestType)}" | ` : ''}${data.groupDiagnostics.guestName ? `leader="${escapeHtml(data.groupDiagnostics.guestName)}" | ` : ''}${data.groupDiagnostics.guestType ? `tipoLeader="${escapeHtml(data.groupDiagnostics.guestType)}" | ` : ''}records="${escapeHtml(data.groupDiagnostics.totalRecords || '')}" | sequence="${escapeHtml((data.groupDiagnostics.sequence || []).join(','))}"${data.groupDiagnostics.note ? ` | nota="${escapeHtml(data.groupDiagnostics.note)}"` : ''}${data.groupDiagnostics.esito !== undefined ? ` | esito="${data.groupDiagnostics.esito ? 'OK' : 'KO'}"` : ''}${data.groupDiagnostics.errorDesc ? ` | errore="${escapeHtml(data.groupDiagnostics.errorDesc)}${data.groupDiagnostics.errorDetail ? ': ' + escapeHtml(data.groupDiagnostics.errorDetail) : ''}"` : ''}
                 </div>
                 ${Array.isArray(data.groupDiagnostics.rowResults) ? data.groupDiagnostics.rowResults.map((row) => `
                     <div style="font-size:10px;font-family:monospace;color:${row.esito ? 'var(--green)' : 'var(--text-secondary)'};margin-bottom:4px;word-break:break-all">
@@ -1579,6 +1579,18 @@ async function alloggiatiPreview(reservationId) {
 async function resolveGuestsForAlloggiati(reservationId) {
     await loadAlloggiatiTables();
     const resGuests = guests.filter(g => g.reservationId === reservationId);
+    const guestTypeRank = (guestType) => {
+        if (guestType === '17' || guestType === '18') return 0;
+        if (guestType === '19' || guestType === '20') return 1;
+        return 2;
+    };
+    const orderedGuests = resGuests
+        .map((guest, index) => ({ guest, index }))
+        .sort((a, b) => {
+            const rankDiff = guestTypeRank(String(a.guest.guestType || '16')) - guestTypeRank(String(b.guest.guestType || '16'));
+            return rankDiff !== 0 ? rankDiff : a.index - b.index;
+        })
+        .map((entry) => entry.guest);
 
     const VALID_DOC = new Set(['IDENT', 'PASOR', 'PATEN', 'PNAUZ', 'PORDF']);
     const DOC_MAP = {
@@ -1684,7 +1696,7 @@ async function resolveGuestsForAlloggiati(reservationId) {
         return errors;
     }
 
-    const resolvedGuests = resGuests.map((g) => {
+    const resolvedGuests = orderedGuests.map((g, index) => {
         const birthCountry = resolveStateCode(g.birthCountry, !!normalizeText(g.birthComune));
         const citizenship = resolveStateCode(g.citizenship, false);
         const isItalianBirth = birthCountry === ITALY_CODE;
@@ -1706,6 +1718,7 @@ async function resolveGuestsForAlloggiati(reservationId) {
             docNumber: requiresDocument ? normalizeText(g.docNumber) : '',
             docIssuedPlace: requiresDocument ? resolveDocIssuedPlace(g.docIssuedPlace) : '',
             guestType,
+            _alloggiatiOrder: index,
         };
 
         return {

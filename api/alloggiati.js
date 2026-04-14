@@ -296,36 +296,45 @@ async function runGroupDiagnostics({ action, normalizedGuests, records, failingD
     return { note: 'Nessuna riga fallita trovata nei dettagli del test.' };
   }
 
-  const leader = normalizedGuests[firstFailIndex];
-  if (!leader) {
+  const failedGuest = normalizedGuests[firstFailIndex];
+  if (!failedGuest) {
     return { leaderIndex: firstFailIndex, note: 'Riga fallita trovata, ma ospite corrispondente non disponibile dopo l ordinamento.' };
   }
 
-  if (!['17', '18'].includes(String(leader.guestType || ''))) {
+  let leaderIndex = firstFailIndex;
+  while (leaderIndex >= 0) {
+    const guestType = String(normalizedGuests[leaderIndex]?.guestType || '');
+    if (guestType === '17' || guestType === '18') break;
+    if (guestType === '16') break;
+    leaderIndex -= 1;
+  }
+
+  const leader = normalizedGuests[leaderIndex];
+  if (!leader || !['17', '18'].includes(String(leader.guestType || ''))) {
     return {
       leaderIndex: firstFailIndex,
-      guestType: leader.guestType,
-      guestName: `${leader.firstName || ''} ${leader.lastName || ''}`.trim(),
-      note: 'La prima riga fallita non e un capogruppo o capofamiglia.'
+      guestType: failedGuest.guestType,
+      guestName: `${failedGuest.firstName || ''} ${failedGuest.lastName || ''}`.trim(),
+      note: 'La prima riga fallita e un membro, ma non e stato trovato un capogruppo o capofamiglia precedente.'
     };
   }
 
-  let endIndex = firstFailIndex + 1;
+  let endIndex = leaderIndex + 1;
   while (endIndex < normalizedGuests.length) {
     const guestType = String(normalizedGuests[endIndex]?.guestType || '');
     if (['17', '18', '16'].includes(guestType)) break;
     endIndex += 1;
   }
 
-  const groupGuests = normalizedGuests.slice(firstFailIndex, endIndex);
-  const groupRecords = records.slice(firstFailIndex, endIndex);
+  const groupGuests = normalizedGuests.slice(leaderIndex, endIndex);
+  const groupRecords = records.slice(leaderIndex, endIndex);
   if (groupGuests.length <= 1) {
     return {
-      leaderIndex: firstFailIndex,
+      leaderIndex,
       guestName: `${leader.firstName || ''} ${leader.lastName || ''}`.trim(),
       sequence: groupGuests.map((guest) => guest.guestType),
       totalRecords: groupGuests.length,
-      note: 'Nessun membro consecutivo trovato dopo il capogruppo.'
+      note: 'Capogruppo trovato, ma nessun membro consecutivo rilevato dopo di lui.'
     };
   }
 
@@ -344,7 +353,10 @@ async function runGroupDiagnostics({ action, normalizedGuests, records, failingD
   const dettaglio = allEsiti.length > 1 ? allEsiti.slice(1) : allEsiti;
 
   return {
-    leaderIndex: firstFailIndex,
+    leaderIndex,
+    failedIndex: firstFailIndex,
+    failedGuestName: `${failedGuest.firstName || ''} ${failedGuest.lastName || ''}`.trim(),
+    failedGuestType: failedGuest.guestType,
     totalRecords: groupGuests.length,
     sequence: groupGuests.map((guest) => guest.guestType),
     guestNames: groupGuests.map((guest) => `${guest.firstName} ${guest.lastName}`.trim()),
@@ -440,10 +452,15 @@ export default async function handler(req, res) {
       // If client sent resolved guest data, merge it with DB data.
       // DB is authoritative for identity fields; client provides resolved Alloggiati codes.
       const resolvedMap = {};
+      const resolvedOrder = {};
       if (Array.isArray(resolvedGuests)) {
-        resolvedGuests.forEach(g => { resolvedMap[g.id] = g; });
+        resolvedGuests.forEach((g, index) => {
+          resolvedMap[g.id] = g;
+          const explicitOrder = Number.isInteger(g?._alloggiatiOrder) ? g._alloggiatiOrder : index;
+          resolvedOrder[g.id] = explicitOrder;
+        });
       }
-      const guestsData = dbGuests.map(g => {
+      let guestsData = dbGuests.map(g => {
         const r = resolvedMap[g.id];
         if (!r) return g;
         return {
@@ -458,6 +475,17 @@ export default async function handler(req, res) {
           guestType: r.guestType ?? g.guestType,
         };
       });
+
+      if (Object.keys(resolvedOrder).length > 0) {
+        guestsData = guestsData
+          .map((guest, index) => ({
+            guest,
+            index,
+            order: Number.isInteger(resolvedOrder[guest.id]) ? resolvedOrder[guest.id] : Number.MAX_SAFE_INTEGER
+          }))
+          .sort((a, b) => a.order - b.order || a.index - b.index)
+          .map((entry) => entry.guest);
+      }
 
       const normalizedGuests = guestsData.map(normalizeGuestForAlloggiatiRecord);
       const validationErrors = normalizedGuests
@@ -477,8 +505,10 @@ export default async function handler(req, res) {
 
       // Alloggiati requires leaders (17=CapoFamiglia, 18=CapoGruppo) before their members (19/20).
       // Sort: leaders first, then members, then singles — preserving relative order within each group.
-      const typeOrder = { '17': 0, '18': 0, '19': 1, '20': 1, '16': 2 };
-      normalizedGuests.sort((a, b) => (typeOrder[a.guestType] ?? 2) - (typeOrder[b.guestType] ?? 2));
+      if (Object.keys(resolvedOrder).length === 0) {
+        const typeOrder = { '17': 0, '18': 0, '19': 1, '20': 1, '16': 2 };
+        normalizedGuests.sort((a, b) => (typeOrder[a.guestType] ?? 2) - (typeOrder[b.guestType] ?? 2));
+      }
 
       // Build fixed-width records
       const records = normalizedGuests.map(g =>
