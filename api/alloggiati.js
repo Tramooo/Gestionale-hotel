@@ -363,13 +363,23 @@ async function runGroupDiagnostics({ action, normalizedGuests, records, failingD
     esito: result.esito,
     errorDesc: result.errorDesc,
     errorDetail: result.errorDetail,
-    rowResults: dettaglio.map((detail, index) => ({
-      guestName: `${groupGuests[index]?.firstName || ''} ${groupGuests[index]?.lastName || ''}`.trim(),
-      guestType: groupGuests[index]?.guestType,
-      esito: !!detail?.esito,
-      errorDesc: detail?.errorDesc || '',
-      errorDetail: detail?.errorDetail || ''
-    }))
+    rowResults: dettaglio.map((detail, index) => {
+      const guest = groupGuests[index];
+      const record = groupRecords[index] || '';
+      return {
+        guestName: `${guest?.firstName || ''} ${guest?.lastName || ''}`.trim(),
+        guestType: guest?.guestType,
+        birthDate: guest?.birthDate || '',
+        recBirthBlock: record.substring(95, 134),
+        recBirthComune: record.substring(105, 114),
+        recBirthProvince: record.substring(114, 116),
+        recBirthCountry: record.substring(116, 125),
+        recCitizenship: record.substring(125, 134),
+        esito: !!detail?.esito,
+        errorDesc: detail?.errorDesc || '',
+        errorDetail: detail?.errorDetail || ''
+      };
+    })
   };
 }
 

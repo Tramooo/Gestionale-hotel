@@ -1550,7 +1550,8 @@ function renderAlloggiatiResults(container, data, mode) {
                 </div>
                 ${Array.isArray(data.groupDiagnostics.rowResults) ? data.groupDiagnostics.rowResults.map((row) => `
                     <div style="font-size:10px;font-family:monospace;color:${row.esito ? 'var(--green)' : 'var(--text-secondary)'};margin-bottom:4px;word-break:break-all">
-                        ospite="${escapeHtml(row.guestName)}" | tipo="${escapeHtml(row.guestType)}" | esito="${row.esito ? 'OK' : 'KO'}"${row.errorDesc ? ` | errore="${escapeHtml(row.errorDesc)}${row.errorDetail ? ': ' + escapeHtml(row.errorDetail) : ''}"` : ''}
+                        ospite="${escapeHtml(row.guestName)}" | tipo="${escapeHtml(row.guestType)}" | esito="${row.esito ? 'OK' : 'KO'}"${row.birthDate ? ` | dataNascita="${escapeHtml(row.birthDate)}"` : ''}${row.recBirthComune ? ` | comune="${escapeHtml(row.recBirthComune)}"` : ''}${row.recBirthProvince ? ` | prov="${escapeHtml(row.recBirthProvince)}"` : ''}${row.recBirthCountry ? ` | paese="${escapeHtml(row.recBirthCountry)}"` : ''}${row.recCitizenship ? ` | citt="${escapeHtml(row.recCitizenship)}"` : ''}${row.errorDesc ? ` | errore="${escapeHtml(row.errorDesc)}${row.errorDetail ? ': ' + escapeHtml(row.errorDetail) : ''}"` : ''}
+                        ${!row.esito && row.recBirthBlock ? `<div style="font-size:10px;font-family:monospace;color:var(--text-tertiary);margin-top:2px">birthBlock="${escapeHtml(row.recBirthBlock)}"</div>` : ''}
                     </div>
                 `).join('') : ''}` : ''}
                 ${data.groupDiagnosticsError ? `<div style="font-size:10px;color:var(--red)">diagnostica gruppo fallita: ${escapeHtml(data.groupDiagnosticsError)}</div>` : ''}
