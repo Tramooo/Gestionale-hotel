@@ -1237,13 +1237,8 @@ async function loadAlloggiatiTables() {
 
 function findCodeFromLabel(list, label) {
     if (!list || !label) return '';
-    const lower = label.toLowerCase().trim();
-    // First try exact match on display label
-    const match = list.find(l => l.label.toLowerCase() === lower);
-    if (match) return match.code;
-    // Fallback: match by name only
-    const nameMatch = list.find(l => l.name.toLowerCase() === lower);
-    return nameMatch ? nameMatch.code : '';
+    const match = lookupAlloggiatiEntry(list, label);
+    return match ? match.code : '';
 }
 
 function findLabelFromCode(list, code) {
@@ -1255,14 +1250,57 @@ function findLabelFromCode(list, code) {
 // Resolve a raw comune name or code to its alloggiatiLuoghi entry.
 function lookupAlloggiatiLuogo(val) {
     if (!val || !alloggiatiLuoghi) return null;
-    const v = val.trim();
-    const byCode = alloggiatiLuoghi.find(l => l.code === v);
+    return lookupAlloggiatiEntry(alloggiatiLuoghi, val);
+}
+
+function normalizeAlloggiatiLookupValue(value) {
+    return String(value || '')
+        .trim()
+        .replace(/\s+/g, ' ');
+}
+
+function normalizeAlloggiatiLookupName(value) {
+    return normalizeAlloggiatiLookupValue(value)
+        .replace(/\s*\(([A-Z]{2})\)\s*$/i, '')
+        .trim()
+        .toLowerCase();
+}
+
+function extractAlloggiatiProvinceHint(value) {
+    const normalized = normalizeAlloggiatiLookupValue(value);
+    const suffixMatch = normalized.match(/\(([A-Z]{2})\)\s*$/i);
+    if (suffixMatch) return suffixMatch[1].toUpperCase();
+    return '';
+}
+
+function lookupAlloggiatiEntry(list, rawValue, provinceHint = '') {
+    if (!list || !rawValue) return null;
+    const value = normalizeAlloggiatiLookupValue(rawValue);
+    if (!value) return null;
+
+    const byCode = list.find((entry) => entry.code === value);
     if (byCode) return byCode;
-    const lower = v.toLowerCase();
-    return alloggiatiLuoghi.find(l => l.name.toLowerCase() === lower)
-        || alloggiatiLuoghi.find(l => l.label.toLowerCase() === lower)
-        || alloggiatiLuoghi.find(l => l.name.toLowerCase().startsWith(lower))
+
+    const requestedProvince = (provinceHint || extractAlloggiatiProvinceHint(value) || '').toUpperCase();
+    const normalizedName = normalizeAlloggiatiLookupName(value);
+    const candidates = list.filter((entry) => entry && entry.code);
+
+    const findMatch = (pool) =>
+        pool.find((entry) => normalizeAlloggiatiLookupValue(entry.label).toLowerCase() === value.toLowerCase())
+        || pool.find((entry) => normalizeAlloggiatiLookupValue(entry.name).toLowerCase() === value.toLowerCase())
+        || pool.find((entry) => normalizeAlloggiatiLookupName(entry.label) === normalizedName)
+        || pool.find((entry) => normalizeAlloggiatiLookupName(entry.name) === normalizedName)
+        || pool.find((entry) => normalizeAlloggiatiLookupName(entry.label).startsWith(normalizedName))
+        || pool.find((entry) => normalizeAlloggiatiLookupName(entry.name).startsWith(normalizedName))
         || null;
+
+    if (requestedProvince) {
+        const provincialMatches = candidates.filter((entry) => String(entry.prov || '').toUpperCase() === requestedProvince);
+        const provincialMatch = findMatch(provincialMatches);
+        if (provincialMatch) return provincialMatch;
+    }
+
+    return findMatch(candidates);
 }
 
 function setupAlloggiatiSearchField(searchId, hiddenId, listSource) {
@@ -1382,8 +1420,10 @@ function renderAlloggiatiResults(container, data, mode) {
                     : '';
                 let debugRow = '';
                 if (mode === 'test' && !ok && d.recDocType !== undefined) {
+                    const birthComuneLabel = d.recBirthComune ? findLabelFromCode(alloggiatiLuoghi, d.recBirthComune) : '';
+                    const docPlaceLabel = d.recDocPlace ? findLabelFromCode(alloggiatiLuoghi, d.recDocPlace) : '';
                     debugRow = `<div style="font-size:10px;font-family:monospace;color:var(--text-secondary);margin-top:2px;word-break:break-all">
-                        tipo="${d.recGuestType}" | comune="${d.recBirthComune}" | prov="${d.recBirthProvince}" | paese="${d.recBirthCountry}" | citt="${d.recCitizenship}" | <strong>docTipo="${d.recDocType}"</strong> | docNum="${d.recDocNumber?.trim()}" | docLuogo="${d.recDocPlace}" | len=${d.recLength}
+                        tipo="${d.recGuestType}" | comune="${d.recBirthComune}"${birthComuneLabel ? ` (${birthComuneLabel})` : ''} | prov="${d.recBirthProvince}" | paese="${d.recBirthCountry}" | citt="${d.recCitizenship}" | <strong>docTipo="${d.recDocType}"</strong> | docNum="${d.recDocNumber?.trim()}" | docLuogo="${d.recDocPlace}"${docPlaceLabel ? ` (${docPlaceLabel})` : ''} | len=${d.recLength}
                     </div>`;
                 }
                 html += `<div class="alloggiati-record-item ${ok ? 'success' : 'error'}">
@@ -1447,18 +1487,15 @@ async function resolveGuestsForAlloggiati(reservationId) {
             || null;
     }
 
-    function resolveComune(val) {
+    function resolveComune(val, provinceHint = '') {
         if (!val || !alloggiatiLuoghi) return { code: '', prov: '' };
         const raw = normalizeText(val);
         if (!raw) return { code: '', prov: '' };
-        if (/^\d{9}$/.test(raw)) {
-            const entry = alloggiatiLuoghi.find((luogo) => luogo.code === raw && luogo.prov);
-            return entry ? { code: entry.code, prov: entry.prov || '' } : { code: '', prov: '' };
-        }
-        const lower = raw.toLowerCase();
-        let entry = alloggiatiLuoghi.find((luogo) => luogo.prov && luogo.name.toLowerCase() === lower);
-        if (!entry) entry = alloggiatiLuoghi.find((luogo) => luogo.prov && luogo.label.toLowerCase() === lower);
-        if (!entry) entry = alloggiatiLuoghi.find((luogo) => luogo.prov && luogo.name.toLowerCase().startsWith(lower));
+        const entry = lookupAlloggiatiEntry(
+            alloggiatiLuoghi.filter((luogo) => luogo.prov),
+            raw,
+            normalizeText(provinceHint)
+        );
         return entry ? { code: entry.code, prov: entry.prov || '' } : { code: '', prov: '' };
     }
 
@@ -1530,7 +1567,7 @@ async function resolveGuestsForAlloggiati(reservationId) {
         const birthCountry = resolveStateCode(g.birthCountry, !!normalizeText(g.birthComune));
         const citizenship = resolveStateCode(g.citizenship, false);
         const isItalianBirth = birthCountry === ITALY_CODE;
-        const resolvedBirthComune = isItalianBirth ? resolveComune(g.birthComune) : { code: '', prov: '' };
+        const resolvedBirthComune = isItalianBirth ? resolveComune(g.birthComune, g.birthProvince) : { code: '', prov: '' };
         const guestType = normalizeGuestType(g.guestType);
         const requiresDocument = guestType === '16' || guestType === '17' || guestType === '18';
 
