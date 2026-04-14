@@ -283,13 +283,32 @@ async function runBirthBlockDiagnostics({ action, normalizedGuests, records, fai
 }
 
 async function runGroupDiagnostics({ action, normalizedGuests, records, failingDetails, methodName, token, UTENTE }) {
-  if (action !== 'test' || !Array.isArray(failingDetails) || failingDetails.length === 0) return null;
+  if (action !== 'test') {
+    return { note: 'Diagnostica gruppo disponibile solo in modalita test.' };
+  }
+
+  if (!Array.isArray(failingDetails) || failingDetails.length === 0) {
+    return { note: 'Nessun dettaglio di errore disponibile per la diagnostica gruppo.' };
+  }
 
   const firstFailIndex = failingDetails.findIndex((detail) => !detail?.esito);
-  if (firstFailIndex === -1) return null;
+  if (firstFailIndex === -1) {
+    return { note: 'Nessuna riga fallita trovata nei dettagli del test.' };
+  }
 
   const leader = normalizedGuests[firstFailIndex];
-  if (!leader || !['17', '18'].includes(String(leader.guestType || ''))) return null;
+  if (!leader) {
+    return { leaderIndex: firstFailIndex, note: 'Riga fallita trovata, ma ospite corrispondente non disponibile dopo l ordinamento.' };
+  }
+
+  if (!['17', '18'].includes(String(leader.guestType || ''))) {
+    return {
+      leaderIndex: firstFailIndex,
+      guestType: leader.guestType,
+      guestName: `${leader.firstName || ''} ${leader.lastName || ''}`.trim(),
+      note: 'La prima riga fallita non e un capogruppo o capofamiglia.'
+    };
+  }
 
   let endIndex = firstFailIndex + 1;
   while (endIndex < normalizedGuests.length) {
@@ -303,6 +322,7 @@ async function runGroupDiagnostics({ action, normalizedGuests, records, failingD
   if (groupGuests.length <= 1) {
     return {
       leaderIndex: firstFailIndex,
+      guestName: `${leader.firstName || ''} ${leader.lastName || ''}`.trim(),
       sequence: groupGuests.map((guest) => guest.guestType),
       totalRecords: groupGuests.length,
       note: 'Nessun membro consecutivo trovato dopo il capogruppo.'
