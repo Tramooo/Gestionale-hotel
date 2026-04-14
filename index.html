@@ -1058,8 +1058,13 @@
                         </div>
                         <div class="form-group">
                             <label data-i18n="guest.guestType">Tipo Alloggiato</label>
-                            <input type="hidden" id="guestType">
-                            <div id="guestTypeDisplay" style="padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--bg-secondary);color:var(--text-secondary)">Membro Gruppo (20)</div>
+                            <select id="guestType" onchange="window.GroupStayGuests && window.GroupStayGuests.updateGuestTypeUI(this.value)">
+                                <option value="16">Ospite Singolo (16)</option>
+                                <option value="17">Capofamiglia (17)</option>
+                                <option value="18">Capogruppo (18)</option>
+                                <option value="19">Familiare (19)</option>
+                                <option value="20">Membro Gruppo (20)</option>
+                            </select>
                         </div>
                     </div>
 
@@ -1083,7 +1088,7 @@
                     <div class="form-grid">
                         <div class="form-group">
                             <label data-i18n="field.residenceComune">Residenza</label>
-                            <input type="text" id="guestResidenceComuneSearch" placeholder="Cerca comune..." list="luoghiList" autocomplete="off">
+                            <input type="text" id="guestResidenceComuneSearch" placeholder="Cerca comune..." list="comuniList" autocomplete="off">
                             <input type="hidden" id="guestResidenceComune">
                         </div>
                         <div class="form-group">

@@ -278,17 +278,7 @@
     function updateGuestTypeUI(guestType) {
         const normalizedType = guestType || '20';
         const leaderFields = document.getElementById('guestLeaderFields');
-        const typeDisplay = document.getElementById('guestTypeDisplay');
         const needsDocs = requiresDocumentFields(normalizedType);
-        const labels = {
-            '16': 'Ospite Singolo (16)',
-            '17': 'Capofamiglia (17)',
-            '18': 'Capogruppo (18)',
-            '19': 'Familiare (19)',
-            '20': 'Membro Gruppo (20)'
-        };
-
-        if (typeDisplay) typeDisplay.textContent = labels[normalizedType] || labels['20'];
         if (leaderFields) leaderFields.style.display = needsDocs ? '' : 'none';
 
         [
@@ -527,6 +517,7 @@
         renderGuests,
         saveGuest,
         setAllGuestsType,
-        setGuestAsLeader
+        setGuestAsLeader,
+        updateGuestTypeUI
     };
 })(window);
