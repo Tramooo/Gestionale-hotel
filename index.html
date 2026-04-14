@@ -130,6 +130,33 @@
                         <span class="stat-label" data-i18n="dash.roomsOccupied">Camere Occupate</span>
                     </div>
                 </div>
+                <div class="stat-card">
+                    <div class="stat-icon green">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M12 5v14"/><path d="M5 12l7-7 7 7"/></svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-arrivals-today">0</span>
+                        <span class="stat-label" data-i18n="dash.arrivalsToday">Arrivi Oggi</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon purple">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M12 19V5"/><path d="M19 12l-7 7-7-7"/></svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-departures-today">0</span>
+                        <span class="stat-label" data-i18n="dash.departuresToday">Partenze Oggi</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon orange">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-pending-reservations">0</span>
+                        <span class="stat-label" data-i18n="dash.pendingReservations">In Attesa</span>
+                    </div>
+                </div>
             </div>
 
             <div class="dashboard-grid">
@@ -172,6 +199,60 @@
                             <div class="legend-item"><span class="legend-dot occupied"></span><span data-i18n="dash.occupied">Occupate</span> <strong id="legend-occupied">0</strong></div>
                             <div class="legend-item"><span class="legend-dot available"></span><span data-i18n="dash.available">Disponibili</span> <strong id="legend-available">0</strong></div>
                             <div class="legend-item"><span class="legend-dot maintenance"></span><span data-i18n="dash.maintenance">Manutenzione</span> <strong id="legend-maintenance">0</strong></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-insights-grid">
+                <div class="card">
+                    <div class="card-header card-header-stack">
+                        <div>
+                            <h3 data-i18n="dash.next7Days">Prossimi 7 Giorni</h3>
+                            <p class="card-subtitle" data-i18n="dash.next7DaysSubtitle">Camere richieste e ospiti previsti giorno per giorno</p>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="trend-chart" id="occupancy-trend-chart"></div>
+                        <div class="dashboard-mini-stats">
+                            <div class="mini-stat">
+                                <span class="mini-stat-label" data-i18n="dash.peakOccupancy">Picco occupazione</span>
+                                <strong id="stat-peak-occupancy">0%</strong>
+                            </div>
+                            <div class="mini-stat">
+                                <span class="mini-stat-label" data-i18n="dash.peakGuestLoad">Picco ospiti</span>
+                                <strong id="stat-peak-guests">0</strong>
+                            </div>
+                            <div class="mini-stat">
+                                <span class="mini-stat-label" data-i18n="dash.busiestDay">Giorno piu intenso</span>
+                                <strong id="stat-busiest-day">-</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header card-header-stack">
+                        <div>
+                            <h3 data-i18n="dash.reservationMix">Mix Prenotazioni</h3>
+                            <p class="card-subtitle" data-i18n="dash.reservationMixSubtitle">Distribuzione per stato e durata media soggiorno</p>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="status-chart" id="reservation-mix"></div>
+                        <div class="dashboard-mini-stats">
+                            <div class="mini-stat">
+                                <span class="mini-stat-label" data-i18n="dash.avgStay">Soggiorno medio</span>
+                                <strong id="stat-average-stay">0</strong>
+                            </div>
+                            <div class="mini-stat">
+                                <span class="mini-stat-label" data-i18n="dash.arrivalsNextWeek">Arrivi 7g</span>
+                                <strong id="stat-arrivals-next-week">0</strong>
+                            </div>
+                            <div class="mini-stat">
+                                <span class="mini-stat-label" data-i18n="dash.departuresNextWeek">Partenze 7g</span>
+                                <strong id="stat-departures-next-week">0</strong>
+                            </div>
                         </div>
                     </div>
                 </div>
