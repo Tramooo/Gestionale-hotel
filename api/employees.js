@@ -5,7 +5,7 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const employees = await sql`SELECT * FROM employees ORDER BY last_name, first_name`;
+      const employees = await sql`SELECT * FROM employees ORDER BY COALESCE(display_order, 0), last_name, first_name`;
       const workEntries = await sql`SELECT * FROM work_entries ORDER BY work_date DESC`;
       const monthOverrides = await sql`SELECT * FROM employee_month_overrides ORDER BY year_month DESC`;
       return res.status(200).json({
@@ -13,6 +13,7 @@ export default async function handler(req, res) {
           id: e.id,
           firstName: e.first_name,
           lastName: e.last_name,
+          displayOrder: Number.isFinite(parseInt(e.display_order, 10)) ? parseInt(e.display_order, 10) : 0,
           role: e.role,
           payType: e.pay_type,
           payRate: parseFloat(e.pay_rate) || 0,
@@ -63,10 +64,22 @@ export default async function handler(req, res) {
         return res.status(201).json({ success: true });
       }
 
+      if (type === 'reorder') {
+        const employees = Array.isArray(req.body?.employees) ? req.body.employees : [];
+        await Promise.all(employees.map((employee, index) => sql`
+          UPDATE employees
+          SET display_order = ${Number.isFinite(employee.displayOrder) ? employee.displayOrder : index}
+          WHERE id = ${employee.id}
+        `));
+        return res.status(200).json({ success: true });
+      }
+
       const e = req.body;
+      const nextOrderRow = await sql`SELECT COALESCE(MAX(display_order), -1) + 1 AS next_order FROM employees`;
+      const nextOrder = parseInt(nextOrderRow[0]?.next_order, 10) || 0;
       await sql`
-        INSERT INTO employees (id, first_name, last_name, role, pay_type, pay_rate, phone, email, notes)
-        VALUES (${e.id}, ${e.firstName}, ${e.lastName}, ${e.role || null}, ${e.payType}, ${e.payRate || 0}, ${e.phone || null}, ${e.email || null}, ${e.notes || null})
+        INSERT INTO employees (id, first_name, last_name, display_order, role, pay_type, pay_rate, phone, email, notes)
+        VALUES (${e.id}, ${e.firstName}, ${e.lastName}, ${e.displayOrder ?? nextOrder}, ${e.role || null}, ${e.payType}, ${e.payRate || 0}, ${e.phone || null}, ${e.email || null}, ${e.notes || null})
       `;
       return res.status(201).json({ success: true });
     }
@@ -85,10 +98,20 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true });
       }
 
+      if (type === 'reorder') {
+        const employees = Array.isArray(req.body?.employees) ? req.body.employees : [];
+        await Promise.all(employees.map((employee, index) => sql`
+          UPDATE employees
+          SET display_order = ${Number.isFinite(employee.displayOrder) ? employee.displayOrder : index}
+          WHERE id = ${employee.id}
+        `));
+        return res.status(200).json({ success: true });
+      }
+
       const e = req.body;
       await sql`
         UPDATE employees SET first_name=${e.firstName}, last_name=${e.lastName},
-        role=${e.role || null}, pay_type=${e.payType}, pay_rate=${e.payRate || 0},
+        display_order=${e.displayOrder ?? 0}, role=${e.role || null}, pay_type=${e.payType}, pay_rate=${e.payRate || 0},
         phone=${e.phone || null}, email=${e.email || null}, notes=${e.notes || null}
         WHERE id=${e.id}
       `;

@@ -4192,12 +4192,36 @@ select.cell-input option {
     color: var(--accent);
 }
 
+.emp-table tbody tr.emp-row-dragging td {
+    opacity: 0.55;
+}
+
+.emp-table tbody tr.emp-row-drop-target td {
+    box-shadow: inset 0 2px 0 var(--accent);
+}
+
 .emp-tbl-empname {
     display: block;
     line-height: 1.2;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.emp-row-drag-handle {
+    float: left;
+    width: 18px;
+    margin-right: 8px;
+    color: var(--text-tertiary);
+    cursor: grab;
+    user-select: none;
+    font-size: 14px;
+    line-height: 1.2;
+    letter-spacing: -1px;
+}
+
+.emp-row-drag-handle:active {
+    cursor: grabbing;
 }
 
 .emp-tbl-role {

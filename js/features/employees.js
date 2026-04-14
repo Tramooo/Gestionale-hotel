@@ -1,9 +1,19 @@
 (function initEmployeesFeature(global) {
     let deps = null;
+    let draggedEmployeeId = null;
 
     function requireDeps() {
         if (!deps) throw new Error('GroupStayEmployees not initialized');
         return deps;
+    }
+
+    function getSortedEmployees(sourceEmployees) {
+        return [...sourceEmployees].sort((a, b) => {
+            const aOrder = Number.isFinite(a.displayOrder) ? a.displayOrder : Number.MAX_SAFE_INTEGER;
+            const bOrder = Number.isFinite(b.displayOrder) ? b.displayOrder : Number.MAX_SAFE_INTEGER;
+            if (aOrder !== bOrder) return aOrder - bOrder;
+            return `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`, 'it');
+        });
     }
 
     function getDaysInMonth(year, month) {
@@ -56,7 +66,7 @@
         const monthNames = t('months.full');
         document.getElementById('empMonthLabel').textContent = `${monthNames[month]} ${year}`;
 
-        let filtered = getEmployees();
+        let filtered = getSortedEmployees(getEmployees());
         if (search) {
             filtered = filtered.filter((employee) =>
                 (employee.firstName + ' ' + employee.lastName + ' ' + (employee.role || '')).toLowerCase().includes(search)
@@ -99,7 +109,7 @@
             const typeCls = 'emp-tbl-type emp-tbl-type-btn' + (isOverridden ? ' emp-tbl-type-override' : '');
             const typeTitle = isOverridden ? 'Override attivo — clicca per modificare' : 'Clicca per cambiare tipo paga questo mese';
             const roleStr = employee.role ? `<span class="emp-tbl-role">${escapeHtml(employee.role)}</span>` : '';
-            let row = `<td class="emp-tbl-sticky emp-tbl-name" onclick="openEditEmployee('${employee.id}')"><span class="emp-tbl-empname">${escapeHtml(employee.lastName)} ${escapeHtml(employee.firstName)}</span>${roleStr}</td>`;
+            let row = `<td class="emp-tbl-sticky emp-tbl-name" onclick="openEditEmployee('${employee.id}')"><span class="emp-row-drag-handle" draggable="true" data-drag-emp="${employee.id}" title="Trascina per spostare la riga">::</span><span class="emp-tbl-empname">${escapeHtml(employee.lastName)} ${escapeHtml(employee.firstName)}</span>${roleStr}</td>`;
             row += `<td class="${typeCls}" title="${typeTitle}" onclick="openPayTypePopover('${employee.id}','${monthStr}',this)">${typeLabel}</td>`;
 
             for (let d = 1; d <= dim; d++) {
@@ -131,7 +141,7 @@
                 : stats.daysWorked + 'g';
             row += `<td class="emp-tbl-total">${totalDisplay}</td>`;
             row += `<td class="emp-tbl-pay">€${estimated.toFixed(0)}</td>`;
-            bodyRows += `<tr>${row}</tr>`;
+            bodyRows += `<tr data-emp-row="${employee.id}">${row}</tr>`;
         });
 
         let colgroup = '<colgroup><col style="width:140px"><col style="width:40px">';
@@ -147,6 +157,86 @@
                 </table>
             </div>
         `;
+
+        bindEmployeeRowDrag();
+    }
+
+    function bindEmployeeRowDrag() {
+        const grid = document.getElementById('employeesGrid');
+        if (!grid) return;
+
+        grid.querySelectorAll('[data-drag-emp]').forEach((handle) => {
+            handle.addEventListener('click', (event) => event.stopPropagation());
+            handle.addEventListener('dragstart', (event) => {
+                const empId = handle.dataset.dragEmp;
+                if (!empId) return;
+                draggedEmployeeId = empId;
+                event.dataTransfer.effectAllowed = 'move';
+                event.dataTransfer.setData('text/plain', empId);
+                handle.closest('tr')?.classList.add('emp-row-dragging');
+            });
+            handle.addEventListener('dragend', () => {
+                draggedEmployeeId = null;
+                clearEmployeeRowDropState();
+            });
+        });
+
+        grid.querySelectorAll('[data-emp-row]').forEach((row) => {
+            row.addEventListener('dragover', (event) => {
+                if (!draggedEmployeeId) return;
+                event.preventDefault();
+                const isSelf = row.dataset.empRow === draggedEmployeeId;
+                clearEmployeeRowDropState();
+                if (!isSelf) row.classList.add('emp-row-drop-target');
+            });
+            row.addEventListener('dragleave', (event) => {
+                if (!row.contains(event.relatedTarget)) row.classList.remove('emp-row-drop-target');
+            });
+            row.addEventListener('drop', async (event) => {
+                if (!draggedEmployeeId) return;
+                event.preventDefault();
+                const targetEmployeeId = row.dataset.empRow;
+                clearEmployeeRowDropState();
+                if (!targetEmployeeId || targetEmployeeId === draggedEmployeeId) return;
+                await reorderEmployees(draggedEmployeeId, targetEmployeeId);
+            });
+        });
+    }
+
+    function clearEmployeeRowDropState() {
+        document.querySelectorAll('.emp-row-drop-target, .emp-row-dragging').forEach((row) => {
+            row.classList.remove('emp-row-drop-target', 'emp-row-dragging');
+        });
+    }
+
+    async function reorderEmployees(draggedId, targetId) {
+        const { API, apiPut, getEmployees, setEmployees, showToast } = requireDeps();
+        const previousEmployees = getEmployees();
+        const orderedEmployees = getSortedEmployees(previousEmployees);
+        const fromIndex = orderedEmployees.findIndex((employee) => employee.id === draggedId);
+        const toIndex = orderedEmployees.findIndex((employee) => employee.id === targetId);
+        if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return;
+
+        const [movedEmployee] = orderedEmployees.splice(fromIndex, 1);
+        orderedEmployees.splice(toIndex, 0, movedEmployee);
+        const nextEmployees = orderedEmployees.map((employee, index) => ({ ...employee, displayOrder: index }));
+
+        setEmployees(nextEmployees);
+        renderEmployees();
+
+        try {
+            await apiPut(API.employees + '?type=reorder', {
+                employees: nextEmployees.map((employee) => ({
+                    id: employee.id,
+                    displayOrder: employee.displayOrder
+                }))
+            });
+        } catch (error) {
+            console.error('Employee reorder error:', error);
+            setEmployees(previousEmployees);
+            renderEmployees();
+            showToast('Impossibile salvare il nuovo ordine dei dipendenti', 'error');
+        }
     }
 
     async function empTableToggle(empId, dateStr) {
@@ -475,6 +565,9 @@
             id: id || generateId(),
             firstName: document.getElementById('empFirstName').value.trim(),
             lastName: document.getElementById('empLastName').value.trim(),
+            displayOrder: id
+                ? (getEmployees().find((employee) => employee.id === id)?.displayOrder ?? 0)
+                : getEmployees().length,
             role: document.getElementById('empRole').value.trim(),
             payType: document.getElementById('empPayType').value,
             payRate: parseFloat(document.getElementById('empPayRate').value) || 0,

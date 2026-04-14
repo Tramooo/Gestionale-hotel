@@ -94,6 +94,7 @@ export default async function handler(req, res) {
         id TEXT PRIMARY KEY,
         first_name TEXT NOT NULL,
         last_name TEXT NOT NULL,
+        display_order INTEGER DEFAULT 0,
         role TEXT,
         pay_type TEXT NOT NULL DEFAULT 'monthly',
         pay_rate NUMERIC DEFAULT 0,
@@ -102,6 +103,8 @@ export default async function handler(req, res) {
         notes TEXT
       )
     `;
+
+    await sql`ALTER TABLE employees ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0`;
 
     await sql`
       CREATE TABLE IF NOT EXISTS work_entries (
