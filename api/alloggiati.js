@@ -282,6 +282,65 @@ async function runBirthBlockDiagnostics({ action, normalizedGuests, records, fai
   return results;
 }
 
+async function runGroupDiagnostics({ action, normalizedGuests, records, failingDetails, methodName, token, UTENTE }) {
+  if (action !== 'test' || !Array.isArray(failingDetails) || failingDetails.length === 0) return null;
+
+  const firstFailIndex = failingDetails.findIndex((detail) => !detail?.esito);
+  if (firstFailIndex === -1) return null;
+
+  const leader = normalizedGuests[firstFailIndex];
+  if (!leader || !['17', '18'].includes(String(leader.guestType || ''))) return null;
+
+  let endIndex = firstFailIndex + 1;
+  while (endIndex < normalizedGuests.length) {
+    const guestType = String(normalizedGuests[endIndex]?.guestType || '');
+    if (['17', '18', '16'].includes(guestType)) break;
+    endIndex += 1;
+  }
+
+  const groupGuests = normalizedGuests.slice(firstFailIndex, endIndex);
+  const groupRecords = records.slice(firstFailIndex, endIndex);
+  if (groupGuests.length <= 1) {
+    return {
+      leaderIndex: firstFailIndex,
+      sequence: groupGuests.map((guest) => guest.guestType),
+      totalRecords: groupGuests.length,
+      note: 'Nessun membro consecutivo trovato dopo il capogruppo.'
+    };
+  }
+
+  const schedineXml = groupRecords.map((record) => `<all:string>${record}</all:string>`).join('\n');
+  const xml = await soapCall(methodName, `
+    <all:${methodName}>
+      <all:Utente>${UTENTE}</all:Utente>
+      <all:token>${token}</all:token>
+      <all:ElencoSchedine>
+        ${schedineXml}
+      </all:ElencoSchedine>
+    </all:${methodName}>`);
+
+  const result = extractEsito(xml, `${methodName}Result`);
+  const allEsiti = extractAllEsiti(xml);
+  const dettaglio = allEsiti.length > 1 ? allEsiti.slice(1) : allEsiti;
+
+  return {
+    leaderIndex: firstFailIndex,
+    totalRecords: groupGuests.length,
+    sequence: groupGuests.map((guest) => guest.guestType),
+    guestNames: groupGuests.map((guest) => `${guest.firstName} ${guest.lastName}`.trim()),
+    esito: result.esito,
+    errorDesc: result.errorDesc,
+    errorDetail: result.errorDetail,
+    rowResults: dettaglio.map((detail, index) => ({
+      guestName: `${groupGuests[index]?.firstName || ''} ${groupGuests[index]?.lastName || ''}`.trim(),
+      guestType: groupGuests[index]?.guestType,
+      esito: !!detail?.esito,
+      errorDesc: detail?.errorDesc || '',
+      errorDetail: detail?.errorDetail || ''
+    }))
+  };
+}
+
 export default async function handler(req, res) {
   const UTENTE = process.env.ALLOGGIATI_UTENTE;
   const PASSWORD = process.env.ALLOGGIATI_PASSWORD;
@@ -514,6 +573,19 @@ export default async function handler(req, res) {
           });
         } catch (diagnosticError) {
           responsePayload.birthDiagnosticsError = diagnosticError.message;
+        }
+        try {
+          responsePayload.groupDiagnostics = await runGroupDiagnostics({
+            action,
+            normalizedGuests,
+            records,
+            failingDetails: dettaglio,
+            methodName,
+            token,
+            UTENTE
+          });
+        } catch (diagnosticError) {
+          responsePayload.groupDiagnosticsError = diagnosticError.message;
         }
       }
 

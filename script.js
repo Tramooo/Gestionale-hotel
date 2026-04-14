@@ -1541,6 +1541,20 @@ function renderAlloggiatiResults(container, data, mode) {
                 ${data.birthDiagnosticsError ? `<div style="font-size:10px;color:var(--red)">diagnostica fallita: ${escapeHtml(data.birthDiagnosticsError)}</div>` : ''}
             </div>`;
         }
+        if (mode === 'test' && data.groupDiagnostics) {
+            html += `<div style="margin-top:10px;padding:10px;background:var(--bg-tertiary);border-radius:8px">
+                <div style="font-size:12px;font-weight:600;margin-bottom:6px">Diagnostica Gruppo</div>
+                <div style="font-size:10px;font-family:monospace;color:var(--text-secondary);margin-bottom:6px;word-break:break-all">
+                    records="${escapeHtml(data.groupDiagnostics.totalRecords)}" | sequence="${escapeHtml((data.groupDiagnostics.sequence || []).join(','))}"${data.groupDiagnostics.note ? ` | nota="${escapeHtml(data.groupDiagnostics.note)}"` : ''}${data.groupDiagnostics.esito !== undefined ? ` | esito="${data.groupDiagnostics.esito ? 'OK' : 'KO'}"` : ''}${data.groupDiagnostics.errorDesc ? ` | errore="${escapeHtml(data.groupDiagnostics.errorDesc)}${data.groupDiagnostics.errorDetail ? ': ' + escapeHtml(data.groupDiagnostics.errorDetail) : ''}"` : ''}
+                </div>
+                ${Array.isArray(data.groupDiagnostics.rowResults) ? data.groupDiagnostics.rowResults.map((row) => `
+                    <div style="font-size:10px;font-family:monospace;color:${row.esito ? 'var(--green)' : 'var(--text-secondary)'};margin-bottom:4px;word-break:break-all">
+                        ospite="${escapeHtml(row.guestName)}" | tipo="${escapeHtml(row.guestType)}" | esito="${row.esito ? 'OK' : 'KO'}"${row.errorDesc ? ` | errore="${escapeHtml(row.errorDesc)}${row.errorDetail ? ': ' + escapeHtml(row.errorDetail) : ''}"` : ''}
+                    </div>
+                `).join('') : ''}
+                ${data.groupDiagnosticsError ? `<div style="font-size:10px;color:var(--red)">diagnostica gruppo fallita: ${escapeHtml(data.groupDiagnosticsError)}</div>` : ''}
+            </div>`;
+        }
         if (mode === 'test' && data.rawXml) {
             console.log('[Alloggiati raw SOAP response]', data.rawXml);
         }
