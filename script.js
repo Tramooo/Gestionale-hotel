@@ -1209,7 +1209,7 @@ async function loadAlloggiatiTables() {
             const isState = code.length === 9 && code.startsWith('1') && code.charAt(1) === '0';
             const label = prov && !isState ? `${name} (${prov})` : name;
 
-            const entry = { code, name, prov, label };
+            const entry = { code, name, prov, label, rawParts: parts.map((part) => part.trim()) };
             if (isState) {
                 stati.push(entry);
             }
@@ -1273,7 +1273,67 @@ function extractAlloggiatiProvinceHint(value) {
     return '';
 }
 
-function lookupAlloggiatiEntry(list, rawValue, provinceHint = '') {
+function parseAlloggiatiDateToken(value) {
+    const token = String(value || '').trim();
+    if (!token) return null;
+
+    let match = token.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (match) {
+        return Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+    }
+
+    match = token.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (match) {
+        return Date.UTC(Number(match[3]), Number(match[2]) - 1, Number(match[1]));
+    }
+
+    return null;
+}
+
+function getAlloggiatiEntryValidity(entry) {
+    const rawParts = Array.isArray(entry?.rawParts) ? entry.rawParts : [];
+    const dateValues = rawParts
+        .map(parseAlloggiatiDateToken)
+        .filter((value) => value !== null);
+
+    if (dateValues.length === 0) return { start: null, end: null };
+    return {
+        start: dateValues[0] ?? null,
+        end: dateValues[1] ?? null
+    };
+}
+
+function scoreAlloggiatiEntry(entry, value, normalizedName, requestedProvince, contextDateUtc) {
+    let score = 0;
+    const labelLower = normalizeAlloggiatiLookupValue(entry.label).toLowerCase();
+    const nameLower = normalizeAlloggiatiLookupValue(entry.name).toLowerCase();
+    const normalizedEntryLabel = normalizeAlloggiatiLookupName(entry.label);
+    const normalizedEntryName = normalizeAlloggiatiLookupName(entry.name);
+    const entryProvince = String(entry.prov || '').toUpperCase();
+
+    if (labelLower === value.toLowerCase()) score += 500;
+    if (nameLower === value.toLowerCase()) score += 450;
+    if (normalizedEntryLabel === normalizedName) score += 300;
+    if (normalizedEntryName === normalizedName) score += 280;
+    if (normalizedEntryLabel.startsWith(normalizedName)) score += 150;
+    if (normalizedEntryName.startsWith(normalizedName)) score += 140;
+    if (requestedProvince && entryProvince === requestedProvince) score += 120;
+
+    if (contextDateUtc !== null) {
+        const validity = getAlloggiatiEntryValidity(entry);
+        const startOk = validity.start === null || contextDateUtc >= validity.start;
+        const endOk = validity.end === null || contextDateUtc <= validity.end;
+        if (startOk && endOk) {
+            score += 200;
+        } else if (validity.start !== null || validity.end !== null) {
+            score -= 200;
+        }
+    }
+
+    return score;
+}
+
+function lookupAlloggiatiEntry(list, rawValue, provinceHint = '', options = {}) {
     if (!list || !rawValue) return null;
     const value = normalizeAlloggiatiLookupValue(rawValue);
     if (!value) return null;
@@ -1284,23 +1344,17 @@ function lookupAlloggiatiEntry(list, rawValue, provinceHint = '') {
     const requestedProvince = (provinceHint || extractAlloggiatiProvinceHint(value) || '').toUpperCase();
     const normalizedName = normalizeAlloggiatiLookupName(value);
     const candidates = list.filter((entry) => entry && entry.code);
+    const contextDateUtc = options.birthDate ? parseAlloggiatiDateToken(String(options.birthDate).substring(0, 10).replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$1-$2-$3')) : null;
 
-    const findMatch = (pool) =>
-        pool.find((entry) => normalizeAlloggiatiLookupValue(entry.label).toLowerCase() === value.toLowerCase())
-        || pool.find((entry) => normalizeAlloggiatiLookupValue(entry.name).toLowerCase() === value.toLowerCase())
-        || pool.find((entry) => normalizeAlloggiatiLookupName(entry.label) === normalizedName)
-        || pool.find((entry) => normalizeAlloggiatiLookupName(entry.name) === normalizedName)
-        || pool.find((entry) => normalizeAlloggiatiLookupName(entry.label).startsWith(normalizedName))
-        || pool.find((entry) => normalizeAlloggiatiLookupName(entry.name).startsWith(normalizedName))
-        || null;
+    const scored = candidates
+        .map((entry) => ({
+            entry,
+            score: scoreAlloggiatiEntry(entry, value, normalizedName, requestedProvince, contextDateUtc)
+        }))
+        .filter((item) => item.score > 0)
+        .sort((a, b) => b.score - a.score);
 
-    if (requestedProvince) {
-        const provincialMatches = candidates.filter((entry) => String(entry.prov || '').toUpperCase() === requestedProvince);
-        const provincialMatch = findMatch(provincialMatches);
-        if (provincialMatch) return provincialMatch;
-    }
-
-    return findMatch(candidates);
+    return scored.length > 0 ? scored[0].entry : null;
 }
 
 function setupAlloggiatiSearchField(searchId, hiddenId, listSource) {
@@ -1423,7 +1477,7 @@ function renderAlloggiatiResults(container, data, mode) {
                     const birthComuneLabel = d.recBirthComune ? findLabelFromCode(alloggiatiLuoghi, d.recBirthComune) : '';
                     const docPlaceLabel = d.recDocPlace ? findLabelFromCode(alloggiatiLuoghi, d.recDocPlace) : '';
                     debugRow = `<div style="font-size:10px;font-family:monospace;color:var(--text-secondary);margin-top:2px;word-break:break-all">
-                        tipo="${d.recGuestType}" | comune="${d.recBirthComune}"${birthComuneLabel ? ` (${birthComuneLabel})` : ''} | prov="${d.recBirthProvince}" | paese="${d.recBirthCountry}" | citt="${d.recCitizenship}" | <strong>docTipo="${d.recDocType}"</strong> | docNum="${d.recDocNumber?.trim()}" | docLuogo="${d.recDocPlace}"${docPlaceLabel ? ` (${docPlaceLabel})` : ''} | len=${d.recLength}
+                        dataNascita="${d.birthDate || ''}" | tipo="${d.recGuestType}" | comune="${d.recBirthComune}"${birthComuneLabel ? ` (${birthComuneLabel})` : ''} | prov="${d.recBirthProvince}" | paese="${d.recBirthCountry}" | citt="${d.recCitizenship}" | <strong>docTipo="${d.recDocType}"</strong> | docNum="${d.recDocNumber?.trim()}" | docLuogo="${d.recDocPlace}"${docPlaceLabel ? ` (${docPlaceLabel})` : ''} | len=${d.recLength}
                     </div>`;
                 }
                 html += `<div class="alloggiati-record-item ${ok ? 'success' : 'error'}">
@@ -1487,14 +1541,15 @@ async function resolveGuestsForAlloggiati(reservationId) {
             || null;
     }
 
-    function resolveComune(val, provinceHint = '') {
+    function resolveComune(val, provinceHint = '', birthDate = '') {
         if (!val || !alloggiatiLuoghi) return { code: '', prov: '' };
         const raw = normalizeText(val);
         if (!raw) return { code: '', prov: '' };
         const entry = lookupAlloggiatiEntry(
             alloggiatiLuoghi.filter((luogo) => luogo.prov),
             raw,
-            normalizeText(provinceHint)
+            normalizeText(provinceHint),
+            { birthDate }
         );
         return entry ? { code: entry.code, prov: entry.prov || '' } : { code: '', prov: '' };
     }
@@ -1567,7 +1622,7 @@ async function resolveGuestsForAlloggiati(reservationId) {
         const birthCountry = resolveStateCode(g.birthCountry, !!normalizeText(g.birthComune));
         const citizenship = resolveStateCode(g.citizenship, false);
         const isItalianBirth = birthCountry === ITALY_CODE;
-        const resolvedBirthComune = isItalianBirth ? resolveComune(g.birthComune, g.birthProvince) : { code: '', prov: '' };
+        const resolvedBirthComune = isItalianBirth ? resolveComune(g.birthComune, g.birthProvince, g.birthDate) : { code: '', prov: '' };
         const guestType = normalizeGuestType(g.guestType);
         const requiresDocument = guestType === '16' || guestType === '17' || guestType === '18';
 
@@ -1578,7 +1633,7 @@ async function resolveGuestsForAlloggiati(reservationId) {
             sex: normalizeText(g.sex),
             birthDate: g.birthDate,
             birthComune: isItalianBirth ? resolvedBirthComune.code : '',
-            birthProvince: isItalianBirth ? normalizeText(g.birthProvince || resolvedBirthComune.prov).toUpperCase().substring(0, 2) : '',
+            birthProvince: isItalianBirth ? normalizeText(resolvedBirthComune.prov || g.birthProvince).toUpperCase().substring(0, 2) : '',
             birthCountry,
             citizenship,
             docType: requiresDocument ? normalizeDocType(g.docType) : '',

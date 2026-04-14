@@ -104,6 +104,18 @@ function normalizeGuestForAlloggiatiRecord(guest) {
   };
 }
 
+function sanitizeAlloggiatiText(value, { uppercase = false, keepSpaces = true } = {}) {
+  let text = String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\x20-\x7E]/g, keepSpaces ? ' ' : '')
+    .replace(/\s+/g, keepSpaces ? ' ' : '')
+    .trim();
+
+  if (uppercase) text = text.toUpperCase();
+  return text;
+}
+
 function validateGuestForAlloggiatiRecord(guest) {
   const errors = [];
   const requiresDocument = guest.guestType === '16' || guest.guestType === '17' || guest.guestType === '18';
@@ -136,6 +148,9 @@ function buildRecord(rawGuest, checkinDate, checkoutDate) {
   const pad = (val, len) => (val || '').toString().substring(0, len).padEnd(len, ' ');
   const padNum = (val, len) => (val || '').toString().substring(0, len).padStart(len, '0');
   const guest = normalizeGuestForAlloggiatiRecord(rawGuest);
+  const safeLastName = sanitizeAlloggiatiText(guest.lastName, { uppercase: true });
+  const safeFirstName = sanitizeAlloggiatiText(guest.firstName, { uppercase: true });
+  const safeDocNumber = sanitizeAlloggiatiText(guest.docNumber, { uppercase: true });
 
   // Calculate nights (max 30) — parse as UTC to avoid timezone issues
   const parseUTC = (s) => { const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? new Date(Date.UTC(m[1], m[2]-1, m[3])) : new Date(s); };
@@ -170,8 +185,8 @@ function buildRecord(rawGuest, checkinDate, checkoutDate) {
   record += padNum(guest.guestType, 2);               // 0-1:   Tipo Alloggiato (2)
   record += arrivalDate;                          // 2-11:  Data Arrivo (10)
   record += padNum(nights, 2);                    // 12-13: Giorni Permanenza (2)
-  record += pad(guest.lastName, 50);              // 14-63: Cognome (50)
-  record += pad(guest.firstName, 30);             // 64-93: Nome (30)
+  record += pad(safeLastName, 50);                // 14-63: Cognome (50)
+  record += pad(safeFirstName, 30);               // 64-93: Nome (30)
   record += pad(guest.sex, 1);                    // 94:    Sesso (1)
   record += birthDate;                            // 95-104: Data Nascita (10)
   record += pad(guest.birthComune, 9);            // 105-113: Comune Nascita (9)
@@ -185,7 +200,7 @@ function buildRecord(rawGuest, checkinDate, checkoutDate) {
     record += pad('', 9);                         // 159-167: Luogo Rilascio (blank)
   } else {
     record += pad(guest.docType, 5);              // 134-138: Tipo Documento (5)
-    record += pad(guest.docNumber, 20);           // 139-158: Numero Documento (20)
+    record += pad(safeDocNumber, 20);             // 139-158: Numero Documento (20)
     record += pad(guest.docIssuedPlace, 9);       // 159-167: Luogo Rilascio (9)
   }
 
@@ -371,6 +386,7 @@ export default async function handler(req, res) {
             guestName: g ? `${g.firstName} ${g.lastName}` : `Row ${i + 1}`,
             guestType: g?.guestType,
             docType: g?.docType,
+            birthDate: g?.birthDate,
             // Slices of the fixed-width record for key fields (test only)
             recGuestType:     action === 'test' ? rec.substring(0, 2)    : undefined,
             recBirthComune:   action === 'test' ? rec.substring(105, 114): undefined,
