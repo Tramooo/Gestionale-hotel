@@ -16,7 +16,7 @@ export default async function handler(req, res) {
     await sql`
       CREATE TABLE IF NOT EXISTS rooms (
         id TEXT PRIMARY KEY,
-        number TEXT UNIQUE NOT NULL,
+        number TEXT NOT NULL,
         floor INTEGER NOT NULL,
         type TEXT NOT NULL,
         capacity INTEGER NOT NULL,
@@ -24,6 +24,28 @@ export default async function handler(req, res) {
         price NUMERIC DEFAULT 0
       )
     `;
+    await sql`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS owner_user_id TEXT`;
+    await sql`
+      DO $$
+      DECLARE constraint_name TEXT;
+      BEGIN
+        SELECT tc.constraint_name INTO constraint_name
+        FROM information_schema.table_constraints tc
+        JOIN information_schema.constraint_column_usage ccu
+          ON tc.constraint_name = ccu.constraint_name
+        WHERE tc.table_name = 'rooms'
+          AND tc.constraint_type = 'UNIQUE'
+          AND ccu.column_name = 'number'
+        LIMIT 1;
+
+        IF constraint_name IS NOT NULL THEN
+          EXECUTE format('ALTER TABLE rooms DROP CONSTRAINT %I', constraint_name);
+        END IF;
+      EXCEPTION WHEN undefined_table THEN
+        NULL;
+      END $$;
+    `;
+    await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_rooms_owner_number ON rooms(owner_user_id, number)`;
 
     await sql`
       CREATE TABLE IF NOT EXISTS reservations (
@@ -43,6 +65,7 @@ export default async function handler(req, res) {
         created_at TIMESTAMPTZ DEFAULT NOW()
       )
     `;
+    await sql`ALTER TABLE reservations ADD COLUMN IF NOT EXISTS owner_user_id TEXT`;
 
     await sql`
       CREATE TABLE IF NOT EXISTS guests (
@@ -58,6 +81,7 @@ export default async function handler(req, res) {
         notes TEXT
       )
     `;
+    await sql`ALTER TABLE guests ADD COLUMN IF NOT EXISTS owner_user_id TEXT`;
 
     // Add Alloggiati fields to guests if missing
     await sql`ALTER TABLE guests ADD COLUMN IF NOT EXISTS sex TEXT`;
@@ -81,6 +105,7 @@ export default async function handler(req, res) {
         notes TEXT
       )
     `;
+    await sql`ALTER TABLE room_assignments ADD COLUMN IF NOT EXISTS owner_user_id TEXT`;
 
     await sql`
       CREATE TABLE IF NOT EXISTS planner_configs (
@@ -88,6 +113,7 @@ export default async function handler(req, res) {
         columns TEXT NOT NULL DEFAULT '[]'
       )
     `;
+    await sql`ALTER TABLE planner_configs ADD COLUMN IF NOT EXISTS owner_user_id TEXT`;
 
     // Add cell_values column to room_assignments if missing
     await sql`
@@ -108,6 +134,7 @@ export default async function handler(req, res) {
         notes TEXT
       )
     `;
+    await sql`ALTER TABLE employees ADD COLUMN IF NOT EXISTS owner_user_id TEXT`;
 
     await sql`ALTER TABLE employees ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0`;
 
@@ -120,6 +147,7 @@ export default async function handler(req, res) {
         notes TEXT
       )
     `;
+    await sql`ALTER TABLE work_entries ADD COLUMN IF NOT EXISTS owner_user_id TEXT`;
 
     await sql`ALTER TABLE work_entries ADD COLUMN IF NOT EXISTS start_time TEXT`;
     await sql`ALTER TABLE work_entries ADD COLUMN IF NOT EXISTS end_time TEXT`;
@@ -136,6 +164,7 @@ export default async function handler(req, res) {
         UNIQUE(employee_id, year_month)
       )
     `;
+    await sql`ALTER TABLE employee_month_overrides ADD COLUMN IF NOT EXISTS owner_user_id TEXT`;
 
     await sql`ALTER TABLE reservations ADD COLUMN IF NOT EXISTS room_notes TEXT`;
     await sql`ALTER TABLE reservations ADD COLUMN IF NOT EXISTS price_per_person NUMERIC DEFAULT 0`;
@@ -160,6 +189,7 @@ export default async function handler(req, res) {
         UNIQUE(reservation_id, menu_date, meal_type)
       )
     `;
+    await sql`ALTER TABLE menus ADD COLUMN IF NOT EXISTS owner_user_id TEXT`;
 
     await sql`
       CREATE TABLE IF NOT EXISTS reservation_files (
@@ -172,6 +202,7 @@ export default async function handler(req, res) {
         uploaded_at TIMESTAMPTZ DEFAULT NOW()
       )
     `;
+    await sql`ALTER TABLE reservation_files ADD COLUMN IF NOT EXISTS owner_user_id TEXT`;
 
     await sql`ALTER TABLE employees ADD COLUMN IF NOT EXISTS hire_date DATE`;
 
@@ -188,6 +219,7 @@ export default async function handler(req, res) {
         created_at TIMESTAMPTZ DEFAULT NOW()
       )
     `;
+    await sql`ALTER TABLE compliance_certs ADD COLUMN IF NOT EXISTS owner_user_id TEXT`;
 
     await sql`
       CREATE TABLE IF NOT EXISTS compliance_docs (
@@ -201,6 +233,22 @@ export default async function handler(req, res) {
         created_at TIMESTAMPTZ DEFAULT NOW()
       )
     `;
+    await sql`ALTER TABLE compliance_docs ADD COLUMN IF NOT EXISTS owner_user_id TEXT`;
+
+    // Legacy single-tenant rows become owned by the first authenticated user
+    // who runs the migration, preserving existing data for that account only.
+    await sql`UPDATE rooms SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
+    await sql`UPDATE reservations SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
+    await sql`UPDATE guests SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
+    await sql`UPDATE room_assignments SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
+    await sql`UPDATE planner_configs SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
+    await sql`UPDATE employees SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
+    await sql`UPDATE work_entries SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
+    await sql`UPDATE employee_month_overrides SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
+    await sql`UPDATE menus SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
+    await sql`UPDATE reservation_files SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
+    await sql`UPDATE compliance_certs SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
+    await sql`UPDATE compliance_docs SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
 
     res.status(200).json({ message: 'Tables created successfully' });
   } catch (err) {

@@ -13,7 +13,7 @@ export default async function handler(req, res) {
 
       const files = await sql`
         SELECT id, reservation_id, file_name, file_type, file_size, uploaded_at
-        FROM reservation_files WHERE reservation_id = ${reservationId}
+        FROM reservation_files WHERE reservation_id = ${reservationId} AND owner_user_id = ${user.id}
         ORDER BY uploaded_at DESC
       `;
       return res.status(200).json(files.map(f => ({
@@ -36,8 +36,8 @@ export default async function handler(req, res) {
         return res.status(413).json({ error: 'File too large (max 3MB)' });
       }
       await sql`
-        INSERT INTO reservation_files (id, reservation_id, file_name, file_type, file_size, file_data)
-        VALUES (${id}, ${reservationId}, ${fileName}, ${fileType || null}, ${fileSize || 0}, ${fileData})
+        INSERT INTO reservation_files (id, owner_user_id, reservation_id, file_name, file_type, file_size, file_data)
+        VALUES (${id}, ${user.id}, ${reservationId}, ${fileName}, ${fileType || null}, ${fileSize || 0}, ${fileData})
       `;
       return res.status(201).json({ success: true });
     }
@@ -46,7 +46,7 @@ export default async function handler(req, res) {
       // Download: return file data
       const { id } = req.query;
       if (!id) return res.status(400).json({ error: 'id required' });
-      const rows = await sql`SELECT file_name, file_type, file_data FROM reservation_files WHERE id = ${id}`;
+      const rows = await sql`SELECT file_name, file_type, file_data FROM reservation_files WHERE id = ${id} AND owner_user_id = ${user.id}`;
       if (rows.length === 0) return res.status(404).json({ error: 'File not found' });
       return res.status(200).json({
         fileName: rows[0].file_name,
@@ -58,7 +58,7 @@ export default async function handler(req, res) {
     if (req.method === 'DELETE') {
       const { id } = req.query;
       if (!id) return res.status(400).json({ error: 'id required' });
-      await sql`DELETE FROM reservation_files WHERE id = ${id}`;
+      await sql`DELETE FROM reservation_files WHERE id = ${id} AND owner_user_id = ${user.id}`;
       return res.status(200).json({ success: true });
     }
 

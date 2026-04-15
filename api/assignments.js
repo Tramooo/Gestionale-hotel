@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     if (isPlannerConfig) {
       if (req.method === 'GET') {
         const { reservation_id } = req.query;
-        const rows = await sql`SELECT * FROM planner_configs WHERE reservation_id = ${reservation_id}`;
+        const rows = await sql`SELECT * FROM planner_configs WHERE reservation_id = ${reservation_id} AND owner_user_id = ${user.id}`;
         if (rows.length === 0) {
           return res.status(200).json(null);
         }
@@ -26,9 +26,9 @@ export default async function handler(req, res) {
         const { reservationId, columns } = req.body;
         const colJson = JSON.stringify(columns);
         await sql`
-          INSERT INTO planner_configs (reservation_id, columns)
-          VALUES (${reservationId}, ${colJson})
-          ON CONFLICT (reservation_id) DO UPDATE SET columns = ${colJson}
+          INSERT INTO planner_configs (reservation_id, owner_user_id, columns)
+          VALUES (${reservationId}, ${user.id}, ${colJson})
+          ON CONFLICT (reservation_id) DO UPDATE SET columns = ${colJson}, owner_user_id = ${user.id}
         `;
         return res.status(200).json({ success: true });
       }
@@ -40,9 +40,9 @@ export default async function handler(req, res) {
       const { reservation_id } = req.query;
       let rows;
       if (reservation_id) {
-        rows = await sql`SELECT * FROM room_assignments WHERE reservation_id = ${reservation_id} ORDER BY room_id`;
+        rows = await sql`SELECT * FROM room_assignments WHERE reservation_id = ${reservation_id} AND owner_user_id = ${user.id} ORDER BY room_id`;
       } else {
-        rows = await sql`SELECT * FROM room_assignments ORDER BY reservation_id, room_id`;
+        rows = await sql`SELECT * FROM room_assignments WHERE owner_user_id = ${user.id} ORDER BY reservation_id, room_id`;
       }
       return res.status(200).json(rows.map(a => ({
         id: a.id,
@@ -56,8 +56,8 @@ export default async function handler(req, res) {
       const a = req.body;
       const cellValues = JSON.stringify(a.cellValues || {});
       await sql`
-        INSERT INTO room_assignments (id, reservation_id, room_id, cell_values)
-        VALUES (${a.id}, ${a.reservationId}, ${a.roomId}, ${cellValues})
+        INSERT INTO room_assignments (id, owner_user_id, reservation_id, room_id, cell_values)
+        VALUES (${a.id}, ${user.id}, ${a.reservationId}, ${a.roomId}, ${cellValues})
       `;
       return res.status(201).json({ success: true });
     }
@@ -67,7 +67,7 @@ export default async function handler(req, res) {
       const cellValues = JSON.stringify(a.cellValues || {});
       await sql`
         UPDATE room_assignments SET cell_values = ${cellValues}
-        WHERE id = ${a.id}
+        WHERE id = ${a.id} AND owner_user_id = ${user.id}
       `;
       return res.status(200).json({ success: true });
     }
@@ -75,9 +75,9 @@ export default async function handler(req, res) {
     if (req.method === 'DELETE') {
       const { id, reservation_id } = req.query;
       if (reservation_id) {
-        await sql`DELETE FROM room_assignments WHERE reservation_id = ${reservation_id}`;
+        await sql`DELETE FROM room_assignments WHERE reservation_id = ${reservation_id} AND owner_user_id = ${user.id}`;
       } else if (id) {
-        await sql`DELETE FROM room_assignments WHERE id = ${id}`;
+        await sql`DELETE FROM room_assignments WHERE id = ${id} AND owner_user_id = ${user.id}`;
       }
       return res.status(200).json({ success: true });
     }

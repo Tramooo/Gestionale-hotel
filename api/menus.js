@@ -11,7 +11,7 @@ export default async function handler(req, res) {
       const { reservationId } = req.query;
       if (!reservationId) return res.status(400).json({ error: 'reservationId required' });
       const rows = await sql`
-        SELECT * FROM menus WHERE reservation_id = ${reservationId} ORDER BY menu_date, meal_type
+        SELECT * FROM menus WHERE reservation_id = ${reservationId} AND owner_user_id = ${user.id} ORDER BY menu_date, meal_type
       `;
       return res.status(200).json(rows.map(r => ({
         id: r.id,
@@ -28,17 +28,17 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
       const m = req.body;
       await sql`
-        INSERT INTO menus (id, reservation_id, menu_date, meal_type, primo, secondo, contorno, dessert)
-        VALUES (${m.id}, ${m.reservationId}, ${m.date}, ${m.mealType}, ${m.primo || ''}, ${m.secondo || ''}, ${m.contorno || ''}, ${m.dessert || ''})
+        INSERT INTO menus (id, owner_user_id, reservation_id, menu_date, meal_type, primo, secondo, contorno, dessert)
+        VALUES (${m.id}, ${user.id}, ${m.reservationId}, ${m.date}, ${m.mealType}, ${m.primo || ''}, ${m.secondo || ''}, ${m.contorno || ''}, ${m.dessert || ''})
         ON CONFLICT (reservation_id, menu_date, meal_type)
-        DO UPDATE SET primo=${m.primo || ''}, secondo=${m.secondo || ''}, contorno=${m.contorno || ''}, dessert=${m.dessert || ''}
+        DO UPDATE SET primo=${m.primo || ''}, secondo=${m.secondo || ''}, contorno=${m.contorno || ''}, dessert=${m.dessert || ''}, owner_user_id=${user.id}
       `;
       return res.status(200).json({ success: true });
     }
 
     if (req.method === 'DELETE') {
       const { id } = req.query;
-      await sql`DELETE FROM menus WHERE id = ${id}`;
+      await sql`DELETE FROM menus WHERE id = ${id} AND owner_user_id = ${user.id}`;
       return res.status(200).json({ success: true });
     }
 

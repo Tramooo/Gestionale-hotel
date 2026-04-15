@@ -362,7 +362,8 @@ window.GroupStayPlannerDrag.init({
 
 function saveDataCache() {
     try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify({
+        if (!currentUser?.id) return;
+        localStorage.setItem(`${CACHE_KEY}:${currentUser.id}`, JSON.stringify({
             ts: Date.now(),
             reservations, rooms, guests, employees, workEntries, complianceCerts, complianceDocs
         }));
@@ -371,7 +372,8 @@ function saveDataCache() {
 
 function loadDataCache() {
     try {
-        const raw = localStorage.getItem(CACHE_KEY);
+        if (!currentUser?.id) return false;
+        const raw = localStorage.getItem(`${CACHE_KEY}:${currentUser.id}`);
         if (!raw) return false;
         const cache = JSON.parse(raw);
         if (Date.now() - cache.ts > CACHE_TTL) return false;
@@ -554,6 +556,7 @@ async function submitRegister(event) {
 }
 
 async function logoutUser() {
+    const cacheUserId = currentUser?.id;
     try {
         await apiPost(`${API.auth}?action=logout`, {});
     } catch (error) {
@@ -561,7 +564,9 @@ async function logoutUser() {
     }
 
     currentUser = null;
-    localStorage.removeItem(CACHE_KEY);
+    if (cacheUserId) {
+        localStorage.removeItem(`${CACHE_KEY}:${cacheUserId}`);
+    }
     reservations = [];
     rooms = [];
     guests = [];

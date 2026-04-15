@@ -8,7 +8,7 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const rows = await sql`SELECT * FROM reservations ORDER BY created_at DESC`;
+      const rows = await sql`SELECT * FROM reservations WHERE owner_user_id = ${user.id} ORDER BY created_at DESC`;
       const toDateStr = (d) => d ? new Date(d).toISOString().split('T')[0] : null;
       const reservations = rows.map(r => ({
         id: r.id,
@@ -43,8 +43,8 @@ export default async function handler(req, res) {
       const expiration = r.expiration || null;
       const intolerances = JSON.stringify(r.intolerances || []);
       await sql`
-        INSERT INTO reservations (id, group_name, organizer, email, checkin, checkout, guest_count, room_count, room_ids, status, expiration, price, price_per_person, gratuity, notes, room_notes, res_type, phone, meal_plan, intolerances, veggie_buffet, created_at)
-        VALUES (${r.id}, ${r.groupName}, ${r.organizer}, ${r.email}, ${r.checkin}, ${r.checkout}, ${r.guestCount}, ${r.roomCount}, ${roomIds}, ${r.status}, ${expiration}, ${r.price}, ${r.pricePerPerson || 0}, ${r.gratuity || 0}, ${r.notes}, ${r.roomNotes || null}, ${r.resType || 'group'}, ${r.phone || null}, ${r.mealPlan || 'BB'}, ${intolerances}, ${r.veggieBuffet || false}, ${r.createdAt})
+        INSERT INTO reservations (id, owner_user_id, group_name, organizer, email, checkin, checkout, guest_count, room_count, room_ids, status, expiration, price, price_per_person, gratuity, notes, room_notes, res_type, phone, meal_plan, intolerances, veggie_buffet, created_at)
+        VALUES (${r.id}, ${user.id}, ${r.groupName}, ${r.organizer}, ${r.email}, ${r.checkin}, ${r.checkout}, ${r.guestCount}, ${r.roomCount}, ${roomIds}, ${r.status}, ${expiration}, ${r.price}, ${r.pricePerPerson || 0}, ${r.gratuity || 0}, ${r.notes}, ${r.roomNotes || null}, ${r.resType || 'group'}, ${r.phone || null}, ${r.mealPlan || 'BB'}, ${intolerances}, ${r.veggieBuffet || false}, ${r.createdAt})
       `;
       return res.status(201).json({ success: true });
     }
@@ -59,15 +59,15 @@ export default async function handler(req, res) {
         room_ids=${roomIds}, status=${r.status}, expiration=${expiration}, price=${r.price}, price_per_person=${r.pricePerPerson || 0}, gratuity=${r.gratuity || 0}, notes=${r.notes}, room_notes=${r.roomNotes || null},
         res_type=${r.resType || 'group'}, phone=${r.phone || null}, meal_plan=${r.mealPlan || 'BB'},
         intolerances=${JSON.stringify(r.intolerances || [])}, veggie_buffet=${r.veggieBuffet || false}
-        WHERE id=${r.id}
+        WHERE id=${r.id} AND owner_user_id = ${user.id}
       `;
       return res.status(200).json({ success: true });
     }
 
     if (req.method === 'DELETE') {
       const { id } = req.query;
-      await sql`DELETE FROM guests WHERE reservation_id = ${id}`;
-      await sql`DELETE FROM reservations WHERE id = ${id}`;
+      await sql`DELETE FROM guests WHERE reservation_id = ${id} AND owner_user_id = ${user.id}`;
+      await sql`DELETE FROM reservations WHERE id = ${id} AND owner_user_id = ${user.id}`;
       return res.status(200).json({ success: true });
     }
 

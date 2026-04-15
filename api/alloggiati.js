@@ -641,14 +641,14 @@ export default async function handler(req, res) {
       const sql = neon(process.env.DATABASE_URL);
 
       // Get reservation for dates
-      const reservations = await sql`SELECT * FROM reservations WHERE id = ${reservationId}`;
+      const reservations = await sql`SELECT * FROM reservations WHERE id = ${reservationId} AND owner_user_id = ${user.id}`;
       if (reservations.length === 0) {
         return res.status(404).json({ error: 'Reservation not found' });
       }
       const reservation = reservations[0];
 
       // Get guests for this reservation
-      const guestRows = await sql`SELECT * FROM guests WHERE reservation_id = ${reservationId}`;
+      const guestRows = await sql`SELECT * FROM guests WHERE reservation_id = ${reservationId} AND owner_user_id = ${user.id}`;
       if (guestRows.length === 0) {
         return res.status(400).json({ error: 'No guests found for this reservation' });
       }

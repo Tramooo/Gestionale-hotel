@@ -8,7 +8,7 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const rows = await sql`SELECT * FROM guests ORDER BY last_name, first_name`;
+      const rows = await sql`SELECT * FROM guests WHERE owner_user_id = ${user.id} ORDER BY last_name, first_name`;
       return res.status(200).json(rows.map(g => ({
         id: g.id,
         reservationId: g.reservation_id,
@@ -36,9 +36,9 @@ export default async function handler(req, res) {
       const g = req.body;
       const roomId = g.roomId || null;
       await sql`
-        INSERT INTO guests (id, reservation_id, first_name, last_name, email, phone, doc_type, doc_number, room_id, notes,
+        INSERT INTO guests (id, owner_user_id, reservation_id, first_name, last_name, email, phone, doc_type, doc_number, room_id, notes,
           sex, birth_date, birth_comune, birth_province, birth_country, citizenship, doc_issued_place, guest_type, residence_comune)
-        VALUES (${g.id}, ${g.reservationId}, ${g.firstName}, ${g.lastName}, ${g.email}, ${g.phone}, ${g.docType}, ${g.docNumber}, ${roomId}, ${g.notes},
+        VALUES (${g.id}, ${user.id}, ${g.reservationId}, ${g.firstName}, ${g.lastName}, ${g.email}, ${g.phone}, ${g.docType}, ${g.docNumber}, ${roomId}, ${g.notes},
           ${g.sex || null}, ${g.birthDate || null}, ${g.birthComune || null}, ${g.birthProvince || null}, ${g.birthCountry || null}, ${g.citizenship || null}, ${g.docIssuedPlace || null}, ${g.guestType || '16'}, ${g.residenceComune || null})
       `;
       return res.status(201).json({ success: true });
@@ -55,14 +55,14 @@ export default async function handler(req, res) {
         birth_province=${g.birthProvince || null}, birth_country=${g.birthCountry || null},
         citizenship=${g.citizenship || null}, doc_issued_place=${g.docIssuedPlace || null},
         guest_type=${g.guestType || '16'}, residence_comune=${g.residenceComune || null}
-        WHERE id=${g.id}
+        WHERE id=${g.id} AND owner_user_id = ${user.id}
       `;
       return res.status(200).json({ success: true });
     }
 
     if (req.method === 'DELETE') {
       const { id } = req.query;
-      await sql`DELETE FROM guests WHERE id = ${id}`;
+      await sql`DELETE FROM guests WHERE id = ${id} AND owner_user_id = ${user.id}`;
       return res.status(200).json({ success: true });
     }
 

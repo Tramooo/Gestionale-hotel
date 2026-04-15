@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     // ---- CERTS ----
     if (target === 'certs') {
       if (req.method === 'GET') {
-        const rows = await sql`SELECT * FROM compliance_certs ORDER BY created_at DESC`;
+        const rows = await sql`SELECT * FROM compliance_certs WHERE owner_user_id = ${user.id} ORDER BY created_at DESC`;
         return res.status(200).json(rows.map(r => ({
           id: r.id,
           employeeId: r.employee_id,
@@ -29,8 +29,8 @@ export default async function handler(req, res) {
       if (req.method === 'POST') {
         const c = req.body;
         await sql`
-          INSERT INTO compliance_certs (id, employee_id, cert_type, issued_date, expiry_date, notes, file_data, file_name, created_at)
-          VALUES (${c.id}, ${c.employeeId}, ${c.certType}, ${c.issuedDate || null}, ${c.expiryDate || null}, ${c.notes || ''}, ${c.fileData || ''}, ${c.fileName || ''}, ${c.createdAt})
+          INSERT INTO compliance_certs (id, owner_user_id, employee_id, cert_type, issued_date, expiry_date, notes, file_data, file_name, created_at)
+          VALUES (${c.id}, ${user.id}, ${c.employeeId}, ${c.certType}, ${c.issuedDate || null}, ${c.expiryDate || null}, ${c.notes || ''}, ${c.fileData || ''}, ${c.fileName || ''}, ${c.createdAt})
         `;
         return res.status(201).json({ success: true });
       }
@@ -40,13 +40,13 @@ export default async function handler(req, res) {
           UPDATE compliance_certs SET
             cert_type=${c.certType}, issued_date=${c.issuedDate || null}, expiry_date=${c.expiryDate || null},
             notes=${c.notes || ''}, file_data=${c.fileData || ''}, file_name=${c.fileName || ''}
-          WHERE id=${c.id}
+          WHERE id=${c.id} AND owner_user_id = ${user.id}
         `;
         return res.status(200).json({ success: true });
       }
       if (req.method === 'DELETE') {
         const { id } = req.query;
-        await sql`DELETE FROM compliance_certs WHERE id=${id}`;
+        await sql`DELETE FROM compliance_certs WHERE id=${id} AND owner_user_id = ${user.id}`;
         return res.status(200).json({ success: true });
       }
     }
@@ -54,7 +54,7 @@ export default async function handler(req, res) {
     // ---- DOCS ----
     if (target === 'docs') {
       if (req.method === 'GET') {
-        const rows = await sql`SELECT * FROM compliance_docs ORDER BY created_at DESC`;
+        const rows = await sql`SELECT * FROM compliance_docs WHERE owner_user_id = ${user.id} ORDER BY created_at DESC`;
         return res.status(200).json(rows.map(r => ({
           id: r.id,
           docType: r.doc_type,
@@ -69,8 +69,8 @@ export default async function handler(req, res) {
       if (req.method === 'POST') {
         const d = req.body;
         await sql`
-          INSERT INTO compliance_docs (id, doc_type, issued_date, expiry_date, notes, file_data, file_name, created_at)
-          VALUES (${d.id}, ${d.docType}, ${d.issuedDate || null}, ${d.expiryDate || null}, ${d.notes || ''}, ${d.fileData || ''}, ${d.fileName || ''}, ${d.createdAt})
+          INSERT INTO compliance_docs (id, owner_user_id, doc_type, issued_date, expiry_date, notes, file_data, file_name, created_at)
+          VALUES (${d.id}, ${user.id}, ${d.docType}, ${d.issuedDate || null}, ${d.expiryDate || null}, ${d.notes || ''}, ${d.fileData || ''}, ${d.fileName || ''}, ${d.createdAt})
         `;
         return res.status(201).json({ success: true });
       }
@@ -80,13 +80,13 @@ export default async function handler(req, res) {
           UPDATE compliance_docs SET
             doc_type=${d.docType}, issued_date=${d.issuedDate || null}, expiry_date=${d.expiryDate || null},
             notes=${d.notes || ''}, file_data=${d.fileData || ''}, file_name=${d.fileName || ''}
-          WHERE id=${d.id}
+          WHERE id=${d.id} AND owner_user_id = ${user.id}
         `;
         return res.status(200).json({ success: true });
       }
       if (req.method === 'DELETE') {
         const { id } = req.query;
-        await sql`DELETE FROM compliance_docs WHERE id=${id}`;
+        await sql`DELETE FROM compliance_docs WHERE id=${id} AND owner_user_id = ${user.id}`;
         return res.status(200).json({ success: true });
       }
     }
