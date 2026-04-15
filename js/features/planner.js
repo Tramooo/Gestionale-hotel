@@ -293,11 +293,9 @@
                 }
                 const bookings = (bookingsByRoom[room.id] || []).slice().sort((a, b) => a.startIdx - b.startIdx);
                 bookings.forEach((booking, idx) => {
-                    const ARROW = 10;
-                    const hasNext = idx < bookings.length - 1 && bookings[idx + 1].startIdx <= booking.endIdx;
                     const hasPrev = idx > 0 && bookings[idx - 1].endIdx >= booking.startIdx;
                     const left = booking.startIdx * DW;
-                    const width = (booking.endIdx - booking.startIdx) * DW + (hasNext ? ARROW : 0);
+                    const width = (booking.endIdx - booking.startIdx) * DW;
                     const label = escapeHtml(booking.res.groupName);
                     const cls = `planner-res-bar ${booking.res.status}${hasPrev ? ' bar-has-prev' : ''}`;
                     const nights = Math.max(1, booking.endIdx - booking.startIdx);
