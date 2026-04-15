@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless';
+import { requireAuth } from './_auth.js';
 
 const SOAP_URL = 'https://alloggiatiweb.poliziadistato.it/service/service.asmx';
 const NS = 'AlloggiatiService';
@@ -591,6 +592,9 @@ async function runLeaderMemberPairDiagnostics({ action, normalizedGuests, record
 }
 
 export default async function handler(req, res) {
+  const user = await requireAuth(req, res);
+  if (!user) return;
+
   const UTENTE = process.env.ALLOGGIATI_UTENTE;
   const PASSWORD = process.env.ALLOGGIATI_PASSWORD;
   const WSKEY = process.env.ALLOGGIATI_WSKEY;

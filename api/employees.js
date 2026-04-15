@@ -1,7 +1,10 @@
-import { neon } from '@neondatabase/serverless';
+import { requireAuth } from './_auth.js';
+import { getSQL } from './_db.js';
 
 export default async function handler(req, res) {
-  const sql = neon(process.env.DATABASE_URL);
+  const user = await requireAuth(req, res);
+  if (!user) return;
+  const sql = getSQL();
 
   async function getEmployeesWithSafeOrdering() {
     try {

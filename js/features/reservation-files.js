@@ -109,7 +109,7 @@
     async function downloadReservationFile(fileId) {
         const { API, showToast } = requireDeps();
         try {
-            const res = await fetch(`${API.files}?id=${fileId}`, { method: 'PUT' });
+            const res = await fetch(`${API.files}?id=${fileId}`, { method: 'PUT', credentials: 'include' });
             if (!res.ok) throw new Error('Download failed');
             const data = await res.json();
             const a = document.createElement('a');

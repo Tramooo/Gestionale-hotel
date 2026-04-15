@@ -1,19 +1,26 @@
 (function initApiClient(global) {
     async function apiGet(url) {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`API error: ${res.status}`);
+        const res = await fetch(url, { credentials: 'include' });
+        if (!res.ok) {
+            const err = new Error(`API error: ${res.status}`);
+            err.status = res.status;
+            throw err;
+        }
         return res.json();
     }
 
     async function apiPost(url, data) {
         const res = await fetch(url, {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
         if (!res.ok) {
             const body = await res.json().catch(() => ({}));
-            throw new Error(body.error || `API error: ${res.status}`);
+            const err = new Error(body.error || `API error: ${res.status}`);
+            err.status = res.status;
+            throw err;
         }
         return res.json();
     }
@@ -21,16 +28,25 @@
     async function apiPut(url, data) {
         const res = await fetch(url, {
             method: 'PUT',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
-        if (!res.ok) throw new Error(`API error: ${res.status}`);
+        if (!res.ok) {
+            const err = new Error(`API error: ${res.status}`);
+            err.status = res.status;
+            throw err;
+        }
         return res.json();
     }
 
     async function apiDelete(url, id) {
-        const res = await fetch(`${url}?id=${id}`, { method: 'DELETE' });
-        if (!res.ok) throw new Error(`API error: ${res.status}`);
+        const res = await fetch(`${url}?id=${id}`, { method: 'DELETE', credentials: 'include' });
+        if (!res.ok) {
+            const err = new Error(`API error: ${res.status}`);
+            err.status = res.status;
+            throw err;
+        }
         return res.json();
     }
 

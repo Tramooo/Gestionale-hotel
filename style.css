@@ -4525,6 +4525,88 @@ select.cell-input option {
     color: var(--text-tertiary);
 }
 
+body.auth-locked .sidebar,
+body.auth-locked .main-content,
+body.auth-locked .mobile-tab-bar {
+    visibility: hidden;
+}
+
+.auth-screen {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(23, 20, 18, 0.18);
+    z-index: 3000;
+}
+
+body.auth-locked .auth-screen {
+    display: flex;
+}
+
+.auth-panel {
+    width: 100%;
+    max-width: 420px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-xl);
+    padding: 24px;
+}
+
+.auth-brand {
+    margin-bottom: 18px;
+}
+
+.auth-subtitle {
+    margin-top: 12px;
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.auth-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 18px;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.auth-tab {
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font: inherit;
+    font-weight: 600;
+    padding: 10px 4px;
+    margin-bottom: -1px;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+}
+
+.auth-tab.active {
+    color: var(--text-primary);
+    border-bottom-color: var(--accent);
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.auth-error {
+    min-height: 18px;
+    font-size: 13px;
+    color: var(--red);
+}
+
+.auth-submit {
+    width: 100%;
+    justify-content: center;
+}
+
 /* =============================================
    AESTHETIC REFRESH
    ============================================= */

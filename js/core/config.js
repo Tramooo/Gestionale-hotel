@@ -1,6 +1,7 @@
 (function initAppConfig(global) {
     const API = {
         reservations: '/api/reservations',
+        auth: '/api/auth',
         rooms: '/api/rooms',
         guests: '/api/guests',
         init: '/api/init',

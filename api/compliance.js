@@ -1,9 +1,12 @@
-import { neon } from '@neondatabase/serverless';
+import { requireAuth } from './_auth.js';
+import { getSQL } from './_db.js';
 
 const toDateStr = d => d ? new Date(d).toISOString().split('T')[0] : null;
 
 export default async function handler(req, res) {
-  const sql = neon(process.env.DATABASE_URL);
+  const user = await requireAuth(req, res);
+  if (!user) return;
+  const sql = getSQL();
   const { target } = req.query; // 'certs' or 'docs'
 
   try {

@@ -413,6 +413,11 @@ async function loadAllData() {
         saveDataCache();
     } catch (err) {
         console.error('Failed to load data from database:', err);
+        if (err && err.status === 401) {
+            showToast('Sessione scaduta, effettua di nuovo l’accesso', 'error');
+            await logoutUser();
+            return;
+        }
         showToast(t('toast.dbError'), 'error');
     }
 }
@@ -455,10 +460,123 @@ let _compCertFileName = '';
 let _compDocFileData = '';
 let _compDocFileName = '';
 let empViewMonth = new Date(); // currently viewed month for employee pay
+let currentUser = null;
+let currentAuthMode = 'login';
 
 // ---- i18n ----
 
 let currentLang = localStorage.getItem('gs_lang') || 'it';
+
+function setAuthLocked(locked) {
+    document.body.classList.toggle('auth-locked', locked);
+}
+
+function clearAuthErrors() {
+    const loginError = document.getElementById('loginError');
+    const registerError = document.getElementById('registerError');
+    if (loginError) loginError.textContent = '';
+    if (registerError) registerError.textContent = '';
+}
+
+function updateProfileHeader() {
+    const nameEl = document.querySelector('.profile-name');
+    const roleEl = document.querySelector('.profile-role');
+    const avatarEl = document.querySelector('.avatar');
+    if (!currentUser) return;
+
+    const displayName = currentUser.fullName || currentUser.email;
+    if (nameEl) nameEl.textContent = displayName;
+    if (roleEl) roleEl.textContent = currentUser.email;
+    if (avatarEl) avatarEl.textContent = getInitials(displayName);
+}
+
+function switchAuthMode(mode) {
+    currentAuthMode = mode === 'register' ? 'register' : 'login';
+    const isRegister = currentAuthMode === 'register';
+    document.getElementById('loginForm').style.display = isRegister ? 'none' : '';
+    document.getElementById('registerForm').style.display = isRegister ? '' : 'none';
+    document.getElementById('authTabLogin').classList.toggle('active', !isRegister);
+    document.getElementById('authTabRegister').classList.toggle('active', isRegister);
+    clearAuthErrors();
+}
+
+async function fetchSession() {
+    try {
+        const data = await apiGet(API.auth);
+        currentUser = data.user;
+        updateProfileHeader();
+        return currentUser;
+    } catch (error) {
+        currentUser = null;
+        return null;
+    }
+}
+
+async function submitLogin(event) {
+    event.preventDefault();
+    clearAuthErrors();
+
+    try {
+        const email = document.getElementById('loginEmail').value.trim();
+        const password = document.getElementById('loginPassword').value;
+        const data = await apiPost(`${API.auth}?action=login`, { email, password });
+        currentUser = data.user;
+        updateProfileHeader();
+        setAuthLocked(false);
+        await startApplication();
+    } catch (error) {
+        document.getElementById('loginError').textContent = error.message || 'Accesso non riuscito';
+    }
+}
+
+async function submitRegister(event) {
+    event.preventDefault();
+    clearAuthErrors();
+
+    const password = document.getElementById('registerPassword').value;
+    const confirm = document.getElementById('registerPasswordConfirm').value;
+    if (password !== confirm) {
+        document.getElementById('registerError').textContent = 'Le password non coincidono';
+        return;
+    }
+
+    try {
+        const fullName = document.getElementById('registerName').value.trim();
+        const email = document.getElementById('registerEmail').value.trim();
+        const data = await apiPost(`${API.auth}?action=register`, { fullName, email, password });
+        currentUser = data.user;
+        updateProfileHeader();
+        setAuthLocked(false);
+        await startApplication();
+    } catch (error) {
+        document.getElementById('registerError').textContent = error.message || 'Registrazione non riuscita';
+    }
+}
+
+async function logoutUser() {
+    try {
+        await apiPost(`${API.auth}?action=logout`, {});
+    } catch (error) {
+        console.error('Logout failed:', error);
+    }
+
+    currentUser = null;
+    localStorage.removeItem(CACHE_KEY);
+    reservations = [];
+    rooms = [];
+    guests = [];
+    employees = [];
+    workEntries = [];
+    monthPayOverrides = [];
+    complianceCerts = [];
+    complianceDocs = [];
+    clearAuthErrors();
+    switchAuthMode('login');
+    document.getElementById('loginForm')?.reset();
+    document.getElementById('registerForm')?.reset();
+    setAuthLocked(true);
+    window.location.reload();
+}
 
 const TRANSLATIONS = {
     // Navigation & Layout
@@ -931,6 +1049,7 @@ function setLanguage(lang) {
     currentLang = lang;
     localStorage.setItem('gs_lang', lang);
     applyTranslations();
+    updateProfileHeader();
     // Re-render current page
     const activePage = document.querySelector('.page.active');
     if (activePage) {
@@ -3717,10 +3836,14 @@ applyTheme(getTheme());
 // INIT
 // =============================================
 
-(async function init() {
+let appStarted = false;
+
+async function startApplication() {
+    if (appStarted) return;
+    appStarted = true;
     initSettingsModal();
     applyTranslations();
-    // Set up language toggle buttons
+    updateProfileHeader();
     document.querySelectorAll('[data-lang-val]').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.langVal === currentLang);
         btn.addEventListener('click', () => setLanguage(btn.dataset.langVal));
@@ -3744,4 +3867,16 @@ applyTheme(getTheme());
         renderDashboard();
         renderCalendar();
     }
+}
+
+(async function init() {
+    switchAuthMode('login');
+    applyTranslations();
+    const user = await fetchSession();
+    if (!user) {
+        setAuthLocked(true);
+        return;
+    }
+    setAuthLocked(false);
+    await startApplication();
 })();

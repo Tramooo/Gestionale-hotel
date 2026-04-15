@@ -1,4 +1,5 @@
-import { neon } from '@neondatabase/serverless';
+import { requireAuth } from './_auth.js';
+import { ensureAuthTables, getSQL } from './_db.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -6,7 +7,11 @@ export default async function handler(req, res) {
   }
 
   try {
-    const sql = neon(process.env.DATABASE_URL);
+    const user = await requireAuth(req, res);
+    if (!user) return;
+
+    await ensureAuthTables();
+    const sql = getSQL();
 
     await sql`
       CREATE TABLE IF NOT EXISTS rooms (

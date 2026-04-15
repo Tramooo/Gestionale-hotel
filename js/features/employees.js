@@ -244,7 +244,7 @@
         const existing = getWorkEntries().find((entry) => entry.employeeId === empId && entry.workDate === dateStr);
         if (existing) {
             try {
-                await fetch(`${API.employees}?id=${existing.id}&type=work`, { method: 'DELETE' });
+                await fetch(`${API.employees}?id=${existing.id}&type=work`, { method: 'DELETE', credentials: 'include' });
                 setWorkEntries(getWorkEntries().filter((entry) => entry.id !== existing.id));
             } catch (error) { console.error(error); }
         } else {
@@ -466,7 +466,7 @@
         const { API, getMonthPayOverrides, renderManagement, setMonthPayOverrides } = requireDeps();
         closePayTypePopover();
         try {
-            await fetch(`${API.employees}?id=${overrideId}&type=monthOverride`, { method: 'DELETE' });
+            await fetch(`${API.employees}?id=${overrideId}&type=monthOverride`, { method: 'DELETE', credentials: 'include' });
             setMonthPayOverrides(getMonthPayOverrides().filter((entry) => !(entry.employeeId === empId && entry.yearMonth === yearMonth)));
         } catch (error) { console.error(error); }
         renderEmployees();
@@ -505,7 +505,7 @@
         const existing = getWorkEntries().find((entry) => entry.employeeId === empId && entry.workDate === dateStr);
         if (existing) {
             try {
-                await fetch(`${API.employees}?id=${existing.id}&type=work`, { method: 'DELETE' });
+                await fetch(`${API.employees}?id=${existing.id}&type=work`, { method: 'DELETE', credentials: 'include' });
                 setWorkEntries(getWorkEntries().filter((entry) => entry.id !== existing.id));
             } catch (error) { console.error(error); }
         }
@@ -732,7 +732,7 @@
             if (isNaN(hours) || hours < 0) return;
             if (hours === 0) {
                 try {
-                    await fetch(`${API.employees}?id=${existing.id}&type=work`, { method: 'DELETE' });
+                    await fetch(`${API.employees}?id=${existing.id}&type=work`, { method: 'DELETE', credentials: 'include' });
                     setWorkEntries(getWorkEntries().filter((entry) => entry.id !== existing.id));
                 } catch (error) { console.error(error); }
             } else {
@@ -760,7 +760,7 @@
         const existing = getWorkEntries().find((entry) => entry.employeeId === empId && entry.workDate === dateStr);
         if (existing) {
             try {
-                await fetch(`${API.employees}?id=${existing.id}&type=work`, { method: 'DELETE' });
+                await fetch(`${API.employees}?id=${existing.id}&type=work`, { method: 'DELETE', credentials: 'include' });
                 setWorkEntries(getWorkEntries().filter((entry) => entry.id !== existing.id));
             } catch (error) { console.error(error); }
         } else {
@@ -850,7 +850,7 @@
         const { API, getWorkEntries, setWorkEntries, showToast, t } = requireDeps();
         if (!confirm(t('confirm.deleteWorkEntry'))) return;
         try {
-            await fetch(`${API.employees}?id=${workId}&type=work`, { method: 'DELETE' });
+            await fetch(`${API.employees}?id=${workId}&type=work`, { method: 'DELETE', credentials: 'include' });
             setWorkEntries(getWorkEntries().filter((entry) => entry.id !== workId));
             showToast(t('toast.workDeleted'));
             renderEmployees();
