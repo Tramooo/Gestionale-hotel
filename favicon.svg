@@ -1,17 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <defs>
-    <linearGradient id="gs-bg" x1="10" y1="8" x2="54" y2="58" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#43A1FF"/>
-      <stop offset="1" stop-color="#007AFF"/>
+    <linearGradient id="tile" x1="12" y1="10" x2="52" y2="54" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#F2F2F7"/>
     </linearGradient>
-    <linearGradient id="gs-shine" x1="20" y1="14" x2="44" y2="46" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.55"/>
-      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    <linearGradient id="accent" x1="19" y1="16" x2="45" y2="46" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5AC8FA"/>
+      <stop offset="1" stop-color="#007AFF"/>
     </linearGradient>
   </defs>
 
-  <rect x="6" y="6" width="52" height="52" rx="14" fill="url(#gs-bg)"/>
-  <rect x="8" y="8" width="48" height="48" rx="12" fill="none" stroke="#FFFFFF" stroke-opacity="0.22"/>
-  <path d="M20 23.5C20 18.8056 23.8056 15 28.5 15H41V22H30C26.6863 22 24 24.6863 24 28C24 31.3137 26.6863 34 30 34H36V30H29.5V24H43V41C43 44.3137 40.3137 47 37 47H28C23.5817 47 20 43.4183 20 39V23.5Z" fill="#FFFFFF"/>
-  <path d="M17 15C22 12.5 29 12 35 14" stroke="url(#gs-shine)" stroke-width="4" stroke-linecap="round"/>
+  <rect x="6" y="6" width="52" height="52" rx="14" fill="url(#tile)"/>
+  <rect x="6.5" y="6.5" width="51" height="51" rx="13.5" fill="none" stroke="#D1D1D6"/>
+  <path d="M40 16H24C20.686 16 18 18.686 18 22V42C18 45.314 20.686 48 24 48H36C39.314 48 42 45.314 42 42V27.5L40 16Z" fill="#FFFFFF"/>
+  <path d="M40 16H24C20.686 16 18 18.686 18 22V42C18 45.314 20.686 48 24 48H36C39.314 48 42 45.314 42 42V27.5L40 16Z" fill="none" stroke="#E5E5EA"/>
+  <path d="M40 16V24C40 25.657 41.343 27 43 27H46" fill="none"/>
+  <path d="M38 16L46 24V27H43C40.239 27 38 24.761 38 22V16Z" fill="url(#accent)"/>
+  <path d="M35.5 27H28C25.239 27 23 29.239 23 32V36C23 39.866 26.134 43 30 43H35V37H30.5C29.119 37 28 35.881 28 34.5V33.5C28 32.119 29.119 31 30.5 31H37V27.5C37 27.224 36.776 27 36.5 27H35.5Z" fill="#1C1C1E"/>
+  <rect x="23" y="22" width="10" height="2.5" rx="1.25" fill="#8E8E93" opacity="0.5"/>
 </svg>
