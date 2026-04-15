@@ -35,6 +35,10 @@
                 </div>
                 <p class="auth-error" id="loginError"></p>
                 <button type="submit" class="btn btn-primary auth-submit">Accedi</button>
+                <p class="auth-switch">
+                    Non hai ancora un account?
+                    <button type="button" class="auth-switch-btn" onclick="switchAuthMode('register')">Crea account</button>
+                </p>
             </form>
 
             <form id="registerForm" class="auth-form" style="display:none" onsubmit="submitRegister(event)">
@@ -56,6 +60,10 @@
                 </div>
                 <p class="auth-error" id="registerError"></p>
                 <button type="submit" class="btn btn-primary auth-submit">Crea account</button>
+                <p class="auth-switch">
+                    Hai già un account?
+                    <button type="button" class="auth-switch-btn" onclick="switchAuthMode('login')">Accedi</button>
+                </p>
             </form>
         </div>
     </div>
@@ -1235,6 +1243,14 @@
                     <input type="file" id="csvFileInput" accept=".csv,.txt" style="display:none" onchange="handleCsvFile(event)">
                     <button class="btn btn-secondary" onclick="document.getElementById('csvFileInput').click()" data-i18n="settings.chooseCsv">Scegli File CSV</button>
                     <span id="csvFileName" style="font-size:12px;color:var(--text-secondary);margin-left:8px"></span>
+                </div>
+
+                <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
+
+                <div class="settings-section">
+                    <label class="settings-label">Account</label>
+                    <p style="font-size:12px;color:var(--text-secondary);margin:0 0 10px">Per tornare alla schermata di accesso ed entrare con un altro account.</p>
+                    <button class="btn btn-danger" type="button" onclick="logoutUser()">Esci</button>
                 </div>
             </div>
         </div>

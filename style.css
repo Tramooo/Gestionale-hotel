@@ -4607,6 +4607,22 @@ body.auth-locked .auth-screen {
     justify-content: center;
 }
 
+.auth-switch {
+    font-size: 13px;
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+.auth-switch-btn {
+    border: none;
+    background: transparent;
+    color: var(--accent-strong);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0 0 0 4px;
+}
+
 /* =============================================
    AESTHETIC REFRESH
    ============================================= */
