@@ -464,6 +464,7 @@ let _compDocFileName = '';
 let empViewMonth = new Date(); // currently viewed month for employee pay
 let currentUser = null;
 let currentAuthMode = 'login';
+const REMEMBERED_LOGIN_KEY = 'gs_remembered_login';
 
 // ---- i18n ----
 
@@ -478,6 +479,55 @@ function clearAuthErrors() {
     const registerError = document.getElementById('registerError');
     if (loginError) loginError.textContent = '';
     if (registerError) registerError.textContent = '';
+}
+
+function saveRememberedLogin(email, password, shouldRemember) {
+    try {
+        if (!shouldRemember) {
+            localStorage.removeItem(REMEMBERED_LOGIN_KEY);
+            return;
+        }
+        localStorage.setItem(REMEMBERED_LOGIN_KEY, JSON.stringify({
+            email,
+            password
+        }));
+    } catch (error) {
+        console.warn('Unable to persist remembered login:', error);
+    }
+}
+
+function restoreRememberedLogin() {
+    const emailInput = document.getElementById('loginEmail');
+    const passwordInput = document.getElementById('loginPassword');
+    const rememberInput = document.getElementById('loginRemember');
+    if (!emailInput || !passwordInput || !rememberInput) return;
+
+    try {
+        const raw = localStorage.getItem(REMEMBERED_LOGIN_KEY);
+        if (!raw) {
+            rememberInput.checked = false;
+            return;
+        }
+        const saved = JSON.parse(raw);
+        emailInput.value = saved?.email || '';
+        passwordInput.value = saved?.password || '';
+        rememberInput.checked = Boolean(saved?.email || saved?.password);
+    } catch (error) {
+        localStorage.removeItem(REMEMBERED_LOGIN_KEY);
+        rememberInput.checked = false;
+    }
+}
+
+function setupRememberedLoginToggle() {
+    const rememberInput = document.getElementById('loginRemember');
+    if (!rememberInput || rememberInput.dataset.bound === 'true') return;
+
+    rememberInput.addEventListener('change', () => {
+        if (!rememberInput.checked) {
+            saveRememberedLogin('', '', false);
+        }
+    });
+    rememberInput.dataset.bound = 'true';
 }
 
 function updateProfileHeader() {
@@ -521,7 +571,9 @@ async function submitLogin(event) {
     try {
         const email = document.getElementById('loginEmail').value.trim();
         const password = document.getElementById('loginPassword').value;
+        const shouldRemember = document.getElementById('loginRemember')?.checked;
         const data = await apiPost(`${API.auth}?action=login`, { email, password });
+        saveRememberedLogin(email, password, shouldRemember);
         currentUser = data.user;
         updateProfileHeader();
         setAuthLocked(false);
@@ -3877,6 +3929,8 @@ async function startApplication() {
 
 (async function init() {
     switchAuthMode('login');
+    restoreRememberedLogin();
+    setupRememberedLoginToggle();
     applyTranslations();
     const user = await fetchSession();
     if (!user) {

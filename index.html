@@ -11,60 +11,99 @@
 <body class="auth-locked">
     <div class="auth-screen" id="authScreen">
         <div class="auth-panel">
-            <div class="auth-brand">
-                <div class="logo">
-                    <div class="logo-icon">G</div>
-                    <span class="logo-text">GroupStay</span>
+            <div class="auth-showcase">
+                <div class="auth-showcase-copy">
+                    <p class="auth-showcase-lead">Reception, camere e operativita quotidiana nello stesso spazio di lavoro.</p>
+                    <div class="auth-showcase-grid">
+                        <div class="auth-showcase-item">
+                            <strong>Vista giornaliera chiara</strong>
+                            <span>Controlla arrivi, partenze e camere senza passare tra schermate diverse.</span>
+                        </div>
+                        <div class="auth-showcase-item">
+                            <strong>Dati sempre a portata</strong>
+                            <span>Gestisci ospiti, pratiche e documenti da un unico punto operativo.</span>
+                        </div>
+                        <div class="auth-showcase-item">
+                            <strong>Accesso piu rapido</strong>
+                            <span>Con Ricordami il browser ripropone i dati al prossimo accesso su questo dispositivo.</span>
+                        </div>
+                    </div>
                 </div>
-                <p class="auth-subtitle">Accedi per usare il gestionale oppure crea un nuovo account.</p>
+                <div class="auth-showcase-footer">
+                    <div class="auth-showcase-stat">
+                        <span class="auth-showcase-value">1</span>
+                        <span class="auth-showcase-label">Spazio unico per reception e planning</span>
+                    </div>
+                    <div class="auth-showcase-stat">
+                        <span class="auth-showcase-value">24/7</span>
+                        <span class="auth-showcase-label">Accesso immediato da browser</span>
+                    </div>
+                </div>
             </div>
 
-            <div class="auth-tabs">
-                <button type="button" class="auth-tab active" id="authTabLogin" onclick="switchAuthMode('login')">Accedi</button>
-                <button type="button" class="auth-tab" id="authTabRegister" onclick="switchAuthMode('register')">Crea account</button>
+            <div class="auth-card">
+                <div class="auth-brand">
+                    <div class="logo">
+                        <div class="logo-icon">G</div>
+                        <span class="logo-text">GroupStay</span>
+                    </div>
+                    <p class="auth-subtitle">Accedi per usare il gestionale oppure crea un nuovo account.</p>
+                </div>
+
+                <div class="auth-tabs">
+                    <button type="button" class="auth-tab active" id="authTabLogin" onclick="switchAuthMode('login')">Accedi</button>
+                    <button type="button" class="auth-tab" id="authTabRegister" onclick="switchAuthMode('register')">Crea account</button>
+                </div>
+
+                <form id="loginForm" class="auth-form" onsubmit="submitLogin(event)">
+                    <div class="form-group">
+                        <label for="loginEmail">Email</label>
+                        <input type="email" id="loginEmail" autocomplete="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="loginPassword">Password</label>
+                        <input type="password" id="loginPassword" autocomplete="current-password" required>
+                    </div>
+                    <div class="auth-form-meta">
+                        <label class="auth-remember" for="loginRemember">
+                            <input type="checkbox" id="loginRemember">
+                            <span>Ricordami su questo dispositivo</span>
+                        </label>
+                        <span class="auth-meta-note">I dati vengono riproposti al prossimo accesso da questo browser.</span>
+                    </div>
+                    <p class="auth-error" id="loginError"></p>
+                    <button type="submit" class="btn btn-primary auth-submit">Accedi</button>
+                    <p class="auth-switch">
+                        Non hai ancora un account?
+                        <button type="button" class="auth-switch-btn" onclick="switchAuthMode('register')">Crea account</button>
+                    </p>
+                </form>
+
+                <form id="registerForm" class="auth-form" style="display:none" onsubmit="submitRegister(event)">
+                    <div class="form-group">
+                        <label for="registerName">Nome visualizzato</label>
+                        <input type="text" id="registerName" autocomplete="name" placeholder="Facoltativo">
+                    </div>
+                    <div class="form-group">
+                        <label for="registerEmail">Email</label>
+                        <input type="email" id="registerEmail" autocomplete="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="registerPassword">Password</label>
+                        <input type="password" id="registerPassword" autocomplete="new-password" minlength="8" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="registerPasswordConfirm">Conferma password</label>
+                        <input type="password" id="registerPasswordConfirm" autocomplete="new-password" minlength="8" required>
+                    </div>
+                    <p class="auth-error" id="registerError"></p>
+                    <button type="submit" class="btn btn-primary auth-submit">Crea account</button>
+                    <p class="auth-switch">
+                        Hai gia un account?
+                        <button type="button" class="auth-switch-btn" onclick="switchAuthMode('login')">Accedi</button>
+                    </p>
+                </form>
             </div>
-
-            <form id="loginForm" class="auth-form" onsubmit="submitLogin(event)">
-                <div class="form-group">
-                    <label for="loginEmail">Email</label>
-                    <input type="email" id="loginEmail" autocomplete="email" required>
-                </div>
-                <div class="form-group">
-                    <label for="loginPassword">Password</label>
-                    <input type="password" id="loginPassword" autocomplete="current-password" required>
-                </div>
-                <p class="auth-error" id="loginError"></p>
-                <button type="submit" class="btn btn-primary auth-submit">Accedi</button>
-                <p class="auth-switch">
-                    Non hai ancora un account?
-                    <button type="button" class="auth-switch-btn" onclick="switchAuthMode('register')">Crea account</button>
-                </p>
-            </form>
-
-            <form id="registerForm" class="auth-form" style="display:none" onsubmit="submitRegister(event)">
-                <div class="form-group">
-                    <label for="registerName">Nome visualizzato</label>
-                    <input type="text" id="registerName" autocomplete="name" placeholder="Facoltativo">
-                </div>
-                <div class="form-group">
-                    <label for="registerEmail">Email</label>
-                    <input type="email" id="registerEmail" autocomplete="email" required>
-                </div>
-                <div class="form-group">
-                    <label for="registerPassword">Password</label>
-                    <input type="password" id="registerPassword" autocomplete="new-password" minlength="8" required>
-                </div>
-                <div class="form-group">
-                    <label for="registerPasswordConfirm">Conferma password</label>
-                    <input type="password" id="registerPasswordConfirm" autocomplete="new-password" minlength="8" required>
-                </div>
-                <p class="auth-error" id="registerError"></p>
-                <button type="submit" class="btn btn-primary auth-submit">Crea account</button>
-                <p class="auth-switch">
-                    Hai già un account?
-                    <button type="button" class="auth-switch-btn" onclick="switchAuthMode('login')">Accedi</button>
-                </p>
-            </form>
         </div>
     </div>
     <!-- Sidebar Navigation -->
