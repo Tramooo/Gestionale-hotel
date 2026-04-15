@@ -1629,46 +1629,18 @@ function renderAlloggiatiResults(container, data, mode) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
 
-    const getAlloggiatiErrorFocus = (detail) => {
-        const text = `${detail?.errorDesc || ''} ${detail?.errorDetail || ''}`.toLowerCase();
-        if (text.includes('comune di nascita')) return 'birthComune';
-        if (text.includes('provincia di nascita')) return 'birthProvince';
-        if (text.includes('stato di nascita')) return 'birthCountry';
-        if (text.includes('cittadinanza')) return 'citizenship';
-        if (text.includes('tipo documento')) return 'docType';
-        if (text.includes('numero documento')) return 'docNumber';
-        if (text.includes('rilascio')) return 'docPlace';
-        return '';
-    };
-
-    const emphasizeDebugField = (label, value, isFocused = false) => {
-        const safeLabel = escapeHtml(label);
-        const safeValue = escapeHtml(value);
-        return isFocused
-            ? `<strong style="color:var(--red)">${safeLabel}="${safeValue}"</strong>`
-            : `${safeLabel}="${safeValue}"`;
-    };
-
     let html = '';
     if (mode === 'preview') {
         html += `<div class="alloggiati-preview">
             <p><strong>${data.guests.length} record(s) built</strong></p>
             <div class="alloggiati-records">`;
-        data.guests.forEach((g, i) => {
+        data.guests.forEach((g) => {
             html += `<div class="alloggiati-record-item">
                 <span>${g.name}</span>
                 <span class="badge">${g.guestType === '17' ? 'CapoFam' : g.guestType === '18' ? 'Capo' : g.guestType === '19' ? 'Fam' : g.guestType === '20' ? 'Membro' : 'Singolo'}</span>
                 <span style="color:${g.recordLength === 168 ? 'var(--green)' : 'var(--red)'}">${g.recordLength} chars</span>
             </div>`;
         });
-        if (data.debug) {
-            html += `<div style="margin-top:8px;padding:8px;background:var(--bg-tertiary);border-radius:6px;font-size:11px;font-family:monospace;word-break:break-all">
-                <div>checkin raw: ${data.debug.checkinRaw} (${data.debug.checkinType})</div>
-                <div>checkout raw: ${data.debug.checkoutRaw}</div>
-                <div>record[0]: ${data.debug.record0}</div>
-                <div>length: ${data.debug.recordLength}</div>
-            </div>`;
-        }
         html += `</div></div>`;
     } else {
         const icon = data.success ? '&#10003;' : '&#10007;';
@@ -1676,118 +1648,18 @@ function renderAlloggiatiResults(container, data, mode) {
         html += `<div style="margin-bottom:8px">
             <span style="color:${color};font-weight:bold">${icon} ${mode === 'test' ? 'Test' : 'Send'}: ${data.validCount}/${data.totalCount} valid</span>
         </div>`;
-        if (mode === 'test' && data.methodUsed) {
-            html += `<div style="margin-bottom:8px;font-size:11px;color:var(--text-secondary)">
-                metodo="${escapeHtml(data.methodUsed)}"${data.apartmentMode ? ` | appartamento="${escapeHtml(data.apartmentId || '')}"` : ''}
-            </div>`;
-        }
         if (data.details && data.details.length > 0) {
             html += '<div class="alloggiati-records">';
-            data.details.forEach(d => {
+            data.details.forEach((d) => {
                 const ok = d.esito;
-                const typeLabel = d.guestType === '17' ? 'CapoFam' : d.guestType === '18' ? 'Capo' : d.guestType === '19' ? 'Fam' : d.guestType === '20' ? 'Membro' : 'Singolo';
-                const debugTag = mode === 'test'
-                    ? `<span style="font-size:10px;color:var(--text-tertiary);margin-left:4px">[${typeLabel}${d.docType ? ' · ' + d.docType : ''}]</span>`
-                    : '';
-                let debugRow = '';
-                if (mode === 'test' && !ok && d.recDocType !== undefined) {
-                    const birthComuneLabel = d.recBirthComune ? findLabelFromCode(alloggiatiLuoghi, d.recBirthComune) : '';
-                    const docPlaceLabel = d.recDocPlace ? findLabelFromCode(alloggiatiLuoghi, d.recDocPlace) : '';
-                    const focusedField = getAlloggiatiErrorFocus(d);
-                    const birthBlock = d.recBirthBlock || '';
-                    const birthBlockMap = birthBlock
-                        ? `[95-104]=${escapeHtml(birthBlock.substring(0, 10))} | [105-113]=${escapeHtml(birthBlock.substring(10, 19))} | [114-115]=${escapeHtml(birthBlock.substring(19, 21))} | [116-124]=${escapeHtml(birthBlock.substring(21, 30))} | [125-133]=${escapeHtml(birthBlock.substring(30, 39))}`
-                        : '';
-                    debugRow = `<div style="font-size:10px;font-family:monospace;color:var(--text-secondary);margin-top:2px;word-break:break-all">
-                        ${emphasizeDebugField('dataNascita', d.birthDate || '', false)} | ${emphasizeDebugField('tipo', d.recGuestType, false)} | ${emphasizeDebugField('comune', `${d.recBirthComune}${birthComuneLabel ? ` (${birthComuneLabel})` : ''}`, focusedField === 'birthComune')} | ${emphasizeDebugField('prov', d.recBirthProvince, focusedField === 'birthProvince')} | ${emphasizeDebugField('paese', d.recBirthCountry, focusedField === 'birthCountry')} | ${emphasizeDebugField('citt', d.recCitizenship, focusedField === 'citizenship')} | ${emphasizeDebugField('docTipo', d.recDocType, focusedField === 'docType')} | ${emphasizeDebugField('docNum', d.recDocNumber?.trim(), focusedField === 'docNumber')} | ${emphasizeDebugField('docLuogo', `${d.recDocPlace}${docPlaceLabel ? ` (${docPlaceLabel})` : ''}`, focusedField === 'docPlace')} | len=${escapeHtml(d.recLength)}
-                    </div>
-                    <div style="font-size:10px;font-family:monospace;color:var(--text-tertiary);margin-top:2px;word-break:break-all">
-                        birthBlock="${escapeHtml(birthBlock)}"${birthBlockMap ? ` | ${birthBlockMap}` : ''}
-                    </div>`;
-                }
                 html += `<div class="alloggiati-record-item ${ok ? 'success' : 'error'}">
                     <div>
-                        <span>${d.guestName}${debugTag}</span>
-                        <span style="color:${ok ? 'var(--green)' : 'var(--red)'}"> — ${ok ? 'OK' : d.errorDesc + (d.errorDetail ? ': ' + d.errorDetail : '')}</span>
-                        ${debugRow}
+                        <span>${d.guestName}</span>
+                        <span style="color:${ok ? 'var(--green)' : 'var(--red)'}"> - ${ok ? 'OK' : d.errorDesc + (d.errorDetail ? ': ' + d.errorDetail : '')}</span>
                     </div>
                 </div>`;
             });
             html += '</div>';
-        }
-        if (mode === 'test' && Array.isArray(data.birthDiagnostics) && data.birthDiagnostics.length > 0) {
-            html += `<div style="margin-top:10px;padding:10px;background:var(--bg-tertiary);border-radius:8px">
-                <div style="font-size:12px;font-weight:600;margin-bottom:6px">Diagnostica Luogo di Nascita</div>
-                ${data.birthDiagnostics.map((item) => `
-                    <div style="font-size:10px;font-family:monospace;color:${item.esito ? 'var(--green)' : 'var(--text-secondary)'};margin-bottom:6px;word-break:break-all">
-                        variante="${escapeHtml(item.label)}" | esito="${item.esito ? 'OK' : 'KO'}" | comune="${escapeHtml(item.recBirthComune)}" | prov="${escapeHtml(item.recBirthProvince)}" | paese="${escapeHtml(item.recBirthCountry)}" | birthBlock="${escapeHtml(item.birthBlock)}"${item.errorDesc ? ` | errore="${escapeHtml(item.errorDesc)}${item.errorDetail ? ': ' + escapeHtml(item.errorDetail) : ''}"` : ''}
-                    </div>
-                `).join('')}
-                ${data.birthDiagnosticsError ? `<div style="font-size:10px;color:var(--red)">diagnostica fallita: ${escapeHtml(data.birthDiagnosticsError)}</div>` : ''}
-            </div>`;
-        }
-        if (mode === 'test' && (data.groupDiagnostics || data.groupDiagnosticsError)) {
-            html += `<div style="margin-top:10px;padding:10px;background:var(--bg-tertiary);border-radius:8px">
-                <div style="font-size:12px;font-weight:600;margin-bottom:6px">Diagnostica Gruppo</div>
-                ${data.groupDiagnostics ? `
-                <div style="font-size:10px;font-family:monospace;color:var(--text-secondary);margin-bottom:6px;word-break:break-all">
-                    ${data.groupDiagnostics.failedGuestName ? `rigaFallita="${escapeHtml(data.groupDiagnostics.failedGuestName)}" | ` : ''}${data.groupDiagnostics.failedGuestType ? `tipoFallita="${escapeHtml(data.groupDiagnostics.failedGuestType)}" | ` : ''}${data.groupDiagnostics.guestName ? `leader="${escapeHtml(data.groupDiagnostics.guestName)}" | ` : ''}${data.groupDiagnostics.guestType ? `tipoLeader="${escapeHtml(data.groupDiagnostics.guestType)}" | ` : ''}records="${escapeHtml(data.groupDiagnostics.totalRecords || '')}" | sequence="${escapeHtml((data.groupDiagnostics.sequence || []).join(','))}"${data.groupDiagnostics.note ? ` | nota="${escapeHtml(data.groupDiagnostics.note)}"` : ''}${data.groupDiagnostics.esito !== undefined ? ` | esito="${data.groupDiagnostics.esito ? 'OK' : 'KO'}"` : ''}${data.groupDiagnostics.errorDesc ? ` | errore="${escapeHtml(data.groupDiagnostics.errorDesc)}${data.groupDiagnostics.errorDetail ? ': ' + escapeHtml(data.groupDiagnostics.errorDetail) : ''}"` : ''}
-                </div>
-                ${Array.isArray(data.groupDiagnostics.rowResults) ? data.groupDiagnostics.rowResults.map((row) => `
-                    <div style="font-size:10px;font-family:monospace;color:${row.esito ? 'var(--green)' : 'var(--text-secondary)'};margin-bottom:4px;word-break:break-all">
-                        ospite="${escapeHtml(row.guestName)}" | tipo="${escapeHtml(row.guestType)}" | esito="${row.esito ? 'OK' : 'KO'}"${row.sex ? ` | sesso="${escapeHtml(row.sex)}"` : ''}${row.birthDate ? ` | dataNascita="${escapeHtml(row.birthDate)}"` : ''}${row.recBirthComune ? ` | comune="${escapeHtml(row.recBirthComune)}"` : ''}${row.recBirthProvince ? ` | prov="${escapeHtml(row.recBirthProvince)}"` : ''}${row.recBirthCountry ? ` | paese="${escapeHtml(row.recBirthCountry)}"` : ''}${row.recCitizenship ? ` | citt="${escapeHtml(row.recCitizenship)}"` : ''}${row.errorDesc ? ` | errore="${escapeHtml(row.errorDesc)}${row.errorDetail ? ': ' + escapeHtml(row.errorDetail) : ''}"` : ''}
-                        ${!row.esito && row.recBirthBlock ? `<div style="font-size:10px;font-family:monospace;color:var(--text-tertiary);margin-top:2px">birthBlock="${escapeHtml(row.recBirthBlock)}" | record="${escapeHtml(row.record || '')}"</div>` : ''}
-                    </div>
-                `).join('') : ''}
-                ${Array.isArray(data.groupDiagnostics.sameComuneComparisons) && data.groupDiagnostics.sameComuneComparisons.length > 0 ? `
-                    <div style="font-size:11px;font-weight:600;margin:8px 0 4px">Confronto stesso comune</div>
-                    ${data.groupDiagnostics.sameComuneComparisons.map((row) => `
-                        <div style="font-size:10px;font-family:monospace;color:${row.esito ? 'var(--green)' : 'var(--text-secondary)'};margin-bottom:4px;word-break:break-all">
-                            ospite="${escapeHtml(row.guestName)}" | tipo="${escapeHtml(row.guestType)}" | esito="${row.esito ? 'OK' : 'KO'}"${row.sex ? ` | sesso="${escapeHtml(row.sex)}"` : ''}${row.birthDate ? ` | dataNascita="${escapeHtml(row.birthDate)}"` : ''}${row.recBirthComune ? ` | comune="${escapeHtml(row.recBirthComune)}"` : ''}${row.recBirthProvince ? ` | prov="${escapeHtml(row.recBirthProvince)}"` : ''}${row.recBirthCountry ? ` | paese="${escapeHtml(row.recBirthCountry)}"` : ''}${row.recCitizenship ? ` | citt="${escapeHtml(row.recCitizenship)}"` : ''}
-                        </div>
-                    `).join('')}
-                ` : ''}
-                ${data.groupDiagnostics.failedVsOkDiff ? `
-                    <div style="font-size:11px;font-weight:600;margin:8px 0 4px">Diff Record KO vs OK</div>
-                    <div style="font-size:10px;font-family:monospace;color:var(--text-secondary);margin-bottom:4px;word-break:break-all">
-                        ko="${escapeHtml(data.groupDiagnostics.failedVsOkDiff.failedGuestName)}" | ok="${escapeHtml(data.groupDiagnostics.failedVsOkDiff.okGuestName)}" | totalDiffs="${escapeHtml(data.groupDiagnostics.failedVsOkDiff.totalDiffs)}"
-                    </div>
-                    <div style="font-size:10px;font-family:monospace;color:var(--text-tertiary);word-break:break-all">
-                        ${(data.groupDiagnostics.failedVsOkDiff.diffs || []).map((diff) => `[${escapeHtml(diff.pos)}:${escapeHtml(diff.failed)}→${escapeHtml(diff.ok)}]`).join(' ')}
-                    </div>
-                ` : ''}` : ''}
-                ${data.groupDiagnosticsError ? `<div style="font-size:10px;color:var(--red)">diagnostica gruppo fallita: ${escapeHtml(data.groupDiagnosticsError)}</div>` : ''}
-            </div>`;
-        }
-        if (mode === 'test' && (Array.isArray(data.failingGuestDiagnostics) || data.failingGuestDiagnosticsError)) {
-            html += `<div style="margin-top:10px;padding:10px;background:var(--bg-tertiary);border-radius:8px">
-                <div style="font-size:12px;font-weight:600;margin-bottom:6px">Diagnostica Ospite KO</div>
-                ${Array.isArray(data.failingGuestDiagnostics) ? data.failingGuestDiagnostics.map((row) => `
-                    <div style="font-size:10px;font-family:monospace;color:${row.esito ? 'var(--green)' : 'var(--text-secondary)'};margin-bottom:4px;word-break:break-all">
-                        variante="${escapeHtml(row.label)}" | esito="${row.esito ? 'OK' : 'KO'}"${row.testedWithLeader ? ` | conLeader="${escapeHtml(row.leaderName || '')}"` : ''} | birthCountry="${escapeHtml(row.birthCountry || '')}" | citt="${escapeHtml(row.citizenship || '')}" | docLuogo="${escapeHtml(row.docIssuedPlace || '')}" | birthBlock="${escapeHtml(row.birthBlock || '')}"${row.errorDesc ? ` | errore="${escapeHtml(row.errorDesc)}${row.errorDetail ? ': ' + escapeHtml(row.errorDetail) : ''}"` : ''}
-                    </div>
-                `).join('') : ''}
-                ${data.failingGuestDiagnosticsError ? `<div style="font-size:10px;color:var(--red)">diagnostica ospite fallita: ${escapeHtml(data.failingGuestDiagnosticsError)}</div>` : ''}
-            </div>`;
-        }
-        if (mode === 'test' && (data.leaderMemberPairDiagnostics || data.leaderMemberPairDiagnosticsError)) {
-            html += `<div style="margin-top:10px;padding:10px;background:var(--bg-tertiary);border-radius:8px">
-                <div style="font-size:12px;font-weight:600;margin-bottom:6px">Diagnostica Leader + Membro</div>
-                ${data.leaderMemberPairDiagnostics ? `
-                    <div style="font-size:10px;font-family:monospace;color:var(--text-secondary);margin-bottom:6px;word-break:break-all">
-                        leader="${escapeHtml(data.leaderMemberPairDiagnostics.leaderName || '')}" | tipoLeader="${escapeHtml(data.leaderMemberPairDiagnostics.leaderType || '')}" | coppie="${escapeHtml(data.leaderMemberPairDiagnostics.totalPairs || '')}"${data.leaderMemberPairDiagnostics.firstRealFailure ? ` | primoKOReale="${escapeHtml(data.leaderMemberPairDiagnostics.firstRealFailure.guestName)}"` : ''}
-                    </div>
-                    ${Array.isArray(data.leaderMemberPairDiagnostics.rows) ? data.leaderMemberPairDiagnostics.rows.map((row) => `
-                        <div style="font-size:10px;font-family:monospace;color:${row.esito ? 'var(--green)' : 'var(--text-secondary)'};margin-bottom:4px;word-break:break-all">
-                            ospite="${escapeHtml(row.guestName)}" | tipo="${escapeHtml(row.guestType)}" | esito="${row.esito ? 'OK' : 'KO'}" | comune="${escapeHtml(row.recBirthComune || '')}" | prov="${escapeHtml(row.recBirthProvince || '')}" | paese="${escapeHtml(row.recBirthCountry || '')}" | citt="${escapeHtml(row.recCitizenship || '')}"${row.errorDesc ? ` | errore="${escapeHtml(row.errorDesc)}${row.errorDetail ? ': ' + escapeHtml(row.errorDetail) : ''}"` : ''}
-                        </div>
-                    `).join('') : ''}
-                ` : ''}
-                ${data.leaderMemberPairDiagnosticsError ? `<div style="font-size:10px;color:var(--red)">diagnostica leader+membro fallita: ${escapeHtml(data.leaderMemberPairDiagnosticsError)}</div>` : ''}
-            </div>`;
-        }
-        if (mode === 'test' && data.rawXml) {
-            console.log('[Alloggiati raw SOAP response]', data.rawXml);
         }
     }
     container.innerHTML = html;

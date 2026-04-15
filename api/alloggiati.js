@@ -740,13 +740,6 @@ export default async function handler(req, res) {
       if (action === 'build') {
         return res.status(200).json({
           records,
-          debug: {
-            checkinRaw: reservation.checkin,
-            checkoutRaw: reservation.checkout,
-            checkinType: typeof reservation.checkin,
-            record0: records[0],
-            recordLength: records[0] ? records[0].length : 0
-          },
           guests: normalizedGuests.map(g => ({
             id: g.id,
             name: `${g.firstName} ${g.lastName}`,
@@ -798,94 +791,21 @@ export default async function handler(req, res) {
 
       const responsePayload = {
         success: esito.esito,
-        methodUsed: methodName,
-        apartmentMode: shouldUseApartmentMode,
-        apartmentId: shouldUseApartmentMode ? APARTMENT_ID : '',
         validCount: parseInt(validCount) || 0,
         totalCount: records.length,
         details: dettaglio.map((d, i) => {
           const g = normalizedGuests[i];
-          const rec = records[i] || '';
           return {
             guestName: g ? `${g.firstName} ${g.lastName}` : `Row ${i + 1}`,
             guestType: g?.guestType,
             docType: g?.docType,
             birthDate: g?.birthDate,
             errorFieldHint: d?.errorDesc || d?.errorDetail || '',
-            // Slices of the fixed-width record for key fields (test only)
-            recGuestType:     action === 'test' ? rec.substring(0, 2)    : undefined,
-            recBirthBlock:    action === 'test' ? rec.substring(95, 134) : undefined,
-            recBirthComune:   action === 'test' ? rec.substring(105, 114): undefined,
-            recBirthProvince: action === 'test' ? rec.substring(114, 116): undefined,
-            recBirthCountry:  action === 'test' ? rec.substring(116, 125): undefined,
-            recCitizenship:   action === 'test' ? rec.substring(125, 134): undefined,
-            recDocType:       action === 'test' ? rec.substring(134, 139): undefined,
-            recDocNumber:     action === 'test' ? rec.substring(139, 159): undefined,
-            recDocPlace:      action === 'test' ? rec.substring(159, 168): undefined,
-            recLength:        action === 'test' ? rec.length              : undefined,
             ...d
           };
         }),
-        rawXml: action === 'test' ? xml.substring(0, 3000) : undefined,
         overallResult: esito
       };
-
-      if (action === 'test' && !shouldUseApartmentMode) {
-        try {
-          responsePayload.birthDiagnostics = await runBirthBlockDiagnostics({
-            action,
-            normalizedGuests,
-            records,
-            failingDetails: dettaglio,
-            reservation,
-            methodName,
-            token,
-            UTENTE
-          });
-        } catch (diagnosticError) {
-          responsePayload.birthDiagnosticsError = diagnosticError.message;
-        }
-        try {
-          responsePayload.groupDiagnostics = await runGroupDiagnostics({
-            action,
-            normalizedGuests,
-            records,
-            failingDetails: dettaglio,
-            methodName,
-            token,
-            UTENTE
-          });
-        } catch (diagnosticError) {
-          responsePayload.groupDiagnosticsError = diagnosticError.message;
-        }
-        try {
-          responsePayload.failingGuestDiagnostics = await runFailingGuestFieldDiagnostics({
-            action,
-            normalizedGuests,
-            records,
-            failingDetails: dettaglio,
-            reservation,
-            methodName,
-            token,
-            UTENTE
-          });
-        } catch (diagnosticError) {
-          responsePayload.failingGuestDiagnosticsError = diagnosticError.message;
-        }
-        try {
-          responsePayload.leaderMemberPairDiagnostics = await runLeaderMemberPairDiagnostics({
-            action,
-            normalizedGuests,
-            records,
-            failingDetails: dettaglio,
-            methodName,
-            token,
-            UTENTE
-          });
-        } catch (diagnosticError) {
-          responsePayload.leaderMemberPairDiagnosticsError = diagnosticError.message;
-        }
-      }
 
       return res.status(200).json(responsePayload);
     }
