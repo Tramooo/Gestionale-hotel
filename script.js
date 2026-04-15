@@ -2072,7 +2072,7 @@ async function openRoomAssignment(reservationId) {
 
     // Load column config
     try {
-        const config = await apiGet(API.plannerConfig + '?reservation_id=' + reservationId);
+        const config = await apiGet(API.assignments + '?resource=planner-config&reservation_id=' + reservationId);
         plannerColumns = (config && config.columns && config.columns.length > 0)
             ? config.columns
             : getDefaultPlannerColumns().map(c => ({ ...c }));
@@ -2362,7 +2362,8 @@ async function saveAllAssignments() {
 
     try {
         // Save column config
-        await apiPut(API.plannerConfig, {
+        await apiPut(API.assignments, {
+            resource: 'planner-config',
             reservationId: currentAssignmentReservationId,
             columns: plannerColumns
         });

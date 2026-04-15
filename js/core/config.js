@@ -6,7 +6,6 @@
         guests: '/api/guests',
         init: '/api/init',
         assignments: '/api/assignments',
-        plannerConfig: '/api/planner-config',
         alloggiati: '/api/alloggiati',
         employees: '/api/employees',
         files: '/api/files',
