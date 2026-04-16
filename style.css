@@ -4294,11 +4294,14 @@ select.cell-input option {
     .planner-add-btn {
         min-width: 0;
         justify-content: center;
+        padding-inline: 10px;
+        gap: 6px;
     }
 
     .planner-add-btn span {
         overflow: hidden;
         text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .planner-nav-controls {
@@ -4385,10 +4388,10 @@ select.cell-input option {
     }
 
     .planner-month-bar {
-        min-height: calc(42px + env(safe-area-inset-bottom, 0px));
+        min-height: calc(38px + env(safe-area-inset-bottom, 0px));
         height: auto;
-        align-items: flex-start;
-        padding: 6px 8px calc(env(safe-area-inset-bottom, 0px) + 6px);
+        align-items: center;
+        padding: 4px 8px calc(env(safe-area-inset-bottom, 0px) + 2px);
     }
 
     .planner-month-btn {
