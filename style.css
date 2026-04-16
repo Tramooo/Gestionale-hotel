@@ -3484,6 +3484,12 @@ select.cell-input option {
     color: var(--text-secondary);
 }
 
+.dashboard-agenda-card .card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
 .todo-toolbar,
 .todo-form {
     display: flex;
@@ -3491,8 +3497,17 @@ select.cell-input option {
     align-items: flex-end;
 }
 
+.todo-toolbar {
+    justify-content: space-between;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-light);
+}
+
 .todo-form {
-    margin-top: 14px;
+    padding: 14px;
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    background: var(--bg-primary);
 }
 
 .todo-field {
@@ -3505,10 +3520,41 @@ select.cell-input option {
 .todo-field span {
     font-size: 12px;
     color: var(--text-secondary);
+    font-weight: 600;
 }
 
 .todo-field input {
     min-height: 38px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    padding: 0 12px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+}
+
+.todo-field input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.todo-field input::placeholder {
+    color: var(--text-tertiary);
+}
+
+.todo-toolbar .btn-secondary {
+    min-height: 38px;
+    padding-inline: 12px;
+    background: transparent;
+    border: 1px solid var(--border);
+}
+
+.todo-toolbar .btn-secondary:hover {
+    background: var(--bg-primary);
+    border-color: var(--text-secondary);
 }
 
 .todo-field-grow {
@@ -3516,25 +3562,26 @@ select.cell-input option {
 }
 
 .todo-list {
-    margin-top: 16px;
-    border-top: 1px solid var(--border-light);
-    padding-top: 12px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    padding: 10px 14px 4px;
+    min-height: 180px;
 }
 
 .todo-list-header {
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 700;
     color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    margin-bottom: 8px;
+    letter-spacing: 0.02em;
+    margin-bottom: 6px;
 }
 
 .todo-item {
     display: flex;
     align-items: flex-start;
     gap: 12px;
-    padding: 12px 0;
+    padding: 14px 0;
     border-bottom: 1px solid var(--border-light);
 }
 
@@ -3545,7 +3592,7 @@ select.cell-input option {
 .todo-check,
 .todo-delete {
     border: 1px solid var(--border);
-    background: var(--bg-primary);
+    background: var(--bg-secondary);
     color: var(--text-secondary);
     cursor: pointer;
     transition: background var(--transition), color var(--transition), border-color var(--transition);
@@ -3568,12 +3615,14 @@ select.cell-input option {
     flex-shrink: 0;
     font-size: 18px;
     line-height: 1;
+    align-self: center;
 }
 
 .todo-check:hover,
 .todo-delete:hover {
     border-color: var(--text-secondary);
     color: var(--text-primary);
+    background: var(--bg-tertiary);
 }
 
 .todo-content {
@@ -3585,6 +3634,7 @@ select.cell-input option {
     font-size: 14px;
     line-height: 1.45;
     word-break: break-word;
+    font-weight: 500;
 }
 
 .todo-meta {
@@ -3596,6 +3646,11 @@ select.cell-input option {
     color: var(--text-secondary);
 }
 
+.todo-meta span:first-child {
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
 .todo-item.is-done .todo-check {
     background: var(--green);
     border-color: var(--green);
@@ -3605,6 +3660,10 @@ select.cell-input option {
 .todo-item.is-done .todo-text {
     text-decoration: line-through;
     color: var(--text-secondary);
+}
+
+.todo-list .empty-state.small {
+    padding: 28px 12px;
 }
 
 /* =============================================
