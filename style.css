@@ -1416,6 +1416,29 @@ textarea,
     box-sizing: border-box;
 }
 
+.planner-toolbar-desktop {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    min-width: 0;
+}
+
+.planner-toolbar-mobile {
+    display: none;
+    width: 100%;
+    min-width: 0;
+}
+
+.planner-toolbar-main {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-width: 0;
+}
+
 .planner-toolbar-left {
     display: flex;
     align-items: center;
@@ -1431,6 +1454,23 @@ textarea,
     flex-wrap: wrap;
     min-width: 0;
     flex-shrink: 1;
+}
+
+.planner-nav-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.planner-add-btn {
+    flex-shrink: 0;
+}
+
+.planner-nav-btn {
+    min-width: 40px;
+    padding-inline: 10px;
 }
 
 .planner-legend {
@@ -4217,50 +4257,69 @@ select.cell-input option {
         gap: 10px;
     }
 
-    .planner-legend {
+    .planner-toolbar {
+        align-items: stretch;
+        padding: 14px;
+        gap: 10px;
+    }
+
+    .planner-toolbar-desktop {
         display: none;
     }
 
-    .planner-toolbar-left,
-    .planner-toolbar-right {
-        width: 100%;
-        justify-content: space-between;
+    .planner-toolbar-mobile {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .planner-toolbar-main {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        align-items: center;
         gap: 8px;
     }
 
-    .planner-toolbar-left {
-        display: grid;
-        grid-template-columns: auto 1fr auto auto;
-        align-items: center;
-    }
-
-    .planner-toolbar-left .page-title {
-        margin-right: 4px !important;
+    .planner-toolbar-main .page-title {
+        margin-right: 0 !important;
         font-size: 20px;
         min-width: 0;
     }
 
-    .planner-toolbar-left .btn,
-    .planner-toolbar-right .btn {
+    .planner-toolbar-main .btn,
+    .planner-nav-controls .btn {
         min-height: 40px;
     }
 
-    .planner-toolbar-right {
-        flex-wrap: nowrap;
-    }
-
-    .planner-settings-btn {
-        flex: 0 0 auto;
-    }
-
-    .planner-toolbar-right .btn-primary {
-        flex: 1 1 auto;
+    .planner-add-btn {
+        min-width: 0;
         justify-content: center;
+    }
+
+    .planner-add-btn span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .planner-nav-controls {
+        gap: 6px;
+        margin-left: 0;
+    }
+
+    .planner-nav-btn {
+        min-width: 38px;
+        padding-inline: 8px;
+    }
+
+    .planner-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 14px;
     }
 
     .planner-board {
         grid-template-columns: 92px 1fr;
-        grid-template-rows: 84px 1fr;
+        grid-template-rows: 96px 1fr;
         min-height: 0;
     }
 
@@ -4279,7 +4338,7 @@ select.cell-input option {
     }
 
     #page-calendar {
-        height: calc(100svh - 72px - env(safe-area-inset-bottom, 0px));
+        height: calc(var(--app-height) - 84px - env(safe-area-inset-bottom, 0px));
         min-height: 0;
     }
 
@@ -4326,8 +4385,10 @@ select.cell-input option {
     }
 
     .planner-month-bar {
-        height: 42px;
-        padding: 0 8px calc(env(safe-area-inset-bottom, 0px) + 2px);
+        min-height: calc(42px + env(safe-area-inset-bottom, 0px));
+        height: auto;
+        align-items: flex-start;
+        padding: 6px 8px calc(env(safe-area-inset-bottom, 0px) + 6px);
     }
 
     .planner-month-btn {

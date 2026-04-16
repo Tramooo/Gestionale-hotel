@@ -489,25 +489,49 @@
         <section class="page" id="page-calendar">
             <!-- Top toolbar -->
             <div class="planner-toolbar">
-                <div class="planner-toolbar-left">
-                    <h1 class="page-title" style="margin-right:16px" data-i18n="cal.title">Calendario</h1>
-                    <button class="btn btn-ghost" onclick="calendarPrev()">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="15 18 9 12 15 6"/></svg>
-                    </button>
-                    <button class="btn btn-secondary btn-sm" onclick="calendarToday()" data-i18n="cal.today">Oggi</button>
-                    <button class="btn btn-ghost" onclick="calendarNext()">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="9 18 15 12 9 6"/></svg>
-                    </button>
+                <div class="planner-toolbar-desktop">
+                    <div class="planner-toolbar-left">
+                        <h1 class="page-title" style="margin-right:16px" data-i18n="cal.title">Calendario</h1>
+                        <button class="btn btn-ghost" onclick="calendarPrev()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="15 18 9 12 15 6"/></svg>
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="calendarToday()" data-i18n="cal.today">Oggi</button>
+                        <button class="btn btn-ghost" onclick="calendarNext()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="9 18 15 12 9 6"/></svg>
+                        </button>
+                    </div>
+                    <div class="planner-toolbar-right">
+                        <button class="btn btn-secondary btn-sm planner-settings-btn" type="button" onclick="openModal('settingsModal')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01A1.65 1.65 0 0 0 10 3.09V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                            <span data-i18n="nav.settings">Impostazioni</span>
+                        </button>
+                        <button class="btn btn-primary btn-sm" onclick="openNewReservationModal()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            <span data-i18n="cal.newBooking">Nuova Prenotazione</span>
+                        </button>
+                        <div class="planner-legend">
+                            <span class="planner-legend-item"><span class="planner-legend-dot" style="background:var(--green)"></span><span data-i18n="cal.confirmed">Confermata</span></span>
+                            <span class="planner-legend-item"><span class="planner-legend-dot" style="background:var(--orange)"></span><span data-i18n="cal.pending">In Attesa</span></span>
+                        </div>
+                    </div>
                 </div>
-                <div class="planner-toolbar-right">
-                    <button class="btn btn-secondary btn-sm planner-settings-btn" type="button" onclick="openModal('settingsModal')">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01A1.65 1.65 0 0 0 10 3.09V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                        <span data-i18n="nav.settings">Impostazioni</span>
-                    </button>
-                    <button class="btn btn-primary btn-sm" onclick="openNewReservationModal()">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                        <span data-i18n="cal.newBooking">Nuova Prenotazione</span>
-                    </button>
+                <div class="planner-toolbar-mobile">
+                    <div class="planner-toolbar-main">
+                        <h1 class="page-title" data-i18n="cal.title">Calendario</h1>
+                        <button class="btn btn-primary btn-sm planner-add-btn" onclick="openNewReservationModal()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            <span data-i18n="cal.newBooking">Nuova Prenotazione</span>
+                        </button>
+                        <div class="planner-nav-controls">
+                            <button class="btn btn-ghost planner-nav-btn" onclick="calendarPrev()" aria-label="Periodo precedente">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="15 18 9 12 15 6"/></svg>
+                            </button>
+                            <button class="btn btn-secondary btn-sm planner-today-btn" onclick="calendarToday()" data-i18n="cal.today">Oggi</button>
+                            <button class="btn btn-ghost planner-nav-btn" onclick="calendarNext()" aria-label="Periodo successivo">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="9 18 15 12 9 6"/></svg>
+                            </button>
+                        </div>
+                    </div>
                     <div class="planner-legend">
                         <span class="planner-legend-item"><span class="planner-legend-dot" style="background:var(--green)"></span><span data-i18n="cal.confirmed">Confermata</span></span>
                         <span class="planner-legend-item"><span class="planner-legend-dot" style="background:var(--orange)"></span><span data-i18n="cal.pending">In Attesa</span></span>
