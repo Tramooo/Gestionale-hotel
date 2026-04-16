@@ -1498,6 +1498,7 @@ body {
     flex: 1;
     overflow: hidden;
     position: relative;
+    min-height: 0;
 }
 
 .planner-board {
@@ -1689,6 +1690,9 @@ body {
     grid-column: 2;
     overflow: auto;
     position: relative;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-x pan-y;
 }
 
 .p-grid-inner {
@@ -1838,6 +1842,7 @@ body {
     flex-shrink: 0;
     overflow-x: auto;
     scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
 }
 
 .planner-month-bar::-webkit-scrollbar {
@@ -4062,19 +4067,118 @@ select.cell-input option {
     }
 
     .planner-toolbar {
-        padding: 12px 16px;
+        padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 10px;
+        align-items: stretch;
+        gap: 10px;
     }
 
     .planner-legend {
         display: none;
     }
 
+    .planner-toolbar-left,
+    .planner-toolbar-right {
+        width: 100%;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+    .planner-toolbar-left {
+        display: grid;
+        grid-template-columns: auto 1fr auto auto;
+        align-items: center;
+    }
+
+    .planner-toolbar-left .page-title {
+        margin-right: 4px !important;
+        font-size: 20px;
+        min-width: 0;
+    }
+
+    .planner-toolbar-left .btn,
+    .planner-toolbar-right .btn {
+        min-height: 40px;
+    }
+
+    .planner-toolbar-right {
+        flex-wrap: nowrap;
+    }
+
+    .planner-settings-btn {
+        flex: 0 0 auto;
+    }
+
+    .planner-toolbar-right .btn-primary {
+        flex: 1 1 auto;
+        justify-content: center;
+    }
+
     .planner-board {
-        grid-template-columns: 80px 1fr;
+        grid-template-columns: 92px 1fr;
+        grid-template-rows: 84px 1fr;
+        min-height: 0;
     }
 
     .planner-room-type {
         display: none;
+    }
+
+    #page-calendar {
+        height: calc(100svh - 72px - env(safe-area-inset-bottom, 0px));
+        min-height: 0;
+    }
+
+    .planner-wrapper {
+        overflow: hidden;
+        min-height: 0;
+    }
+
+    .p-corner-cell {
+        padding: 0 8px;
+        letter-spacing: 0.02em;
+    }
+
+    .p-corner-cell.months {
+        font-size: 10px;
+    }
+
+    .p-day-cell .day-num {
+        font-size: 11px;
+    }
+
+    .p-day-cell .day-name,
+    .p-stats-cell {
+        font-size: 9px;
+    }
+
+    .p-floor-left {
+        padding: 0 8px;
+        font-size: 10px;
+    }
+
+    .p-room-left {
+        padding: 0 8px;
+        font-size: 12px;
+    }
+
+    .planner-room-label {
+        font-size: 12px;
+    }
+
+    .planner-res-bar {
+        padding: 0 8px 0 12px;
+        font-size: 10px;
+    }
+
+    .planner-month-bar {
+        height: 42px;
+        padding: 0 8px calc(env(safe-area-inset-bottom, 0px) + 2px);
+    }
+
+    .planner-month-btn {
+        min-height: 30px;
+        padding: 5px 12px;
+        border-radius: 8px;
     }
 
     .guests-table th,

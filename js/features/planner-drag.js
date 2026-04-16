@@ -7,6 +7,10 @@
         return deps;
     }
 
+    function isTouchEnvironment() {
+        return window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+    }
+
     function initGridDrag() {
         const { getPlannerGridEl } = requireDeps();
         const plannerGridEl = getPlannerGridEl();
@@ -14,8 +18,12 @@
         const gridInner = plannerGridEl.querySelector('.p-grid-inner');
         if (!gridInner) return;
 
+        gridInner.removeEventListener('mousedown', onGridDragStart);
+        gridInner.removeEventListener('touchstart', onGridDragStart);
         gridInner.addEventListener('mousedown', onGridDragStart);
-        gridInner.addEventListener('touchstart', onGridDragStart, { passive: false });
+        if (!isTouchEnvironment()) {
+            gridInner.addEventListener('touchstart', onGridDragStart, { passive: false });
+        }
     }
 
     function getDayIdxFromEvent(event) {
