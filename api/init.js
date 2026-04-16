@@ -235,6 +235,19 @@ export default async function handler(req, res) {
     `;
     await sql`ALTER TABLE compliance_docs ADD COLUMN IF NOT EXISTS owner_user_id TEXT`;
 
+    await sql`
+      CREATE TABLE IF NOT EXISTS agenda_items (
+        id TEXT PRIMARY KEY,
+        agenda_date DATE NOT NULL,
+        agenda_time TEXT,
+        text TEXT NOT NULL,
+        done BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `;
+    await sql`ALTER TABLE agenda_items ADD COLUMN IF NOT EXISTS owner_user_id TEXT`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_agenda_items_owner_date ON agenda_items(owner_user_id, agenda_date, agenda_time, created_at)`;
+
     // Legacy single-tenant rows become owned by the first authenticated user
     // who runs the migration, preserving existing data for that account only.
     await sql`UPDATE rooms SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
@@ -249,6 +262,7 @@ export default async function handler(req, res) {
     await sql`UPDATE reservation_files SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
     await sql`UPDATE compliance_certs SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
     await sql`UPDATE compliance_docs SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
+    await sql`UPDATE agenda_items SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
 
     res.status(200).json({ message: 'Tables created successfully' });
   } catch (err) {

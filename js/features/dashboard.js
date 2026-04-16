@@ -1,5 +1,7 @@
 (function initDashboardFeature(global) {
     let deps = null;
+    let selectedAgendaDate = null;
+    let agendaControlsBound = false;
 
     function requireDeps() {
         if (!deps) throw new Error('GroupStayDashboard not initialized');
@@ -27,6 +29,221 @@
     function setText(id, value) {
         const el = document.getElementById(id);
         if (el) el.textContent = value;
+    }
+
+    function createAgendaItemId() {
+        return `agenda_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
+    }
+
+    function loadAgendaItems() {
+        const { getAgendaItems } = requireDeps();
+        const items = getAgendaItems ? getAgendaItems() : [];
+        if (!Array.isArray(items)) return [];
+        return items.filter((item) => item && item.id && item.date && item.text).map((item) => ({
+            done: Boolean(item.done),
+            id: item.id,
+            text: String(item.text),
+            time: item.time ? String(item.time) : '',
+            date: String(item.date),
+            createdAt: item.createdAt || ''
+        }));
+    }
+
+    function saveAgendaItems(items) {
+        const { setAgendaItems } = requireDeps();
+        if (setAgendaItems) setAgendaItems(items);
+    }
+
+    function sortAgendaItems(items) {
+        return [...items].sort((a, b) => {
+            if (a.date !== b.date) return a.date.localeCompare(b.date);
+            if (a.done !== b.done) return Number(a.done) - Number(b.done);
+            const timeA = a.time || '99:99';
+            const timeB = b.time || '99:99';
+            if (timeA !== timeB) return timeA.localeCompare(timeB);
+            return (a.createdAt || '').localeCompare(b.createdAt || '');
+        });
+    }
+
+    function getSelectedAgendaDate() {
+        const { formatDate } = requireDeps();
+        return selectedAgendaDate || formatDate(new Date());
+    }
+
+    function syncAgendaDateInput() {
+        const dateInput = document.getElementById('dashboard-task-date');
+        if (dateInput) dateInput.value = getSelectedAgendaDate();
+    }
+
+    function renderAgendaList() {
+        const { escapeHtml, formatDateDisplay, getCurrentLang, t } = requireDeps();
+        const listEl = document.getElementById('dashboard-task-list');
+        if (!listEl) return;
+
+        const selectedDate = getSelectedAgendaDate();
+        const locale = getCurrentLang && getCurrentLang() === 'en' ? 'en-GB' : 'it-IT';
+        const heading = parseDate(selectedDate).toLocaleDateString(locale, {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long'
+        });
+
+        const items = sortAgendaItems(loadAgendaItems()).filter((item) => item.date === selectedDate);
+
+        if (!items.length) {
+            listEl.innerHTML = `
+                <div class="empty-state small">
+                    <p>${escapeHtml(t('dash.noTasksForDate', { date: heading }))}</p>
+                </div>
+            `;
+            return;
+        }
+
+        listEl.innerHTML = `
+            <div class="todo-list-header">${escapeHtml(formatDateDisplay(selectedDate))}</div>
+            ${items.map((item) => `
+                <div class="todo-item${item.done ? ' is-done' : ''}">
+                    <button
+                        type="button"
+                        class="todo-check"
+                        data-task-action="toggle"
+                        data-task-id="${item.id}"
+                        aria-label="${item.done ? t('dash.markTodoUndone') : t('dash.markTodoDone')}"
+                        title="${item.done ? t('dash.markTodoUndone') : t('dash.markTodoDone')}"
+                    >${item.done ? '&#10003;' : ''}</button>
+                    <div class="todo-content">
+                        <div class="todo-text">${escapeHtml(item.text)}</div>
+                        <div class="todo-meta">
+                            <span>${escapeHtml(item.time || t('dash.noTime'))}</span>
+                            <span>${escapeHtml(heading)}</span>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        class="todo-delete"
+                        data-task-action="delete"
+                        data-task-id="${item.id}"
+                        aria-label="${t('dash.deleteTask')}"
+                        title="${t('dash.deleteTask')}"
+                    >&times;</button>
+                </div>
+            `).join('')}
+        `;
+    }
+
+    function setAgendaDate(dateStr) {
+        selectedAgendaDate = dateStr;
+        syncAgendaDateInput();
+        renderAgendaList();
+    }
+
+    async function saveAgendaItem(event) {
+        event.preventDefault();
+
+        const { API, apiPost, generateId, showToast, t } = requireDeps();
+        const textInput = document.getElementById('dashboard-task-text');
+        const timeInput = document.getElementById('dashboard-task-time');
+        const dateInput = document.getElementById('dashboard-task-date');
+
+        if (!textInput || !timeInput || !dateInput) return;
+
+        const text = textInput.value.trim();
+        const date = dateInput.value || getSelectedAgendaDate();
+        const time = timeInput.value || '';
+
+        if (!text) {
+            showToast(t('dash.todoTextRequired'), 'error');
+            textInput.focus();
+            return;
+        }
+
+        const newItem = {
+            createdAt: new Date().toISOString(),
+            date,
+            done: false,
+            id: generateId ? generateId() : createAgendaItemId(),
+            text,
+            time
+        };
+
+        try {
+            await apiPost(API.agenda, newItem);
+            saveAgendaItems([...loadAgendaItems(), newItem]);
+            textInput.value = '';
+            timeInput.value = '';
+            setAgendaDate(date);
+            showToast(t('dash.taskSaved'));
+        } catch (error) {
+            showToast(t('dash.taskSaveFail'), 'error');
+        }
+    }
+
+    async function handleAgendaListClick(event) {
+        const target = event.target.closest('[data-task-action]');
+        if (!target) return;
+
+        const { API, apiDelete, apiPut, showToast, t } = requireDeps();
+        const action = target.dataset.taskAction;
+        const taskId = target.dataset.taskId;
+        const items = loadAgendaItems();
+        const taskIndex = items.findIndex((item) => item.id === taskId);
+
+        if (taskIndex === -1) return;
+
+        if (action === 'toggle') {
+            const updatedItem = {
+                ...items[taskIndex],
+                done: !items[taskIndex].done
+            };
+
+            try {
+                await apiPut(API.agenda, updatedItem);
+                items[taskIndex] = updatedItem;
+                saveAgendaItems(items);
+                renderAgendaList();
+                showToast(updatedItem.done ? t('dash.taskCompleted') : t('dash.taskReopened'));
+            } catch (error) {
+                showToast(t('dash.taskUpdateFail'), 'error');
+            }
+        }
+
+        if (action === 'delete') {
+            try {
+                await apiDelete(API.agenda, taskId);
+                items.splice(taskIndex, 1);
+                saveAgendaItems(items);
+                renderAgendaList();
+                showToast(t('dash.taskDeleted'));
+            } catch (error) {
+                showToast(t('dash.taskDeleteFail'), 'error');
+            }
+        }
+    }
+
+    function bindAgendaControls(todayStr) {
+        if (agendaControlsBound) return;
+
+        const form = document.getElementById('dashboard-task-form');
+        const dateInput = document.getElementById('dashboard-task-date');
+        const todayButton = document.getElementById('dashboard-task-today');
+        const listEl = document.getElementById('dashboard-task-list');
+
+        if (!form || !dateInput || !todayButton || !listEl) return;
+
+        agendaControlsBound = true;
+        selectedAgendaDate = selectedAgendaDate || todayStr;
+        syncAgendaDateInput();
+
+        dateInput.addEventListener('change', () => {
+            setAgendaDate(dateInput.value || requireDeps().formatDate(new Date()));
+        });
+
+        todayButton.addEventListener('click', () => {
+            setAgendaDate(requireDeps().formatDate(new Date()));
+        });
+
+        form.addEventListener('submit', saveAgendaItem);
+        listEl.addEventListener('click', handleAgendaListClick);
     }
 
     function renderTrendChart(days, totalRooms, t) {
@@ -107,19 +324,21 @@
         const liveReservations = reservations.filter((reservation) => reservation.status !== 'cancelled');
         const todayStr = formatDate(new Date());
         const inHouseReservations = liveReservations.filter((reservation) => reservation.checkin <= todayStr && reservation.checkout > todayStr);
-        const activeGroups = inHouseReservations;
         const todayGuests = inHouseReservations.reduce((sum, reservation) => sum + (reservation.guestCount || 0), 0);
         const occupiedRooms = rooms.filter((room) => room.status === 'occupied').length;
         const todayCheckins = liveReservations.filter((reservation) => reservation.checkin === todayStr);
         const todayCheckouts = liveReservations.filter((reservation) => reservation.checkout === todayStr);
-        const pendingReservations = reservations.filter((reservation) => reservation.status === 'pending');
 
-        setText('stat-active-groups', activeGroups.length);
+        setText('stat-arrivals-departures', `${todayCheckins.length} / ${todayCheckouts.length}`);
+        setText('stat-arrivals-departures-meta', t('dash.arrivalsDeparturesMeta', {
+            arrivals: todayCheckins.length,
+            departures: todayCheckouts.length
+        }));
         setText('stat-total-guests', todayGuests);
         setText('stat-rooms-occupied', `${occupiedRooms}/${rooms.length}`);
-        setText('stat-arrivals-today', todayCheckins.length);
-        setText('stat-departures-today', todayCheckouts.length);
-        setText('stat-pending-reservations', pendingReservations.length);
+        setText('stat-rooms-occupied-meta', t('dash.roomsAvailableMeta', {
+            available: rooms.filter((room) => room.status === 'available').length
+        }));
 
         const totalRooms = rooms.length;
         const available = rooms.filter((room) => room.status === 'available').length;
@@ -129,7 +348,8 @@
         const circumference = 2 * Math.PI * 52;
         const offset = circumference - (percent / 100) * circumference;
 
-        document.getElementById('occupancy-circle').setAttribute('stroke-dashoffset', offset);
+        const occupancyCircle = document.getElementById('occupancy-circle');
+        if (occupancyCircle) occupancyCircle.setAttribute('stroke-dashoffset', offset);
         setText('occupancy-percent', percent + '%');
         setText('legend-occupied', occupied);
         setText('legend-available', available);
@@ -188,6 +408,11 @@
         } else {
             activityEl.innerHTML = activities.join('');
         }
+
+        bindAgendaControls(todayStr);
+        if (!selectedAgendaDate) selectedAgendaDate = todayStr;
+        syncAgendaDateInput();
+        renderAgendaList();
 
         const lang = getCurrentLang ? getCurrentLang() : 'it';
         const locale = lang === 'en' ? 'en-GB' : 'it-IT';

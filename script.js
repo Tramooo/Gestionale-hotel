@@ -240,15 +240,23 @@ window.GroupStayGuestImport.init({
 });
 
 window.GroupStayDashboard.init({
+    API,
+    apiDelete,
+    apiPost,
+    apiPut,
     computeRoomStatuses,
     escapeHtml,
     formatDate,
     formatDateDisplay,
+    generateId,
+    getAgendaItems: () => agendaItems,
     getCurrentLang: () => currentLang,
     getReservations: () => reservations,
     getRooms: () => rooms,
     nightsBetween,
     openReservationDetail,
+    setAgendaItems: (nextAgendaItems) => { agendaItems = nextAgendaItems; },
+    showToast,
     t
 });
 
@@ -365,7 +373,7 @@ function saveDataCache() {
         if (!currentUser?.id) return;
         localStorage.setItem(`${CACHE_KEY}:${currentUser.id}`, JSON.stringify({
             ts: Date.now(),
-            reservations, rooms, guests, employees, workEntries, complianceCerts, complianceDocs
+            reservations, rooms, guests, employees, workEntries, complianceCerts, complianceDocs, agendaItems
         }));
     } catch (e) {} // ignore quota errors
 }
@@ -384,6 +392,7 @@ function loadDataCache() {
         workEntries    = cache.workEntries    || [];
         complianceCerts = cache.complianceCerts || [];
         complianceDocs  = cache.complianceDocs  || [];
+        agendaItems     = cache.agendaItems     || [];
         computeRoomStatuses();
         return true;
     } catch (e) { return false; }
@@ -395,13 +404,14 @@ async function loadAllData() {
         // so freshly added columns are available even in an existing session.
         try { await apiPost(API.init, {}); } catch (e) {}
 
-        const [resData, roomData, guestData, empData, certsData, docsData] = await Promise.all([
+        const [resData, roomData, guestData, empData, certsData, docsData, agendaData] = await Promise.all([
             apiGet(API.reservations),
             apiGet(API.rooms),
             apiGet(API.guests),
             apiGet(API.employees).catch(() => ({ employees: [], workEntries: [] })),
             apiGet(API.compliance + '?target=certs').catch(() => []),
-            apiGet(API.compliance + '?target=docs').catch(() => [])
+            apiGet(API.compliance + '?target=docs').catch(() => []),
+            apiGet(API.agenda).catch(() => [])
         ]);
         reservations    = resData;
         rooms           = roomData;
@@ -411,6 +421,7 @@ async function loadAllData() {
         monthPayOverrides = empData.monthOverrides || [];
         complianceCerts = certsData;
         complianceDocs  = docsData;
+        agendaItems     = agendaData;
         computeRoomStatuses();
         saveDataCache();
     } catch (err) {
@@ -457,6 +468,7 @@ let workEntries = [];
 let monthPayOverrides = [];
 let complianceCerts = [];
 let complianceDocs = [];
+let agendaItems = [];
 let _compCertFileData = '';
 let _compCertFileName = '';
 let _compDocFileData = '';
@@ -627,6 +639,7 @@ async function logoutUser() {
     monthPayOverrides = [];
     complianceCerts = [];
     complianceDocs = [];
+    agendaItems = [];
     clearAuthErrors();
     switchAuthMode('login');
     document.getElementById('loginForm')?.reset();
@@ -651,6 +664,9 @@ const TRANSLATIONS = {
     'dash.activeGroups': { en: 'Active Groups', it: 'Gruppi Attivi' },
     'dash.totalGuests': { en: "Today's Guests", it: 'Ospiti Oggi' },
     'dash.roomsOccupied': { en: 'Rooms Occupied', it: 'Camere Occupate' },
+    'dash.roomsAvailableMeta': { en: '{available} available', it: '{available} disponibili' },
+    'dash.arrivalsDepartures': { en: 'Arrivals / Departures', it: 'Arrivi / Partenze' },
+    'dash.arrivalsDeparturesMeta': { en: '{arrivals} arrivals, {departures} departures', it: '{arrivals} arrivi, {departures} partenze' },
     'dash.arrivalsToday': { en: 'Arrivals Today', it: 'Arrivi Oggi' },
     'dash.departuresToday': { en: 'Departures Today', it: 'Partenze Oggi' },
     'dash.pendingReservations': { en: 'Pending Reservations', it: 'In Attesa' },
@@ -661,6 +677,28 @@ const TRANSLATIONS = {
     'dash.noUpcoming': { en: 'No upcoming check-ins', it: 'Nessun check-in in arrivo' },
     'dash.todayActivity': { en: 'Today\'s Activity', it: 'Attività di Oggi' },
     'dash.noActivity': { en: 'No activity today', it: 'Nessuna attività oggi' },
+    'dash.dailyAgenda': { en: 'Daily Agenda', it: 'Agenda Giornaliera' },
+    'dash.dailyAgendaSubtitle': { en: 'Operational reminders and appointments, including future days', it: 'Promemoria operativi e appuntamenti programmati anche per i prossimi giorni' },
+    'dash.todoDate': { en: 'Date', it: 'Data' },
+    'dash.todoTime': { en: 'Time', it: 'Ora' },
+    'dash.todoTask': { en: 'Task', it: 'Attivita' },
+    'dash.todoPlaceholder': { en: 'E.g. boiler technician 14:30', it: 'Es. tecnico caldaia 14:30' },
+    'dash.todayShortcut': { en: 'Today', it: 'Oggi' },
+    'dash.addTask': { en: 'Add', it: 'Aggiungi' },
+    'dash.noTasks': { en: 'No planned tasks', it: 'Nessuna attivita pianificata' },
+    'dash.noTasksForDate': { en: 'No planned tasks for {date}', it: 'Nessuna attivita pianificata per {date}' },
+    'dash.noTime': { en: 'No time', it: 'Senza orario' },
+    'dash.deleteTask': { en: 'Delete task', it: 'Elimina attivita' },
+    'dash.markTodoDone': { en: 'Mark task as done', it: 'Segna attivita come completata' },
+    'dash.markTodoUndone': { en: 'Reopen task', it: 'Riapri attivita' },
+    'dash.todoTextRequired': { en: 'Enter a task before saving', it: 'Inserisci un attivita prima di salvare' },
+    'dash.taskSaved': { en: 'Task saved', it: 'Attivita salvata' },
+    'dash.taskSaveFail': { en: 'Failed to save task', it: 'Salvataggio attivita fallito' },
+    'dash.taskDeleted': { en: 'Task deleted', it: 'Attivita eliminata' },
+    'dash.taskDeleteFail': { en: 'Failed to delete task', it: 'Eliminazione attivita fallita' },
+    'dash.taskCompleted': { en: 'Task completed', it: 'Attivita completata' },
+    'dash.taskReopened': { en: 'Task reopened', it: 'Attivita riaperta' },
+    'dash.taskUpdateFail': { en: 'Failed to update task', it: 'Aggiornamento attivita fallito' },
     'dash.roomOccupancy': { en: 'Room Occupancy', it: 'Occupazione Camere' },
     'dash.occupied': { en: 'Occupied', it: 'Occupate' },
     'dash.available': { en: 'Available', it: 'Disponibili' },

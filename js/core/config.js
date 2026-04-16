@@ -10,7 +10,8 @@
         employees: '/api/employees',
         files: '/api/files',
         menus: '/api/menus',
-        compliance: '/api/compliance'
+        compliance: '/api/compliance',
+        agenda: '/api/agenda'
     };
 
     const CERT_TYPES = {
