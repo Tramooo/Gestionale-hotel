@@ -414,13 +414,13 @@
         }
 
         overlay.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
+        window.GroupStayUI?.syncModalState?.();
     }
 
     function closeFilePreview() {
         document.getElementById('filePreviewOverlay').style.display = 'none';
         document.getElementById('filePreviewContent').innerHTML = '';
-        document.body.style.overflow = '';
+        window.GroupStayUI?.syncModalState?.();
     }
 
     function exportCompliancePDF() {

@@ -1391,8 +1391,10 @@ textarea,
 #page-calendar {
     padding: 0 !important;
     flex-direction: column;
-    height: 100vh;
-    overflow: hidden;
+    min-height: 100vh;
+    min-height: 100svh;
+    height: auto;
+    overflow: visible;
     max-width: 100%;
     box-sizing: border-box;
 }
@@ -4350,8 +4352,8 @@ select.cell-input option {
     }
 
     #page-calendar {
-        height: calc(var(--app-height) - 84px - env(safe-area-inset-bottom, 0px));
-        min-height: 0;
+        min-height: calc(var(--app-height) - 84px - env(safe-area-inset-bottom, 0px));
+        height: auto;
     }
 
     .planner-wrapper {
