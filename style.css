@@ -5526,6 +5526,52 @@ body.auth-locked .auth-screen {
     }
 }
 
+@media (max-width: 768px) {
+    .auth-screen {
+        display: block;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-y: contain;
+        padding: 0;
+    }
+
+    body.auth-locked .auth-screen {
+        display: block;
+    }
+
+    .auth-panel {
+        max-width: none;
+        min-height: 100svh;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        background: var(--bg-elevated);
+        display: block;
+    }
+
+    .auth-showcase {
+        display: none;
+    }
+
+    .auth-card {
+        min-height: 100svh;
+        padding: calc(24px + env(safe-area-inset-top, 0px)) 20px calc(24px + env(safe-area-inset-bottom, 0px));
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    .auth-brand {
+        margin-bottom: 18px;
+    }
+
+    .auth-subtitle,
+    .auth-meta-note,
+    .auth-switch {
+        display: none;
+    }
+}
+
 /* =============================================
    AESTHETIC REFRESH
    ============================================= */
