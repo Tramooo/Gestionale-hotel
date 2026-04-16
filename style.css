@@ -412,8 +412,13 @@ textarea,
     margin-left: var(--sidebar-width);
     min-height: 100vh;
     min-height: 100svh;
+    height: 100vh;
+    height: 100svh;
     padding: 0;
+    overflow-y: auto;
     overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
     max-width: calc(100vw - var(--sidebar-width));
     box-sizing: border-box;
 }
