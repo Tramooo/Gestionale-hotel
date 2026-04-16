@@ -241,9 +241,19 @@
                         <h3 data-i18n="dash.upcomingCheckins">Check-in in Arrivo</h3>
                         <a href="#" class="card-link" onclick="navigateTo('reservations')" data-i18n="dash.viewAll">Vedi Tutti</a>
                     </div>
-                    <div class="card-body" id="upcoming-checkins">
-                        <div class="empty-state small">
-                            <p data-i18n="dash.noUpcoming">Nessun check-in in arrivo</p>
+                    <div class="card-body dashboard-split-card">
+                        <div class="dashboard-section-block" id="upcoming-checkins">
+                            <div class="empty-state small">
+                                <p data-i18n="dash.noUpcoming">Nessun check-in in arrivo</p>
+                            </div>
+                        </div>
+                        <div class="dashboard-section-block dashboard-section-block-muted">
+                            <div class="dashboard-inline-title" data-i18n="dash.todayActivity">AttivitÃ  di Oggi</div>
+                            <div id="today-activity">
+                                <div class="empty-state small">
+                                    <p data-i18n="dash.noActivity">Nessuna attivitÃ  oggi</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -251,7 +261,7 @@
                     <div class="card-header">
                         <h3 data-i18n="dash.todayActivity">Attività di Oggi</h3>
                     </div>
-                    <div class="card-body" id="today-activity">
+                    <div class="card-body" id="today-activity-legacy">
                         <div class="empty-state small">
                             <p data-i18n="dash.noActivity">Nessuna attività oggi</p>
                         </div>
