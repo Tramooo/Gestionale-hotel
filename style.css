@@ -668,41 +668,46 @@ body {
 .dashboard-grid {
     display: grid;
     grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+    grid-template-areas:
+        "arrivals agenda"
+        "occupancy agenda";
     gap: 16px;
     margin-bottom: 16px;
     align-items: start;
 }
 
-.dashboard-grid > .card:nth-child(2) {
+.dashboard-legacy-activity-card {
     display: none;
 }
 
-.dashboard-grid > .card:first-child {
-    grid-column: 1;
+.dashboard-arrivals-card {
+    grid-area: arrivals;
 }
 
-.dashboard-grid > .dashboard-agenda-card {
-    grid-column: 2;
-    grid-row: 1 / span 2;
+.dashboard-agenda-card {
+    grid-area: agenda;
+    align-self: start;
 }
 
-.dashboard-grid > .occupancy-card {
-    grid-column: 1;
+.dashboard-occupancy-card {
+    grid-area: occupancy;
 }
 
 .dashboard-insights-grid {
     display: grid;
     grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+    grid-template-areas: "trend mix";
     gap: 16px;
     align-items: start;
 }
 
-.dashboard-insights-grid > .card:first-child {
-    grid-column: 1;
+.dashboard-trend-card {
+    grid-area: trend;
 }
 
-.dashboard-insights-grid > .card:last-child {
-    grid-column: 2;
+.dashboard-mix-card {
+    grid-area: mix;
+    align-self: start;
 }
 
 .dashboard-mini-stats {
@@ -3835,15 +3840,16 @@ select.cell-input option {
     }
     .dashboard-grid {
         grid-template-columns: 1fr;
-    }
-    .dashboard-grid > .dashboard-agenda-card,
-    .dashboard-grid > .occupancy-card,
-    .dashboard-grid > .card:first-child {
-        grid-column: auto;
-        grid-row: auto;
+        grid-template-areas:
+            "arrivals"
+            "agenda"
+            "occupancy";
     }
     .dashboard-insights-grid {
         grid-template-columns: 1fr;
+        grid-template-areas:
+            "trend"
+            "mix";
     }
     .dashboard-split-card {
         grid-template-columns: 1fr;
