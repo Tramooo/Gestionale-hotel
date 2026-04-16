@@ -4277,13 +4277,17 @@ select.cell-input option {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto auto;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
     }
 
     .planner-toolbar-main .page-title {
         margin-right: 0 !important;
-        font-size: 20px;
+        font-size: 18px;
+        line-height: 1;
         min-width: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .planner-toolbar-main .btn,
@@ -4294,8 +4298,8 @@ select.cell-input option {
     .planner-add-btn {
         min-width: 0;
         justify-content: center;
-        padding-inline: 10px;
-        gap: 6px;
+        padding-inline: 9px;
+        font-size: 13px;
     }
 
     .planner-add-btn span {
@@ -4305,13 +4309,18 @@ select.cell-input option {
     }
 
     .planner-nav-controls {
-        gap: 6px;
+        gap: 4px;
         margin-left: 0;
     }
 
     .planner-nav-btn {
-        min-width: 38px;
-        padding-inline: 8px;
+        min-width: 34px;
+        padding-inline: 6px;
+    }
+
+    .planner-today-btn {
+        padding-inline: 10px;
+        font-size: 13px;
     }
 
     .planner-legend {
@@ -4388,15 +4397,15 @@ select.cell-input option {
     }
 
     .planner-month-bar {
-        min-height: calc(38px + env(safe-area-inset-bottom, 0px));
+        min-height: calc(36px + env(safe-area-inset-bottom, 0px));
         height: auto;
         align-items: center;
-        padding: 4px 8px calc(env(safe-area-inset-bottom, 0px) + 2px);
+        padding: 2px 8px calc(env(safe-area-inset-bottom, 0px) + 1px);
     }
 
     .planner-month-btn {
-        min-height: 30px;
-        padding: 5px 12px;
+        min-height: 28px;
+        padding: 4px 11px;
         border-radius: 8px;
     }
 
