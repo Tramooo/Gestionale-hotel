@@ -7,18 +7,24 @@
         return deps;
     }
 
+    function syncModalState() {
+        const hasOpenModal = !!document.querySelector('.modal-overlay.open');
+        document.body.classList.toggle('modal-open', hasOpenModal);
+        document.body.style.overflow = hasOpenModal ? 'hidden' : '';
+    }
+
     function openModal(id) {
         const modal = document.getElementById(id);
         if (!modal) return;
         modal.classList.add('open');
-        document.body.style.overflow = 'hidden';
+        syncModalState();
     }
 
     function closeModal(id) {
         const modal = document.getElementById(id);
         if (!modal) return;
         modal.classList.remove('open');
-        document.body.style.overflow = '';
+        syncModalState();
     }
 
     function showLoading(message = 'Caricamento...') {
@@ -54,7 +60,7 @@
             overlay.addEventListener('click', (e) => {
                 if (e.target === overlay) {
                     overlay.classList.remove('open');
-                    document.body.style.overflow = '';
+                    syncModalState();
                 }
             });
         });
@@ -64,8 +70,8 @@
                 requireDeps().closeAllDatePickers();
                 document.querySelectorAll('.modal-overlay.open').forEach((modal) => {
                     modal.classList.remove('open');
-                    document.body.style.overflow = '';
                 });
+                syncModalState();
             }
         });
 

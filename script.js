@@ -1211,7 +1211,41 @@ function getInitials(name) {
 
 let empPinUnlocked = false;
 
+function isMobileViewport() {
+    return window.matchMedia('(max-width: 768px)').matches;
+}
+
+function resolveActiveNavPage(page) {
+    if (isMobileViewport() && ['management', 'compliance'].includes(page)) {
+        return 'more';
+    }
+    return page;
+}
+
+function syncAppViewportState() {
+    const vv = window.visualViewport;
+    const viewportHeight = vv ? vv.height : window.innerHeight;
+    const viewportWidth = vv ? vv.width : window.innerWidth;
+    const keyboardOpen = vv ? (window.innerHeight - vv.height) > 140 : false;
+    const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+    document.documentElement.style.setProperty('--app-height', `${Math.round(viewportHeight)}px`);
+    document.documentElement.style.setProperty('--app-width', `${Math.round(viewportWidth)}px`);
+    document.body.classList.toggle('is-mobile-viewport', isMobileViewport());
+    document.body.classList.toggle('is-ios', !!isIos);
+    document.body.classList.toggle('is-standalone', !!isStandalone);
+    document.body.classList.toggle('keyboard-open', keyboardOpen);
+}
+
 function navigateTo(page) {
+    if (page === 'more' && isMobileViewport()) {
+        openModal('mobileMoreModal');
+        document.querySelectorAll('.nav-item, .tab-item').forEach((n) => n.classList.remove('active'));
+        document.querySelectorAll('[data-page="more"]').forEach((n) => n.classList.add('active'));
+        return;
+    }
+
     // Check PIN protection for management page (ask every time)
     if (page === 'management' && !empPinUnlocked) {
         const pin = localStorage.getItem('gs_emp_pin');
@@ -1223,6 +1257,7 @@ function navigateTo(page) {
 
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.nav-item, .tab-item').forEach(n => n.classList.remove('active'));
+    closeModal('mobileMoreModal');
 
     const pageEl = document.getElementById('page-' + page);
     if (pageEl) {
@@ -1232,7 +1267,9 @@ function navigateTo(page) {
         pageEl.classList.add('active');
     }
 
-    document.querySelectorAll(`[data-page="${page}"]`).forEach(n => n.classList.add('active'));
+    const navPage = resolveActiveNavPage(page);
+    document.querySelectorAll(`[data-page="${navPage}"]`).forEach(n => n.classList.add('active'));
+    document.body.dataset.activePage = page;
 
     // Refresh page content
     switch (page) {
@@ -1244,6 +1281,9 @@ function navigateTo(page) {
         case 'management': renderManagement(); break;
         case 'compliance': renderCompliance(); break;
     }
+
+    const mainContent = document.getElementById('mainContent');
+    if (mainContent) mainContent.scrollTo({ top: 0, behavior: 'auto' });
 }
 
 function openPinModal() {
@@ -1639,12 +1679,20 @@ function setupAlloggiatiSearchField(searchId, hiddenId, listSource) {
 
 // Initialize search fields once DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
+    syncAppViewportState();
     setupAlloggiatiSearchField('guestCitizenshipSearch', 'guestCitizenship', 'stati');
     setupAlloggiatiSearchField('guestBirthCountrySearch', 'guestBirthCountry', 'stati');
     setupAlloggiatiSearchField('guestBirthComuneSearch', 'guestBirthComune', 'luoghi');
     setupAlloggiatiSearchField('guestResidenceComuneSearch', 'guestResidenceComune', 'luoghi');
     setupAlloggiatiSearchField('guestDocIssuedPlaceSearch', 'guestDocIssuedPlace', 'luoghi');
 });
+
+window.addEventListener('resize', syncAppViewportState);
+window.addEventListener('orientationchange', syncAppViewportState);
+window.visualViewport?.addEventListener('resize', syncAppViewportState);
+window.visualViewport?.addEventListener('scroll', syncAppViewportState);
+document.addEventListener('focusin', syncAppViewportState);
+document.addEventListener('focusout', () => window.setTimeout(syncAppViewportState, 120));
 
 async function getAlloggiatiToken() {
     // Reuse token if still valid (with 5 min buffer)

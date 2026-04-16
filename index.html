@@ -181,15 +181,50 @@
             <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
             <span data-i18n="nav.rooms">Camere</span>
         </a>
-        <a href="#" class="tab-item" data-page="management">
-            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
-            <span data-i18n="nav.management">Gestione</span>
-        </a>
-        <a href="#" class="tab-item" data-page="compliance">
-            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-            <span>Sicurezza</span>
+        <a href="#" class="tab-item" data-page="more">
+            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+            <span>Altro</span>
         </a>
     </nav>
+
+    <div class="modal-overlay mobile-more-overlay" id="mobileMoreModal">
+        <div class="modal modal-sm mobile-more-sheet">
+            <div class="modal-header">
+                <h2>Altro</h2>
+                <button class="modal-close" type="button" onclick="closeModal('mobileMoreModal')">&times;</button>
+            </div>
+            <div class="modal-body mobile-more-body">
+                <button class="mobile-more-action" type="button" onclick="closeModal('mobileMoreModal'); navigateTo('management')">
+                    <span class="mobile-more-action-copy">
+                        <strong data-i18n="nav.management">Gestione</strong>
+                        <span>Dipendenti, costi e attivita operative</span>
+                    </span>
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+                <button class="mobile-more-action" type="button" onclick="closeModal('mobileMoreModal'); navigateTo('compliance')">
+                    <span class="mobile-more-action-copy">
+                        <strong>Sicurezza</strong>
+                        <span>Documenti, certificazioni e scadenze</span>
+                    </span>
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+                <button class="mobile-more-action" type="button" onclick="closeModal('mobileMoreModal'); openModal('settingsModal')">
+                    <span class="mobile-more-action-copy">
+                        <strong data-i18n="nav.settings">Impostazioni</strong>
+                        <span>Lingua, tema e preferenze planner</span>
+                    </span>
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+                <button class="mobile-more-action mobile-more-action-danger" type="button" onclick="closeModal('mobileMoreModal'); logoutUser()">
+                    <span class="mobile-more-action-copy">
+                        <strong>Esci</strong>
+                        <span>Chiudi la sessione su questo dispositivo</span>
+                    </span>
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- Main Content -->
     <main class="main-content" id="mainContent">
