@@ -3915,42 +3915,55 @@ let appStarting = false;
 async function startApplication() {
     if (appStarted || appStarting) return;
     appStarting = true;
-    setAuthDebug('Avvio applicazione...');
-    initSettingsModal();
-    applyTranslations();
-    updateProfileHeader();
-    document.querySelectorAll('[data-lang-val]').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.langVal === currentLang);
-        btn.addEventListener('click', () => setLanguage(btn.dataset.langVal));
-    });
-    const hasCached = loadDataCache();
-    if (hasCached) {
-        setAuthDebug('Cache locale trovata, aggiorno in background...');
-        // Show UI immediately with cached data
-        renderDashboard();
-        renderCalendar();
-        // Refresh in background silently
-        loadAllData().then((ok) => {
-            if (!ok) return;
-            const current = document.querySelector('.nav-item.active, .tab-item.active');
-            const page = current ? current.dataset.page : 'dashboard';
-            if (page === 'dashboard') renderDashboard();
-            else if (page === 'calendar') renderCalendar();
+    try {
+        setAuthDebug('Avvio applicazione...');
+        initSettingsModal();
+        setAuthDebug('Avvio applicazione...\nImpostazioni inizializzate.');
+        applyTranslations();
+        setAuthDebug('Avvio applicazione...\nTraduzioni applicate.');
+        updateProfileHeader();
+        setAuthDebug('Avvio applicazione...\nProfilo aggiornato.');
+        document.querySelectorAll('[data-lang-val]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.langVal === currentLang);
+            btn.addEventListener('click', () => setLanguage(btn.dataset.langVal));
         });
-    } else {
-        setAuthDebug('Nessuna cache, carico da server...');
-        showLoading('Caricamento dati...');
-        const ok = await loadAllData();
-        hideLoading();
-        if (!ok) {
-            appStarting = false;
-            return;
+        setAuthDebug('Avvio applicazione...\nControlli lingua pronti.');
+        const hasCached = loadDataCache();
+        if (hasCached) {
+            setAuthDebug('Cache locale trovata, disegno l\'interfaccia...');
+            // Show UI immediately with cached data
+            renderDashboard();
+            renderCalendar();
+            setAuthDebug('Cache locale trovata, aggiorno in background...');
+            // Refresh in background silently
+            loadAllData().then((ok) => {
+                if (!ok) return;
+                const current = document.querySelector('.nav-item.active, .tab-item.active');
+                const page = current ? current.dataset.page : 'dashboard';
+                if (page === 'dashboard') renderDashboard();
+                else if (page === 'calendar') renderCalendar();
+            });
+        } else {
+            setAuthDebug('Nessuna cache, carico da server...');
+            showLoading('Caricamento dati...');
+            const ok = await loadAllData();
+            hideLoading();
+            if (!ok) {
+                appStarting = false;
+                return;
+            }
+            setAuthDebug('Dati server caricati, disegno l\'interfaccia...');
+            renderDashboard();
+            renderCalendar();
         }
-        renderDashboard();
-        renderCalendar();
+        appStarted = true;
+        appStarting = false;
+    } catch (error) {
+        appStarting = false;
+        setAuthDebug(`Avvio app fallito: ${formatErrorMessage(error)}`);
+        document.getElementById('loginError').textContent = error.message || 'Errore durante l\'avvio dell\'app';
+        hideLoading();
     }
-    appStarted = true;
-    appStarting = false;
 }
 
 (async function init() {
