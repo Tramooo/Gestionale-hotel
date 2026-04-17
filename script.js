@@ -3913,6 +3913,10 @@ let appStarted = false;
 let appStarting = false;
 let appStartPromise = null;
 
+function getBootPage() {
+    return document.body.dataset.activePage || 'dashboard';
+}
+
 async function startApplication(forceRestart = false) {
     if (forceRestart) {
         appStarted = false;
@@ -3937,12 +3941,13 @@ async function startApplication(forceRestart = false) {
             btn.addEventListener('click', () => setLanguage(btn.dataset.langVal));
         });
         setAuthDebug('Avvio applicazione...\nControlli lingua pronti.');
+        const bootPage = getBootPage();
         const hasCached = loadDataCache();
         if (hasCached) {
             setAuthDebug('Cache locale trovata, disegno l\'interfaccia...');
             // Show UI immediately with cached data
-            renderDashboard();
-            renderCalendar();
+            if (bootPage === 'calendar') renderCalendar();
+            else renderDashboard();
             setAuthDebug('Cache locale trovata, aggiorno in background...');
             // Refresh in background silently
             loadAllData().then((ok) => {
@@ -3962,8 +3967,8 @@ async function startApplication(forceRestart = false) {
                 return;
             }
             setAuthDebug('Dati server caricati, disegno l\'interfaccia...');
-            renderDashboard();
-            renderCalendar();
+            if (bootPage === 'calendar') renderCalendar();
+            else renderDashboard();
         }
         appStarted = true;
         appStarting = false;
