@@ -637,7 +637,7 @@ async function submitLogin(event) {
         if (!sessionUser) throw new Error('Sessione non confermata. Riprova tra un attimo.');
         setAuthDebug('Sessione confermata, avvio app...');
         setAuthLocked(false);
-        await startApplication();
+        await startApplication(true);
     } catch (error) {
         setAuthDebug(`Login fallito: ${formatErrorMessage(error)}`);
         document.getElementById('loginError').textContent = error.message || 'Accesso non riuscito';
@@ -668,7 +668,7 @@ async function submitRegister(event) {
         if (!sessionUser) throw new Error('Sessione non confermata. Riprova tra un attimo.');
         setAuthDebug('Sessione confermata, avvio app...');
         setAuthLocked(false);
-        await startApplication();
+        await startApplication(true);
     } catch (error) {
         setAuthDebug(`Registrazione fallita: ${formatErrorMessage(error)}`);
         document.getElementById('registerError').textContent = error.message || 'Registrazione non riuscita';
@@ -3911,11 +3911,20 @@ applyTheme(getTheme());
 
 let appStarted = false;
 let appStarting = false;
+let appStartPromise = null;
 
-async function startApplication() {
-    if (appStarted || appStarting) return;
+async function startApplication(forceRestart = false) {
+    if (forceRestart) {
+        appStarted = false;
+        appStarting = false;
+        appStartPromise = null;
+    }
+    if (appStarted) return true;
+    if (appStartPromise) return appStartPromise;
+
     appStarting = true;
-    try {
+    appStartPromise = (async () => {
+        try {
         setAuthDebug('Avvio applicazione...');
         initSettingsModal();
         setAuthDebug('Avvio applicazione...\nImpostazioni inizializzate.');
@@ -3958,12 +3967,19 @@ async function startApplication() {
         }
         appStarted = true;
         appStarting = false;
-    } catch (error) {
-        appStarting = false;
-        setAuthDebug(`Avvio app fallito: ${formatErrorMessage(error)}`);
-        document.getElementById('loginError').textContent = error.message || 'Errore durante l\'avvio dell\'app';
-        hideLoading();
-    }
+        return true;
+        } catch (error) {
+            appStarting = false;
+            setAuthDebug(`Avvio app fallito: ${formatErrorMessage(error)}`);
+            document.getElementById('loginError').textContent = error.message || 'Errore durante l\'avvio dell\'app';
+            hideLoading();
+            return false;
+        } finally {
+            appStartPromise = null;
+        }
+    })();
+
+    return appStartPromise;
 }
 
 (async function init() {
