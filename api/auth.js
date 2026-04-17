@@ -53,8 +53,8 @@ export default async function handler(req, res) {
       `;
 
       const created = await sql`SELECT id, email, full_name, created_at FROM users WHERE id = ${id} LIMIT 1`;
-      await createSession(res, id);
-      return res.status(201).json({ user: sanitizeUser(created[0]) });
+      const token = await createSession(res, id);
+      return res.status(201).json({ user: sanitizeUser(created[0]), sessionToken: token });
     }
 
     if (action === 'login') {
@@ -67,8 +67,8 @@ export default async function handler(req, res) {
         return res.status(401).json({ error: 'Credenziali non valide' });
       }
 
-      await createSession(res, rows[0].id);
-      return res.status(200).json({ user: sanitizeUser(rows[0]) });
+      const token = await createSession(res, rows[0].id);
+      return res.status(200).json({ user: sanitizeUser(rows[0]), sessionToken: token });
     }
 
     return res.status(400).json({ error: 'Auth action non valida' });

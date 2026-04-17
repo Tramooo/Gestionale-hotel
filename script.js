@@ -17,7 +17,8 @@ const {
     apiGet,
     apiPost,
     apiPut,
-    apiDelete
+    apiDelete,
+    clearSessionToken
 } = window.GroupStayApi;
 
 const {
@@ -650,6 +651,7 @@ async function logoutUser() {
         console.error('Logout failed:', error);
     }
 
+    clearSessionToken?.();
     currentUser = null;
     if (cacheUserId) {
         localStorage.removeItem(`${CACHE_KEY}:${cacheUserId}`);

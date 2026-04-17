@@ -1,6 +1,31 @@
 (function initApiClient(global) {
+    const SESSION_TOKEN_KEY = 'gs_session_token';
+
+    function getAuthHeaders() {
+        const token = localStorage.getItem(SESSION_TOKEN_KEY);
+        return token ? { 'X-Session-Token': token } : {};
+    }
+
+    function persistSessionTokenFromPayload(payload) {
+        const token = payload?.sessionToken;
+        if (!token) return;
+        try {
+            localStorage.setItem(SESSION_TOKEN_KEY, token);
+        } catch (error) {
+            console.warn('Unable to persist session token:', error);
+        }
+    }
+
+    function clearSessionToken() {
+        try {
+            localStorage.removeItem(SESSION_TOKEN_KEY);
+        } catch (error) {
+            console.warn('Unable to clear session token:', error);
+        }
+    }
+
     async function apiGet(url) {
-        const res = await fetch(url, { credentials: 'include' });
+        const res = await fetch(url, { credentials: 'include', headers: getAuthHeaders() });
         if (!res.ok) {
             const err = new Error(`API error: ${res.status}`);
             err.status = res.status;
@@ -13,7 +38,7 @@
         const res = await fetch(url, {
             method: 'POST',
             credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
             body: JSON.stringify(data)
         });
         if (!res.ok) {
@@ -22,14 +47,16 @@
             err.status = res.status;
             throw err;
         }
-        return res.json();
+        const payload = await res.json();
+        persistSessionTokenFromPayload(payload);
+        return payload;
     }
 
     async function apiPut(url, data) {
         const res = await fetch(url, {
             method: 'PUT',
             credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
             body: JSON.stringify(data)
         });
         if (!res.ok) {
@@ -41,7 +68,7 @@
     }
 
     async function apiDelete(url, id) {
-        const res = await fetch(`${url}?id=${id}`, { method: 'DELETE', credentials: 'include' });
+        const res = await fetch(`${url}?id=${id}`, { method: 'DELETE', credentials: 'include', headers: getAuthHeaders() });
         if (!res.ok) {
             const err = new Error(`API error: ${res.status}`);
             err.status = res.status;
@@ -50,5 +77,5 @@
         return res.json();
     }
 
-    global.GroupStayApi = { apiGet, apiPost, apiPut, apiDelete };
+    global.GroupStayApi = { apiGet, apiPost, apiPut, apiDelete, clearSessionToken };
 })(window);
