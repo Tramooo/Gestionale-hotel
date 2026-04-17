@@ -18,7 +18,8 @@ const {
     apiPost,
     apiPut,
     apiDelete,
-    clearSessionToken
+    clearSessionToken,
+    primeSessionToken
 } = window.GroupStayApi;
 
 const {
@@ -605,6 +606,7 @@ async function submitLogin(event) {
         const password = document.getElementById('loginPassword').value;
         const shouldRemember = document.getElementById('loginRemember')?.checked;
         const data = await apiPost(`${API.auth}?action=login`, { email, password });
+        primeSessionToken?.(data.sessionToken);
         saveRememberedLogin(email, password, shouldRemember);
         currentUser = data.user;
         updateProfileHeader();
@@ -632,6 +634,7 @@ async function submitRegister(event) {
         const fullName = document.getElementById('registerName').value.trim();
         const email = document.getElementById('registerEmail').value.trim();
         const data = await apiPost(`${API.auth}?action=register`, { fullName, email, password });
+        primeSessionToken?.(data.sessionToken);
         currentUser = data.user;
         updateProfileHeader();
         const sessionUser = await ensureSessionReady();
