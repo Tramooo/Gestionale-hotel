@@ -4364,8 +4364,13 @@ select.cell-input option {
     .planner-wrapper {
         overflow: hidden;
         min-height: 0;
-        padding-bottom: calc(34px + 58px + env(safe-area-inset-bottom, 0px) + 4px);
+        padding-bottom: 0;
         box-sizing: border-box;
+    }
+
+    .p-rooms-inner,
+    .p-grid-inner {
+        padding-bottom: calc(34px + 58px + env(safe-area-inset-bottom, 0px) + 4px);
     }
 
     .p-corner-cell {
