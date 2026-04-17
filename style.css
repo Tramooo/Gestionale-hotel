@@ -5454,6 +5454,15 @@ body.auth-locked .auth-screen {
     color: var(--red);
 }
 
+.auth-debug {
+    min-height: 18px;
+    margin-top: 4px;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--text-secondary);
+    white-space: pre-wrap;
+}
+
 .auth-submit {
     width: 100%;
     justify-content: center;

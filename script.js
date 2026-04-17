@@ -402,10 +402,12 @@ function loadDataCache() {
 
 async function loadAllData(retryOnUnauthorized = true) {
     try {
+        setAuthDebug('Bootstrap: preparo il database...');
         // Keep schema migrations idempotent and run them on each load
         // so freshly added columns are available even in an existing session.
         try { await apiPost(API.init, {}); } catch (e) {}
 
+        setAuthDebug('Bootstrap: carico dati principali...');
         const [resData, roomData, guestData, empData, certsData, docsData, agendaData] = await Promise.all([
             apiGet(API.reservations),
             apiGet(API.rooms),
@@ -426,11 +428,14 @@ async function loadAllData(retryOnUnauthorized = true) {
         agendaItems     = agendaData;
         computeRoomStatuses();
         saveDataCache();
+        setAuthDebug('Bootstrap completato.');
         return true;
     } catch (err) {
         console.error('Failed to load data from database:', err);
+        setAuthDebug(`Bootstrap fallito: ${formatErrorMessage(err)}`);
         if (err && err.status === 401) {
             if (retryOnUnauthorized) {
+                setAuthDebug('Bootstrap 401, ritento conferma sessione...');
                 const user = await ensureSessionReady(3, 300);
                 if (user) return loadAllData(false);
             }
@@ -501,8 +506,23 @@ function setAuthLocked(locked) {
 function clearAuthErrors() {
     const loginError = document.getElementById('loginError');
     const registerError = document.getElementById('registerError');
+    const authDebug = document.getElementById('authDebug');
     if (loginError) loginError.textContent = '';
     if (registerError) registerError.textContent = '';
+    if (authDebug) authDebug.textContent = '';
+}
+
+function setAuthDebug(message) {
+    const authDebug = document.getElementById('authDebug');
+    if (authDebug) authDebug.textContent = message || '';
+}
+
+function formatErrorMessage(error) {
+    if (!error) return 'Errore sconosciuto';
+    const parts = [];
+    if (error.message) parts.push(error.message);
+    if (error.status) parts.push(`status ${error.status}`);
+    return parts.join(' - ') || 'Errore sconosciuto';
 }
 
 function saveRememberedLogin(email, password, shouldRemember) {
@@ -584,6 +604,7 @@ async function fetchSession() {
         return currentUser;
     } catch (error) {
         currentUser = null;
+        setAuthDebug(`Sessione non letta: ${formatErrorMessage(error)}`);
         return null;
     }
 }
@@ -602,19 +623,23 @@ async function submitLogin(event) {
     clearAuthErrors();
 
     try {
+        setAuthDebug('Invio login...');
         const email = document.getElementById('loginEmail').value.trim();
         const password = document.getElementById('loginPassword').value;
         const shouldRemember = document.getElementById('loginRemember')?.checked;
         const data = await apiPost(`${API.auth}?action=login`, { email, password });
+        setAuthDebug('Login ok, confermo sessione...');
         primeSessionToken?.(data.sessionToken);
         saveRememberedLogin(email, password, shouldRemember);
         currentUser = data.user;
         updateProfileHeader();
         const sessionUser = await ensureSessionReady();
         if (!sessionUser) throw new Error('Sessione non confermata. Riprova tra un attimo.');
+        setAuthDebug('Sessione confermata, avvio app...');
         setAuthLocked(false);
         await startApplication();
     } catch (error) {
+        setAuthDebug(`Login fallito: ${formatErrorMessage(error)}`);
         document.getElementById('loginError').textContent = error.message || 'Accesso non riuscito';
     }
 }
@@ -631,17 +656,21 @@ async function submitRegister(event) {
     }
 
     try {
+        setAuthDebug('Creazione account...');
         const fullName = document.getElementById('registerName').value.trim();
         const email = document.getElementById('registerEmail').value.trim();
         const data = await apiPost(`${API.auth}?action=register`, { fullName, email, password });
+        setAuthDebug('Account creato, confermo sessione...');
         primeSessionToken?.(data.sessionToken);
         currentUser = data.user;
         updateProfileHeader();
         const sessionUser = await ensureSessionReady();
         if (!sessionUser) throw new Error('Sessione non confermata. Riprova tra un attimo.');
+        setAuthDebug('Sessione confermata, avvio app...');
         setAuthLocked(false);
         await startApplication();
     } catch (error) {
+        setAuthDebug(`Registrazione fallita: ${formatErrorMessage(error)}`);
         document.getElementById('registerError').textContent = error.message || 'Registrazione non riuscita';
     }
 }
@@ -3886,6 +3915,7 @@ let appStarting = false;
 async function startApplication() {
     if (appStarted || appStarting) return;
     appStarting = true;
+    setAuthDebug('Avvio applicazione...');
     initSettingsModal();
     applyTranslations();
     updateProfileHeader();
@@ -3895,6 +3925,7 @@ async function startApplication() {
     });
     const hasCached = loadDataCache();
     if (hasCached) {
+        setAuthDebug('Cache locale trovata, aggiorno in background...');
         // Show UI immediately with cached data
         renderDashboard();
         renderCalendar();
@@ -3907,6 +3938,7 @@ async function startApplication() {
             else if (page === 'calendar') renderCalendar();
         });
     } else {
+        setAuthDebug('Nessuna cache, carico da server...');
         showLoading('Caricamento dati...');
         const ok = await loadAllData();
         hideLoading();
