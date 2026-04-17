@@ -4368,11 +4368,6 @@ select.cell-input option {
         box-sizing: border-box;
     }
 
-    .p-rooms-inner,
-    .p-grid-inner {
-        padding-bottom: calc(34px + 58px + env(safe-area-inset-bottom, 0px) + 4px);
-    }
-
     .p-corner-cell {
         padding: 0 8px;
         letter-spacing: 0.02em;
@@ -4411,16 +4406,7 @@ select.cell-input option {
     }
 
     .planner-month-bar {
-        min-height: 34px;
-        height: auto;
-        align-items: center;
-        padding: 2px 8px 2px;
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: calc(56px + env(safe-area-inset-bottom, 0px));
-        z-index: 110;
-        box-shadow: 0 -1px 0 var(--border-light);
+        display: none;
     }
 
     .planner-month-btn {
