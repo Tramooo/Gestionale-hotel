@@ -495,6 +495,14 @@ function delay(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function nextPaint() {
+    return new Promise((resolve) => {
+        requestAnimationFrame(() => {
+            requestAnimationFrame(resolve);
+        });
+    });
+}
+
 // ---- i18n ----
 
 let currentLang = localStorage.getItem('gs_lang') || 'it';
@@ -3946,8 +3954,14 @@ async function startApplication(forceRestart = false) {
         if (hasCached) {
             setAuthDebug('Cache locale trovata, disegno l\'interfaccia...');
             // Show UI immediately with cached data
-            if (bootPage === 'calendar') renderCalendar();
-            else renderDashboard();
+            await nextPaint();
+            if (bootPage === 'calendar') {
+                renderCalendar();
+                setAuthDebug('Calendario disegnato.');
+            } else {
+                renderDashboard();
+                setAuthDebug('Dashboard disegnata.');
+            }
             setAuthDebug('Cache locale trovata, aggiorno in background...');
             // Refresh in background silently
             loadAllData().then((ok) => {
@@ -3967,8 +3981,14 @@ async function startApplication(forceRestart = false) {
                 return;
             }
             setAuthDebug('Dati server caricati, disegno l\'interfaccia...');
-            if (bootPage === 'calendar') renderCalendar();
-            else renderDashboard();
+            await nextPaint();
+            if (bootPage === 'calendar') {
+                renderCalendar();
+                setAuthDebug('Calendario disegnato.');
+            } else {
+                renderDashboard();
+                setAuthDebug('Dashboard disegnata.');
+            }
         }
         appStarted = true;
         appStarting = false;
