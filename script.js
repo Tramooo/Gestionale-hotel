@@ -509,6 +509,19 @@ let currentLang = localStorage.getItem('gs_lang') || 'it';
 
 function setAuthLocked(locked) {
     document.body.classList.toggle('auth-locked', locked);
+    const authScreen = document.getElementById('authScreen');
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.getElementById('mainContent');
+    const mobileTabBar = document.getElementById('mobileTabBar');
+
+    if (authScreen) {
+        authScreen.style.display = locked ? 'flex' : 'none';
+        authScreen.setAttribute('aria-hidden', locked ? 'false' : 'true');
+        authScreen.style.pointerEvents = locked ? 'auto' : 'none';
+    }
+    if (sidebar) sidebar.style.visibility = locked ? 'hidden' : 'visible';
+    if (mainContent) mainContent.style.visibility = locked ? 'hidden' : 'visible';
+    if (mobileTabBar) mobileTabBar.style.visibility = locked ? 'hidden' : 'visible';
 }
 
 function clearAuthErrors() {
