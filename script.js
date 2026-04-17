@@ -267,6 +267,7 @@ window.GroupStayCompliance.init({
     CERT_TYPES,
     DOC_TYPES,
     apiDelete,
+    apiGet,
     apiPost,
     apiPut,
     closeModal,
@@ -408,13 +409,11 @@ async function loadAllData(retryOnUnauthorized = true) {
         try { await apiPost(API.init, {}); } catch (e) {}
 
         setAuthDebug('Bootstrap: carico dati principali...');
-        const [resData, roomData, guestData, empData, certsData, docsData, agendaData] = await Promise.all([
+        const [resData, roomData, guestData, empData, agendaData] = await Promise.all([
             apiGet(API.reservations),
             apiGet(API.rooms),
             apiGet(API.guests),
             apiGet(API.employees).catch(() => ({ employees: [], workEntries: [] })),
-            apiGet(API.compliance + '?target=certs').catch(() => []),
-            apiGet(API.compliance + '?target=docs').catch(() => []),
             apiGet(API.agenda).catch(() => [])
         ]);
         reservations    = resData;
@@ -423,8 +422,6 @@ async function loadAllData(retryOnUnauthorized = true) {
         employees        = empData.employees      || [];
         workEntries      = empData.workEntries    || [];
         monthPayOverrides = empData.monthOverrides || [];
-        complianceCerts = certsData;
-        complianceDocs  = docsData;
         agendaItems     = agendaData;
         computeRoomStatuses();
         saveDataCache();

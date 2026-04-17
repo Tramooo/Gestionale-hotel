@@ -4,6 +4,7 @@
     let compCertFileName = '';
     let compDocFileData = '';
     let compDocFileName = '';
+    let complianceLoaded = false;
     const filePreviewMap = {};
 
     function requireDeps() {
@@ -32,7 +33,37 @@
         }[status] || '';
     }
 
+    async function ensureComplianceLoaded() {
+        const {
+            API,
+            apiGet,
+            setComplianceCerts,
+            setComplianceDocs,
+            showToast
+        } = requireDeps();
+        if (complianceLoaded) return;
+        try {
+            const [certs, docs] = await Promise.all([
+                apiGet(API.compliance + '?target=certs').catch(() => []),
+                apiGet(API.compliance + '?target=docs').catch(() => [])
+            ]);
+            setComplianceCerts(certs);
+            setComplianceDocs(docs);
+            complianceLoaded = true;
+        } catch (error) {
+            showToast('Errore caricamento compliance', 'error');
+        }
+    }
+
     function renderCompliance() {
+        ensureComplianceLoaded().then(() => {
+            renderComplianceSummary();
+            renderComplianceEmpGrid();
+            renderComplianceDocList();
+        });
+    }
+
+    function renderComplianceNow() {
         renderComplianceSummary();
         renderComplianceEmpGrid();
         renderComplianceDocList();
@@ -83,7 +114,6 @@
             escapeHtml,
             getComplianceCerts,
             getEmployees,
-            registerFilePreview,
             formatDateDisplay
         } = requireDeps();
         const container = document.getElementById('complianceEmpGrid');
@@ -124,7 +154,6 @@
                     const label = certStatusLabel(status);
                     const expStr = cert.expiryDate ? formatDateDisplay(cert.expiryDate) : '—';
                     const issuedStr = cert.issuedDate ? formatDateDisplay(cert.issuedDate) : '—';
-                    if (cert.fileData) registerFilePreview(cert.id, cert.fileData, cert.fileName || 'documento');
                     html += `<div class="comp-cert-row">
                         <div class="comp-cert-info">
                             <span class="comp-cert-name">${escapeHtml(CERT_TYPES[cert.certType] || cert.certType)}</span>
@@ -133,7 +162,7 @@
                         </div>
                         <div class="comp-cert-actions">
                             <span class="comp-cert-badge comp-badge-${status}">${label}</span>
-                            ${cert.fileData ? `<button class="btn btn-ghost btn-sm" title="Anteprima documento" onclick="openFilePreview('${cert.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>` : ''}
+                            ${cert.hasFile ? `<button class="btn btn-ghost btn-sm" title="Anteprima documento" onclick="openFilePreview('certs','${cert.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>` : ''}
                             <button class="btn btn-ghost btn-sm" onclick="openCompCertModal('${cert.id}', '${emp.id}')">
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                             </button>
@@ -156,7 +185,6 @@
             escapeHtml,
             formatDateDisplay,
             getComplianceDocs,
-            registerFilePreview
         } = requireDeps();
         const container = document.getElementById('complianceDocList');
         if (!container) return;
@@ -171,7 +199,6 @@
             const label = certStatusLabel(status);
             const expStr = doc.expiryDate ? formatDateDisplay(doc.expiryDate) : '—';
             const issuedStr = doc.issuedDate ? formatDateDisplay(doc.issuedDate) : '—';
-            if (doc.fileData) registerFilePreview(doc.id, doc.fileData, doc.fileName || 'documento');
             html += `<div class="comp-doc-row">
                 <div class="comp-cert-info">
                     <span class="comp-cert-name">${escapeHtml(DOC_TYPES[doc.docType] || doc.docType)}</span>
@@ -180,7 +207,7 @@
                 </div>
                 <div class="comp-cert-actions">
                     <span class="comp-cert-badge comp-badge-${status}">${label}</span>
-                    ${doc.fileData ? `<button class="btn btn-ghost btn-sm" title="Anteprima documento" onclick="openFilePreview('${doc.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>` : ''}
+                    ${doc.hasFile ? `<button class="btn btn-ghost btn-sm" title="Anteprima documento" onclick="openFilePreview('docs','${doc.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>` : ''}
                     <button class="btn btn-ghost btn-sm" onclick="openCompDocModal('${doc.id}')">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     </button>
@@ -212,7 +239,7 @@
             if (cert.issuedDate) setDateFieldValue('compCertIssued', cert.issuedDate);
             if (cert.expiryDate) setDateFieldValue('compCertExpiry', cert.expiryDate);
             document.getElementById('compCertNotes').value = cert.notes || '';
-            compCertFileData = cert.fileData || '';
+            compCertFileData = undefined;
             compCertFileName = cert.fileName || '';
             if (cert.fileName) document.getElementById('compCertFileName').textContent = cert.fileName;
         } else {
@@ -269,15 +296,15 @@
                 await apiPut(API.compliance + '?target=certs', { ...data, id });
                 const nextCerts = [...getComplianceCerts()];
                 const idx = nextCerts.findIndex((cert) => cert.id === id);
-                if (idx !== -1) nextCerts[idx] = { ...nextCerts[idx], ...data };
+                if (idx !== -1) nextCerts[idx] = { ...nextCerts[idx], ...data, hasFile: nextCerts[idx].hasFile || Boolean(compCertFileName) };
                 setComplianceCerts(nextCerts);
             } else {
-                const newCert = { id: generateId(), ...data, createdAt: new Date().toISOString() };
+                const newCert = { id: generateId(), ...data, hasFile: Boolean(compCertFileName), createdAt: new Date().toISOString() };
                 await apiPost(API.compliance + '?target=certs', newCert);
                 setComplianceCerts([...getComplianceCerts(), newCert]);
             }
             closeModal('compCertModal');
-            renderCompliance();
+            renderComplianceNow();
             showToast('Certificato salvato');
         } catch (error) {
             showToast('Errore salvataggio certificato', 'error');
@@ -289,7 +316,7 @@
         if (!confirm('Eliminare questo certificato?')) return;
         await apiDelete(API.compliance + '?target=certs', id);
         setComplianceCerts(getComplianceCerts().filter((cert) => cert.id !== id));
-        renderCompliance();
+        renderComplianceNow();
         showToast('Certificato eliminato');
     }
 
@@ -310,7 +337,7 @@
             if (doc.issuedDate) setDateFieldValue('compDocIssued', doc.issuedDate);
             if (doc.expiryDate) setDateFieldValue('compDocExpiry', doc.expiryDate);
             document.getElementById('compDocNotes').value = doc.notes || '';
-            compDocFileData = doc.fileData || '';
+            compDocFileData = undefined;
             compDocFileName = doc.fileName || '';
             if (doc.fileName) document.getElementById('compDocFileName').textContent = doc.fileName;
         } else {
@@ -365,15 +392,15 @@
                 await apiPut(API.compliance + '?target=docs', { ...data, id });
                 const nextDocs = [...getComplianceDocs()];
                 const idx = nextDocs.findIndex((doc) => doc.id === id);
-                if (idx !== -1) nextDocs[idx] = { ...nextDocs[idx], ...data };
+                if (idx !== -1) nextDocs[idx] = { ...nextDocs[idx], ...data, hasFile: nextDocs[idx].hasFile || Boolean(compDocFileName) };
                 setComplianceDocs(nextDocs);
             } else {
-                const newDoc = { id: generateId(), ...data, createdAt: new Date().toISOString() };
+                const newDoc = { id: generateId(), ...data, hasFile: Boolean(compDocFileName), createdAt: new Date().toISOString() };
                 await apiPost(API.compliance + '?target=docs', newDoc);
                 setComplianceDocs([...getComplianceDocs(), newDoc]);
             }
             closeModal('compDocModal');
-            renderCompliance();
+            renderComplianceNow();
             showToast('Documento salvato');
         } catch (error) {
             showToast('Errore salvataggio documento', 'error');
@@ -385,17 +412,23 @@
         if (!confirm('Eliminare questo documento?')) return;
         await apiDelete(API.compliance + '?target=docs', id);
         setComplianceDocs(getComplianceDocs().filter((doc) => doc.id !== id));
-        renderCompliance();
+        renderComplianceNow();
         showToast('Documento eliminato');
     }
 
-    function registerFilePreview(key, fileData, fileName) {
-        filePreviewMap[key] = { fileData, fileName };
-    }
-
-    function openFilePreview(key) {
-        const { escapeHtml } = requireDeps();
-        const { fileData, fileName } = filePreviewMap[key] || {};
+    async function openFilePreview(target, key) {
+        const { API, apiGet, escapeHtml, showToast } = requireDeps();
+        let file = filePreviewMap[`${target}:${key}`];
+        if (!file?.fileData) {
+            try {
+                file = await apiGet(`${API.compliance}?target=${target}&id=${key}&includeFile=1`);
+                filePreviewMap[`${target}:${key}`] = file;
+            } catch (error) {
+                showToast('Errore caricamento file', 'error');
+                return;
+            }
+        }
+        const { fileData, fileName } = file || {};
         if (!fileData) return;
         const overlay = document.getElementById('filePreviewOverlay');
         const content = document.getElementById('filePreviewContent');
@@ -529,8 +562,8 @@
         openFilePreview,
         openCompCertModal,
         openCompDocModal,
-        registerFilePreview,
         renderCompliance,
+        renderComplianceNow,
         renderComplianceDocList,
         renderComplianceEmpGrid,
         renderComplianceSummary,

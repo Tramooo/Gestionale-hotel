@@ -4358,7 +4358,7 @@ select.cell-input option {
     #page-calendar {
         min-height: 0;
         height: 100%;
-        padding: 0 0 calc(44px + 58px + env(safe-area-inset-bottom, 0px)) !important;
+        padding: 0 0 calc(34px + 58px + env(safe-area-inset-bottom, 0px) + 4px) !important;
     }
 
     .planner-wrapper {
@@ -4411,7 +4411,7 @@ select.cell-input option {
         position: fixed;
         left: 0;
         right: 0;
-        bottom: calc(58px + env(safe-area-inset-bottom, 0px));
+        bottom: calc(56px + env(safe-area-inset-bottom, 0px));
         z-index: 110;
         box-shadow: 0 -1px 0 var(--border-light);
     }
