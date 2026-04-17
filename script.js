@@ -398,7 +398,7 @@ function loadDataCache() {
     } catch (e) { return false; }
 }
 
-async function loadAllData() {
+async function loadAllData(retryOnUnauthorized = true) {
     try {
         // Keep schema migrations idempotent and run them on each load
         // so freshly added columns are available even in an existing session.
@@ -424,14 +424,20 @@ async function loadAllData() {
         agendaItems     = agendaData;
         computeRoomStatuses();
         saveDataCache();
+        return true;
     } catch (err) {
         console.error('Failed to load data from database:', err);
         if (err && err.status === 401) {
+            if (retryOnUnauthorized) {
+                const user = await ensureSessionReady(3, 300);
+                if (user) return loadAllData(false);
+            }
             showToast('Sessione scaduta, effettua di nuovo l’accesso', 'error');
             await logoutUser();
-            return;
+            return false;
         }
         showToast(t('toast.dbError'), 'error');
+        return false;
     }
 }
 
@@ -477,6 +483,10 @@ let empViewMonth = new Date(); // currently viewed month for employee pay
 let currentUser = null;
 let currentAuthMode = 'login';
 const REMEMBERED_LOGIN_KEY = 'gs_remembered_login';
+
+function delay(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 // ---- i18n ----
 
@@ -576,6 +586,15 @@ async function fetchSession() {
     }
 }
 
+async function ensureSessionReady(maxAttempts = 4, waitMs = 250) {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        const user = await fetchSession();
+        if (user) return user;
+        if (attempt < maxAttempts - 1) await delay(waitMs);
+    }
+    return null;
+}
+
 async function submitLogin(event) {
     event.preventDefault();
     clearAuthErrors();
@@ -588,6 +607,8 @@ async function submitLogin(event) {
         saveRememberedLogin(email, password, shouldRemember);
         currentUser = data.user;
         updateProfileHeader();
+        const sessionUser = await ensureSessionReady();
+        if (!sessionUser) throw new Error('Sessione non confermata. Riprova tra un attimo.');
         setAuthLocked(false);
         await startApplication();
     } catch (error) {
@@ -612,6 +633,8 @@ async function submitRegister(event) {
         const data = await apiPost(`${API.auth}?action=register`, { fullName, email, password });
         currentUser = data.user;
         updateProfileHeader();
+        const sessionUser = await ensureSessionReady();
+        if (!sessionUser) throw new Error('Sessione non confermata. Riprova tra un attimo.');
         setAuthLocked(false);
         await startApplication();
     } catch (error) {
@@ -3853,10 +3876,11 @@ applyTheme(getTheme());
 // =============================================
 
 let appStarted = false;
+let appStarting = false;
 
 async function startApplication() {
-    if (appStarted) return;
-    appStarted = true;
+    if (appStarted || appStarting) return;
+    appStarting = true;
     initSettingsModal();
     applyTranslations();
     updateProfileHeader();
@@ -3870,7 +3894,8 @@ async function startApplication() {
         renderDashboard();
         renderCalendar();
         // Refresh in background silently
-        loadAllData().then(() => {
+        loadAllData().then((ok) => {
+            if (!ok) return;
             const current = document.querySelector('.nav-item.active, .tab-item.active');
             const page = current ? current.dataset.page : 'dashboard';
             if (page === 'dashboard') renderDashboard();
@@ -3878,11 +3903,17 @@ async function startApplication() {
         });
     } else {
         showLoading('Caricamento dati...');
-        await loadAllData();
+        const ok = await loadAllData();
         hideLoading();
+        if (!ok) {
+            appStarting = false;
+            return;
+        }
         renderDashboard();
         renderCalendar();
     }
+    appStarted = true;
+    appStarting = false;
 }
 
 (async function init() {
