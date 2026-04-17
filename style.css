@@ -4360,10 +4360,6 @@ select.cell-input option {
         height: 100%;
     }
 
-    body[data-active-page="calendar"] .main-content {
-        padding-bottom: calc(66px + env(safe-area-inset-bottom, 0px));
-    }
-
     .planner-wrapper {
         overflow: hidden;
         min-height: 0;
@@ -4411,6 +4407,10 @@ select.cell-input option {
         height: auto;
         align-items: center;
         padding: 2px 8px 2px;
+        position: sticky;
+        bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+        z-index: 25;
+        box-shadow: 0 -1px 0 var(--border-light);
     }
 
     .planner-month-btn {
