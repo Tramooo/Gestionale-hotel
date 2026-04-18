@@ -267,99 +267,103 @@
             </section>
 
             <div class="dashboard-layout-v2">
-                <section class="card dashboard-panel dashboard-panel-movements">
-                    <div class="card-header">
-                        <h3>Movimenti di oggi</h3>
-                        <a href="#" class="card-link" onclick="navigateTo('reservations')">Apri prenotazioni</a>
-                    </div>
-                    <div class="card-body">
-                        <div class="dashboard-two-lists">
-                            <div class="dashboard-list-block">
-                                <div class="dashboard-list-title">Arrivi</div>
-                                <div class="dashboard-movement-list" id="dashboard-arrivals-list"></div>
-                            </div>
-                            <div class="dashboard-list-block">
-                                <div class="dashboard-list-title">Partenze</div>
-                                <div class="dashboard-movement-list" id="dashboard-departures-list"></div>
+                <div class="dashboard-column dashboard-column-main">
+                    <section class="card dashboard-panel dashboard-panel-movements">
+                        <div class="card-header">
+                            <h3>Movimenti di oggi</h3>
+                            <a href="#" class="card-link" onclick="navigateTo('reservations')">Apri prenotazioni</a>
+                        </div>
+                        <div class="card-body">
+                            <div class="dashboard-two-lists">
+                                <div class="dashboard-list-block">
+                                    <div class="dashboard-list-title">Arrivi</div>
+                                    <div class="dashboard-movement-list" id="dashboard-arrivals-list"></div>
+                                </div>
+                                <div class="dashboard-list-block">
+                                    <div class="dashboard-list-title">Partenze</div>
+                                    <div class="dashboard-movement-list" id="dashboard-departures-list"></div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </section>
+                    </section>
 
-                <section class="card dashboard-panel dashboard-panel-focus">
-                    <div class="card-header">
-                        <h3>Priorita reception</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="dashboard-priority-list" id="dashboard-priority-list"></div>
-                    </div>
-                </section>
+                    <section class="card dashboard-panel dashboard-panel-forecast">
+                        <div class="card-header">
+                            <h3>Prossimi 7 giorni</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="dashboard-forecast-list" id="dashboard-forecast-list"></div>
+                        </div>
+                    </section>
 
-                <section class="card dashboard-panel dashboard-panel-rooms">
-                    <div class="card-header">
-                        <h3>Stato struttura</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="dashboard-room-summary">
-                            <div class="dashboard-room-chip">
-                                <span>Disponibili</span>
-                                <strong id="dash-rooms-available">0</strong>
-                            </div>
-                            <div class="dashboard-room-chip">
-                                <span>Occupate</span>
-                                <strong id="dash-rooms-occupied">0</strong>
-                            </div>
-                            <div class="dashboard-room-chip">
-                                <span>Manutenzione</span>
-                                <strong id="dash-rooms-maintenance">0</strong>
+                    <section class="card dashboard-panel dashboard-panel-agenda-v2">
+                        <div class="card-header card-header-stack">
+                            <div>
+                                <h3 data-i18n="dash.dailyAgenda">Agenda Giornaliera</h3>
+                                <p class="card-subtitle">Attivita operative, promemoria e consegne del turno.</p>
                             </div>
                         </div>
-                        <div class="dashboard-room-status-list" id="dashboard-room-watch-list"></div>
-                    </div>
-                </section>
+                        <div class="card-body">
+                            <div class="todo-toolbar">
+                                <label class="todo-field">
+                                    <span data-i18n="dash.todoDate">Data</span>
+                                    <input type="date" id="dashboard-task-date">
+                                </label>
+                                <button type="button" class="btn btn-secondary btn-sm" id="dashboard-task-today" data-i18n="dash.todayShortcut">Oggi</button>
+                            </div>
+                            <form class="todo-form" id="dashboard-task-form">
+                                <label class="todo-field">
+                                    <span data-i18n="dash.todoTime">Ora</span>
+                                    <input type="time" id="dashboard-task-time">
+                                </label>
+                                <label class="todo-field todo-field-grow">
+                                    <span data-i18n="dash.todoTask">Attivita</span>
+                                    <input type="text" id="dashboard-task-text" maxlength="140" data-i18n-placeholder="dash.todoPlaceholder" placeholder="Es. manutenzione camera 402">
+                                </label>
+                                <button type="submit" class="btn btn-primary btn-sm" data-i18n="dash.addTask">Aggiungi</button>
+                            </form>
+                            <div class="todo-list" id="dashboard-task-list">
+                                <div class="empty-state small">
+                                    <p data-i18n="dash.noTasks">Nessuna attivita pianificata</p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
 
-                <section class="card dashboard-panel dashboard-panel-forecast">
-                    <div class="card-header">
-                        <h3>Prossimi 7 giorni</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="dashboard-forecast-list" id="dashboard-forecast-list"></div>
-                    </div>
-                </section>
+                <div class="dashboard-column dashboard-column-side">
+                    <section class="card dashboard-panel dashboard-panel-focus">
+                        <div class="card-header">
+                            <h3>Priorita reception</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="dashboard-priority-list" id="dashboard-priority-list"></div>
+                        </div>
+                    </section>
 
-                <section class="card dashboard-panel dashboard-panel-agenda-v2">
-                    <div class="card-header card-header-stack">
-                        <div>
-                            <h3 data-i18n="dash.dailyAgenda">Agenda Giornaliera</h3>
-                            <p class="card-subtitle">Attivita operative, promemoria e consegne del turno.</p>
+                    <section class="card dashboard-panel dashboard-panel-rooms">
+                        <div class="card-header">
+                            <h3>Stato struttura</h3>
                         </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="todo-toolbar">
-                            <label class="todo-field">
-                                <span data-i18n="dash.todoDate">Data</span>
-                                <input type="date" id="dashboard-task-date">
-                            </label>
-                            <button type="button" class="btn btn-secondary btn-sm" id="dashboard-task-today" data-i18n="dash.todayShortcut">Oggi</button>
-                        </div>
-                        <form class="todo-form" id="dashboard-task-form">
-                            <label class="todo-field">
-                                <span data-i18n="dash.todoTime">Ora</span>
-                                <input type="time" id="dashboard-task-time">
-                            </label>
-                            <label class="todo-field todo-field-grow">
-                                <span data-i18n="dash.todoTask">Attivita</span>
-                                <input type="text" id="dashboard-task-text" maxlength="140" data-i18n-placeholder="dash.todoPlaceholder" placeholder="Es. manutenzione camera 402">
-                            </label>
-                            <button type="submit" class="btn btn-primary btn-sm" data-i18n="dash.addTask">Aggiungi</button>
-                        </form>
-                        <div class="todo-list" id="dashboard-task-list">
-                            <div class="empty-state small">
-                                <p data-i18n="dash.noTasks">Nessuna attivita pianificata</p>
+                        <div class="card-body">
+                            <div class="dashboard-room-summary">
+                                <div class="dashboard-room-chip">
+                                    <span>Disponibili</span>
+                                    <strong id="dash-rooms-available">0</strong>
+                                </div>
+                                <div class="dashboard-room-chip">
+                                    <span>Occupate</span>
+                                    <strong id="dash-rooms-occupied">0</strong>
+                                </div>
+                                <div class="dashboard-room-chip">
+                                    <span>Manutenzione</span>
+                                    <strong id="dash-rooms-maintenance">0</strong>
+                                </div>
                             </div>
+                            <div class="dashboard-room-status-list" id="dashboard-room-watch-list"></div>
                         </div>
-                    </div>
-                </section>
+                    </section>
+                </div>
             </div>
         </section>
 
