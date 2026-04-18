@@ -2,6 +2,7 @@
     let deps = null;
     let selectedAgendaDate = null;
     let agendaControlsBound = false;
+    let clockTimerId = null;
 
     function requireDeps() {
         if (!deps) throw new Error('GroupStayDashboard not initialized');
@@ -29,6 +30,30 @@
     function setText(id, value) {
         const el = document.getElementById(id);
         if (el) el.textContent = value;
+    }
+
+    function updateCurrentDateTime() {
+        const { getCurrentLang } = requireDeps();
+        const lang = getCurrentLang ? getCurrentLang() : 'it';
+        const locale = lang === 'en' ? 'en-GB' : 'it-IT';
+        const now = new Date();
+
+        setText('dash-current-date', now.toLocaleDateString(locale, {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        }));
+        setText('dash-current-time', now.toLocaleTimeString(locale, {
+            hour: '2-digit',
+            minute: '2-digit'
+        }));
+    }
+
+    function ensureClockRunning() {
+        updateCurrentDateTime();
+        if (clockTimerId) return;
+        clockTimerId = window.setInterval(updateCurrentDateTime, 30000);
     }
 
     function createAgendaItemId() {
@@ -316,52 +341,26 @@
         }).join('');
     }
 
-    function renderPriorityList(items, options) {
-        const { escapeHtml } = options;
-        const listEl = document.getElementById('dashboard-priority-list');
-        if (!listEl) return;
-
-        if (!items.length) {
-            listEl.innerHTML = `
-                <div class="empty-state small">
-                    <p>${escapeHtml(options.emptyMessage)}</p>
-                </div>
-            `;
-            return;
-        }
-
-        listEl.innerHTML = items.map((item) => `
-            <article class="dashboard-priority-item ${item.tone}">
-                <div class="dashboard-priority-head">
-                    <span class="dashboard-priority-badge">${escapeHtml(item.badge)}</span>
-                    <strong>${escapeHtml(item.value)}</strong>
-                </div>
-                <div class="dashboard-priority-title">${escapeHtml(item.title)}</div>
-                <p class="dashboard-priority-text">${escapeHtml(item.text)}</p>
-            </article>
-        `).join('');
-    }
-
-    function renderRoomWatchList(floorSummaries, options) {
+    function renderMaintenanceList(rooms, options) {
         const { escapeHtml, lang, t } = options;
-        const listEl = document.getElementById('dashboard-room-watch-list');
+        const listEl = document.getElementById('dashboard-maintenance-list');
         if (!listEl) return;
 
-        if (!floorSummaries.length) {
-            listEl.innerHTML = `<div class="empty-state small"><p>${escapeHtml(copy(lang, 'Nessuna camera configurata', 'No rooms configured'))}</p></div>`;
+        if (!rooms.length) {
+            listEl.innerHTML = `<div class="empty-state small"><p>${escapeHtml(copy(lang, 'Nessuna camera in manutenzione', 'No rooms in maintenance'))}</p></div>`;
             return;
         }
 
-        listEl.innerHTML = floorSummaries.map((floor) => `
+        listEl.innerHTML = rooms.map((room) => `
             <div class="dashboard-room-status-item">
                 <div class="dashboard-room-status-head">
-                    <strong>${escapeHtml(`${t('rooms.floor')} ${floor.floor}`)}</strong>
-                    <span>${escapeHtml(copy(lang, `${floor.available} libere`, `${floor.available} free`))}</span>
+                    <strong>${escapeHtml(copy(lang, `Camera ${room.number}`, `Room ${room.number}`))}</strong>
+                    <span>${escapeHtml(`${t('rooms.floor')} ${room.floor ?? '-'}`)}</span>
                 </div>
                 <div class="dashboard-room-status-meta">
-                    <span>${escapeHtml(copy(lang, `${floor.occupied} occupate`, `${floor.occupied} occupied`))}</span>
-                    <span>${escapeHtml(copy(lang, `${floor.maintenance} manutenzione`, `${floor.maintenance} maintenance`))}</span>
-                    <span>${escapeHtml(copy(lang, `${floor.total} totali`, `${floor.total} total`))}</span>
+                    <span>${escapeHtml(room.type || copy(lang, 'Tipologia non definita', 'Type not set'))}</span>
+                    <span>${escapeHtml(copy(lang, `Capienza ${room.capacity || 0}`, `Capacity ${room.capacity || 0}`))}</span>
+                    <span>${escapeHtml(copy(lang, 'Fuori servizio', 'Out of service'))}</span>
                 </div>
             </div>
         `).join('');
@@ -383,8 +382,11 @@
                     <strong>${escapeHtml(day.label)}</strong>
                     <span>${escapeHtml(copy(lang, `${day.occupiedRooms}/${totalRooms} camere`, `${day.occupiedRooms}/${totalRooms} rooms`))}</span>
                 </div>
+                <div class="dashboard-forecast-bar" aria-hidden="true">
+                    <span style="width: ${Math.max(0, Math.min(day.occupancy, 100))}%"></span>
+                </div>
                 <div class="dashboard-forecast-metrics">
-                    <span>${escapeHtml(copy(lang, `${day.occupancy}% occupazione`, `${day.occupancy}% occupancy`))}</span>
+                    <span class="is-highlight">${escapeHtml(copy(lang, `${day.occupancy}% occupazione`, `${day.occupancy}% occupancy`))}</span>
                     <span>${escapeHtml(copy(lang, `${day.arrivals} arrivi`, `${day.arrivals} arrivals`))}</span>
                     <span>${escapeHtml(copy(lang, `${day.departures} partenze`, `${day.departures} departures`))}</span>
                 </div>
@@ -444,6 +446,7 @@
         setText('dash-rooms-maintenance', maintenance);
 
         bindAgendaControls(todayStr);
+        ensureClockRunning();
         if (!selectedAgendaDate) selectedAgendaDate = todayStr;
         syncAgendaDateInput();
         renderAgendaList();
@@ -480,83 +483,11 @@
             t
         });
 
-        renderMovementList('dashboard-departures-list', todayCheckouts
-            .slice()
-            .sort((a, b) => (b.roomCount || 0) - (a.roomCount || 0) || (b.guestCount || 0) - (a.guestCount || 0)), {
-            emptyMessage: copy(lang, 'Nessuna partenza prevista per oggi', 'No departures planned for today'),
-            escapeHtml,
-            formatDateDisplay,
-            lang,
-            roomsById,
-            sideLabel: () => copy(lang, 'Check-out', 'Check-out'),
-            t
-        });
-
-        const expiringToday = liveReservations.filter((reservation) => reservation.status === 'pending' && reservation.expiration === todayStr);
-        const arrivalsWithoutRoom = todayCheckins.filter((reservation) => (reservation.roomIds || []).length < (reservation.roomCount || 0));
-        const roomPressure = next7Days.reduce((best, day) => {
-            if (!best || day.occupancy > best.occupancy) return day;
-            return best;
-        }, null);
-
-        const priorities = [
-            {
-                tone: expiringToday.length ? 'urgent' : 'calm',
-                badge: copy(lang, 'Opzioni', 'Options'),
-                title: copy(lang, 'Prenotazioni in scadenza oggi', 'Reservations expiring today'),
-                text: expiringToday.length
-                    ? copy(lang, `${expiringToday.length} pratiche pending richiedono una decisione`, `${expiringToday.length} pending bookings need a decision`)
-                    : copy(lang, 'Nessuna scadenza urgente nelle opzioni di oggi', 'No urgent option expirations today'),
-                value: String(expiringToday.length)
-            },
-            {
-                tone: arrivalsWithoutRoom.length ? 'warning' : 'calm',
-                badge: copy(lang, 'Assegnazioni', 'Assignments'),
-                title: copy(lang, 'Arrivi senza camera completa', 'Arrivals missing room assignment'),
-                text: arrivalsWithoutRoom.length
-                    ? copy(lang, `${arrivalsWithoutRoom.length} arrivi di oggi non hanno ancora tutte le camere assegnate`, `${arrivalsWithoutRoom.length} arrivals today still need room assignment`)
-                    : copy(lang, 'Tutti gli arrivi di oggi risultano assegnati', 'All today arrivals are assigned'),
-                value: String(arrivalsWithoutRoom.length)
-            },
-            {
-                tone: maintenance ? 'warning' : 'calm',
-                badge: copy(lang, 'Camere', 'Rooms'),
-                title: copy(lang, 'Camere fuori servizio', 'Rooms out of service'),
-                text: maintenance
-                    ? copy(lang, `${maintenance} camere in manutenzione riducono la disponibilita operativa`, `${maintenance} maintenance rooms are reducing available inventory`)
-                    : copy(lang, 'Nessuna camera risulta bloccata per manutenzione', 'No rooms are blocked for maintenance'),
-                value: String(maintenance)
-            },
-            {
-                tone: roomPressure && roomPressure.occupancy >= 85 ? 'urgent' : 'calm',
-                badge: copy(lang, 'Carico', 'Load'),
-                title: copy(lang, 'Giorno piu intenso nei prossimi 7 giorni', 'Busiest day in the next 7 days'),
-                text: roomPressure
-                    ? copy(lang, `${roomPressure.label} raggiunge ${roomPressure.occupancy}% di occupazione`, `${roomPressure.label} reaches ${roomPressure.occupancy}% occupancy`)
-                    : copy(lang, 'Nessun picco rilevato', 'No peak detected'),
-                value: roomPressure ? `${roomPressure.occupancy}%` : '0%'
-            }
-        ];
-        renderPriorityList(priorities, {
-            emptyMessage: copy(lang, 'Nessuna priorita aperta', 'No open priorities'),
-            escapeHtml
-        });
-
-        const floors = rooms.reduce((map, room) => {
-            const key = String(room.floor ?? '-');
-            if (!map.has(key)) {
-                map.set(key, { floor: key, total: 0, occupied: 0, available: 0, maintenance: 0 });
-            }
-            const entry = map.get(key);
-            entry.total += 1;
-            if (room.status === 'occupied') entry.occupied += 1;
-            else if (room.status === 'maintenance') entry.maintenance += 1;
-            else entry.available += 1;
-            return map;
-        }, new Map());
-
-        renderRoomWatchList(
-            [...floors.values()].sort((a, b) => Number(a.floor) - Number(b.floor)),
+        renderMaintenanceList(
+            rooms
+                .filter((room) => room.status === 'maintenance')
+                .slice()
+                .sort((a, b) => (a.floor ?? 0) - (b.floor ?? 0) || String(a.number).localeCompare(String(b.number), undefined, { numeric: true })),
             { escapeHtml, lang, t }
         );
 
