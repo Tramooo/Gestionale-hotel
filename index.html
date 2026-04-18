@@ -237,10 +237,10 @@
                     <h1 class="page-title" data-i18n="dash.title">Dashboard</h1>
                     <p class="page-subtitle" data-i18n="dash.subtitle">Panoramica delle operazioni dell'hotel</p>
                 </div>
-                <button class="btn btn-primary" onclick="openNewReservationModal()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    <span data-i18n="dash.newGroup">Nuovo Gruppo</span>
-                </button>
+                <div class="dashboard-header-now" aria-label="Data e ora attuale">
+                    <div class="dashboard-header-date" id="dash-current-date">--</div>
+                    <div class="dashboard-header-time" id="dash-current-time">--:--</div>
+                </div>
             </header>
 
             <div class="dashboard-shell">
@@ -340,21 +340,6 @@
                 </div>
 
                 <aside class="dashboard-side-rail">
-                    <section class="card dashboard-panel dashboard-panel-now">
-                        <div class="card-header card-header-stack">
-                            <div>
-                                <h3>Data e ora attuale</h3>
-                                <p class="card-subtitle">Riferimento rapido per il turno in corso.</p>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <div class="dashboard-now-card">
-                                <div class="dashboard-now-date" id="dash-current-date">--</div>
-                                <div class="dashboard-now-time" id="dash-current-time">--:--</div>
-                            </div>
-                        </div>
-                    </section>
-
                     <section class="card dashboard-panel dashboard-panel-focus">
                         <div class="card-header">
                             <h3>Struttura oggi</h3>
