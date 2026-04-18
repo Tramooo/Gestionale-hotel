@@ -414,7 +414,6 @@
         const todayStr = formatDate(new Date());
         const lang = getCurrentLang ? getCurrentLang() : 'it';
         const locale = lang === 'en' ? 'en-GB' : 'it-IT';
-        const roomsById = new Map(rooms.map((room) => [room.id, room]));
         const inHouseReservations = liveReservations.filter((reservation) => reservation.checkin <= todayStr && reservation.checkout > todayStr);
         const todayGuests = inHouseReservations.reduce((sum, reservation) => sum + (reservation.guestCount || 0), 0);
         const todayCheckins = liveReservations.filter((reservation) => reservation.checkin === todayStr);
@@ -467,20 +466,6 @@
                 departures,
                 occupancy
             };
-        });
-
-        renderMovementList('dashboard-arrivals-list', todayCheckins
-            .slice()
-            .sort((a, b) => Number(b.status === 'pending') - Number(a.status === 'pending') || (b.guestCount || 0) - (a.guestCount || 0)), {
-            emptyMessage: copy(lang, 'Nessun arrivo previsto per oggi', 'No arrivals planned for today'),
-            escapeHtml,
-            formatDateDisplay,
-            lang,
-            roomsById,
-            sideLabel: (reservation) => reservation.status === 'pending' && reservation.expiration
-                ? copy(lang, `Scade ${formatDateDisplay(reservation.expiration)}`, `Expires ${formatDateDisplay(reservation.expiration)}`)
-                : copy(lang, 'Check-in', 'Check-in'),
-            t
         });
 
         renderMaintenanceList(
