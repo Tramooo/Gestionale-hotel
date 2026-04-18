@@ -246,61 +246,150 @@
         listEl.addEventListener('click', handleAgendaListClick);
     }
 
-    function renderTrendChart(days, totalRooms, t) {
-        const trendEl = document.getElementById('occupancy-trend-chart');
-        if (!trendEl) return;
+    function copy(lang, it, en) {
+        return lang === 'en' ? en : it;
+    }
 
-        const hasData = totalRooms > 0 && days.some((day) => day.rooms > 0 || day.guests > 0);
-        if (!days.length || !hasData) {
-            trendEl.innerHTML = `<div class="empty-state small"><p>${t('dash.noTrendData')}</p></div>`;
+    function pluralize(lang, count, itSingular, itPlural, enSingular, enPlural) {
+        if (lang === 'en') return `${count} ${count === 1 ? enSingular : enPlural}`;
+        return `${count} ${count === 1 ? itSingular : itPlural}`;
+    }
+
+    function getRoomAssignmentLabel(reservation, roomsById, lang) {
+        const assignedRooms = (reservation.roomIds || [])
+            .map((roomId) => roomsById.get(roomId))
+            .filter(Boolean)
+            .sort((a, b) => a.floor - b.floor || a.number.localeCompare(b.number, undefined, { numeric: true }));
+
+        if (assignedRooms.length) {
+            return copy(
+                lang,
+                `Camere ${assignedRooms.map((room) => room.number).join(', ')}`,
+                `Rooms ${assignedRooms.map((room) => room.number).join(', ')}`
+            );
+        }
+
+        return copy(
+            lang,
+            `${reservation.roomCount || 0} da assegnare`,
+            `${reservation.roomCount || 0} to assign`
+        );
+    }
+
+    function renderMovementList(elementId, reservations, options) {
+        const {
+            emptyMessage,
+            escapeHtml,
+            formatDateDisplay,
+            lang,
+            roomsById,
+            sideLabel,
+            t
+        } = options;
+        const listEl = document.getElementById(elementId);
+        if (!listEl) return;
+
+        if (!reservations.length) {
+            listEl.innerHTML = `<div class="empty-state small"><p>${escapeHtml(emptyMessage)}</p></div>`;
             return;
         }
 
-        trendEl.innerHTML = days.map((day) => {
-            const height = totalRooms > 0 ? Math.max(8, Math.round((day.rooms / totalRooms) * 100)) : 8;
+        listEl.innerHTML = reservations.map((reservation) => {
+            const guestSummary = pluralize(lang, reservation.guestCount || 0, 'ospite', 'ospiti', 'guest', 'guests');
+            const roomSummary = pluralize(lang, reservation.roomCount || 0, 'camera', 'camere', 'room', 'rooms');
+            const assignmentSummary = getRoomAssignmentLabel(reservation, roomsById, lang);
+            const detailParts = [guestSummary, roomSummary, assignmentSummary];
+            const extraLabel = sideLabel ? sideLabel(reservation) : '';
+
             return `
-                <div class="trend-day">
-                    <div class="trend-bar-stack">
-                        <div class="trend-bar-track">
-                            <div class="trend-bar-fill" style="height:${height}%"></div>
-                        </div>
+                <button type="button" class="dashboard-movement-item" onclick="openReservationDetail('${reservation.id}')">
+                    <div class="dashboard-movement-main">
+                        <div class="dashboard-movement-name">${escapeHtml(reservation.groupName || '-')}</div>
+                        <div class="dashboard-movement-meta">${escapeHtml(detailParts.join(' · '))}</div>
                     </div>
-                    <div class="trend-day-meta">
-                        <strong>${day.rooms}</strong>
-                        <span>${day.guests} ${t('dash.guests')}</span>
+                    <div class="dashboard-movement-side">
+                        <span class="dashboard-pill ${reservation.status}">${escapeHtml(getStatusLabel(reservation.status, t))}</span>
+                        <span class="dashboard-movement-date">${escapeHtml(extraLabel || formatDateDisplay(reservation.checkin))}</span>
                     </div>
-                    <div class="trend-day-label">${day.label}</div>
-                </div>
+                </button>
             `;
         }).join('');
     }
 
-    function renderReservationMix(statusData, totalReservations, t) {
-        const mixEl = document.getElementById('reservation-mix');
-        if (!mixEl) return;
+    function renderPriorityList(items, options) {
+        const { escapeHtml } = options;
+        const listEl = document.getElementById('dashboard-priority-list');
+        if (!listEl) return;
 
-        if (totalReservations === 0) {
-            mixEl.innerHTML = `<div class="empty-state small"><p>${t('dash.noReservationMix')}</p></div>`;
+        if (!items.length) {
+            listEl.innerHTML = `
+                <div class="empty-state small">
+                    <p>${escapeHtml(options.emptyMessage)}</p>
+                </div>
+            `;
             return;
         }
 
-        mixEl.innerHTML = statusData.map((item) => {
-            const width = totalReservations > 0 ? Math.round((item.count / totalReservations) * 100) : 0;
-            return `
-                <div class="status-row">
-                    <div class="status-row-head">
-                        <div class="status-row-title">
-                            <span class="status-dot ${item.status}"></span>
-                            <span class="status-label">${item.label}</span>
-                        </div>
-                        <span class="status-count">${item.count} &middot; ${t('dash.percentOfTotal', { percent: width })}</span>
-                    </div>
-                    <div class="status-track">
-                        <div class="status-fill ${item.status}" style="width:${width}%"></div>
-                    </div>
+        listEl.innerHTML = items.map((item) => `
+            <article class="dashboard-priority-item ${item.tone}">
+                <div class="dashboard-priority-head">
+                    <span class="dashboard-priority-badge">${escapeHtml(item.badge)}</span>
+                    <strong>${escapeHtml(item.value)}</strong>
                 </div>
-            `;
-        }).join('');
+                <div class="dashboard-priority-title">${escapeHtml(item.title)}</div>
+                <p class="dashboard-priority-text">${escapeHtml(item.text)}</p>
+            </article>
+        `).join('');
+    }
+
+    function renderRoomWatchList(floorSummaries, options) {
+        const { escapeHtml, lang, t } = options;
+        const listEl = document.getElementById('dashboard-room-watch-list');
+        if (!listEl) return;
+
+        if (!floorSummaries.length) {
+            listEl.innerHTML = `<div class="empty-state small"><p>${escapeHtml(copy(lang, 'Nessuna camera configurata', 'No rooms configured'))}</p></div>`;
+            return;
+        }
+
+        listEl.innerHTML = floorSummaries.map((floor) => `
+            <div class="dashboard-room-status-item">
+                <div class="dashboard-room-status-head">
+                    <strong>${escapeHtml(`${t('rooms.floor')} ${floor.floor}`)}</strong>
+                    <span>${escapeHtml(copy(lang, `${floor.available} libere`, `${floor.available} free`))}</span>
+                </div>
+                <div class="dashboard-room-status-meta">
+                    <span>${escapeHtml(copy(lang, `${floor.occupied} occupate`, `${floor.occupied} occupied`))}</span>
+                    <span>${escapeHtml(copy(lang, `${floor.maintenance} manutenzione`, `${floor.maintenance} maintenance`))}</span>
+                    <span>${escapeHtml(copy(lang, `${floor.total} totali`, `${floor.total} total`))}</span>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function renderForecastList(days, options) {
+        const { escapeHtml, lang, totalRooms } = options;
+        const listEl = document.getElementById('dashboard-forecast-list');
+        if (!listEl) return;
+
+        if (!days.length) {
+            listEl.innerHTML = `<div class="empty-state small"><p>${escapeHtml(copy(lang, 'Nessuna previsione disponibile', 'No forecast available'))}</p></div>`;
+            return;
+        }
+
+        listEl.innerHTML = days.map((day) => `
+            <div class="dashboard-forecast-row">
+                <div class="dashboard-forecast-day">
+                    <strong>${escapeHtml(day.label)}</strong>
+                    <span>${escapeHtml(copy(lang, `${day.occupiedRooms}/${totalRooms} camere`, `${day.occupiedRooms}/${totalRooms} rooms`))}</span>
+                </div>
+                <div class="dashboard-forecast-metrics">
+                    <span>${escapeHtml(copy(lang, `${day.occupancy}% occupazione`, `${day.occupancy}% occupancy`))}</span>
+                    <span>${escapeHtml(copy(lang, `${day.arrivals} arrivi`, `${day.arrivals} arrivals`))}</span>
+                    <span>${escapeHtml(copy(lang, `${day.departures} partenze`, `${day.departures} departures`))}</span>
+                </div>
+            </div>
+        `).join('');
     }
 
     function renderDashboard() {
@@ -312,8 +401,6 @@
             getCurrentLang,
             getReservations,
             getRooms,
-            nightsBetween,
-            openReservationDetail,
             t
         } = requireDeps();
 
@@ -323,149 +410,157 @@
         const rooms = getRooms();
         const liveReservations = reservations.filter((reservation) => reservation.status !== 'cancelled');
         const todayStr = formatDate(new Date());
+        const lang = getCurrentLang ? getCurrentLang() : 'it';
+        const locale = lang === 'en' ? 'en-GB' : 'it-IT';
+        const roomsById = new Map(rooms.map((room) => [room.id, room]));
         const inHouseReservations = liveReservations.filter((reservation) => reservation.checkin <= todayStr && reservation.checkout > todayStr);
         const todayGuests = inHouseReservations.reduce((sum, reservation) => sum + (reservation.guestCount || 0), 0);
-        const occupiedRooms = rooms.filter((room) => room.status === 'occupied').length;
         const todayCheckins = liveReservations.filter((reservation) => reservation.checkin === todayStr);
         const todayCheckouts = liveReservations.filter((reservation) => reservation.checkout === todayStr);
-
-        setText('stat-arrivals-departures', `${todayCheckins.length} / ${todayCheckouts.length}`);
-        setText('stat-arrivals-departures-meta', t('dash.arrivalsDeparturesMeta', {
-            arrivals: todayCheckins.length,
-            departures: todayCheckouts.length
-        }));
-        setText('stat-total-guests', todayGuests);
-        setText('stat-rooms-occupied', `${occupiedRooms}/${rooms.length}`);
-        setText('stat-rooms-occupied-meta', t('dash.roomsAvailableMeta', {
-            available: rooms.filter((room) => room.status === 'available').length
-        }));
 
         const totalRooms = rooms.length;
         const available = rooms.filter((room) => room.status === 'available').length;
         const maintenance = rooms.filter((room) => room.status === 'maintenance').length;
         const occupied = rooms.filter((room) => room.status === 'occupied').length;
         const percent = totalRooms > 0 ? Math.round((occupied / totalRooms) * 100) : 0;
-        const circumference = 2 * Math.PI * 52;
-        const offset = circumference - (percent / 100) * circumference;
 
-        const occupancyCircle = document.getElementById('occupancy-circle');
-        if (occupancyCircle) occupancyCircle.setAttribute('stroke-dashoffset', offset);
-        setText('occupancy-percent', percent + '%');
-        setText('legend-occupied', occupied);
-        setText('legend-available', available);
-        setText('legend-maintenance', maintenance);
+        setText('dash-arrivals-value', todayCheckins.length);
+        setText('dash-arrivals-meta', todayCheckins.length
+            ? copy(lang, `Prime operazioni: ${todayCheckins.slice(0, 2).map((reservation) => reservation.groupName).join(', ')}`, `First arrivals: ${todayCheckins.slice(0, 2).map((reservation) => reservation.groupName).join(', ')}`)
+            : copy(lang, 'Nessun arrivo pianificato', 'No arrivals scheduled'));
+        setText('dash-departures-value', todayCheckouts.length);
+        setText('dash-departures-meta', todayCheckouts.length
+            ? copy(lang, `Da liberare ${todayCheckouts.reduce((sum, reservation) => sum + (reservation.roomCount || 0), 0)} camere`, `To free ${todayCheckouts.reduce((sum, reservation) => sum + (reservation.roomCount || 0), 0)} rooms`)
+            : copy(lang, 'Nessuna partenza pianificata', 'No departures scheduled'));
+        setText('dash-inhouse-value', todayGuests);
+        setText('dash-inhouse-meta', inHouseReservations.length
+            ? copy(lang, `${inHouseReservations.length} gruppi presenti in struttura`, `${inHouseReservations.length} groups currently in house`)
+            : copy(lang, 'Nessuna presenza attiva in struttura', 'No active in-house stays'));
+        setText('dash-occupancy-value', `${percent}%`);
+        setText('dash-occupancy-meta', copy(lang, `${occupied} occupate su ${totalRooms}`, `${occupied} occupied out of ${totalRooms}`));
 
-        const upcoming = liveReservations
-            .filter((reservation) => (reservation.status === 'confirmed' || reservation.status === 'pending') && reservation.checkin >= todayStr)
-            .sort((a, b) => new Date(a.checkin) - new Date(b.checkin))
-            .slice(0, 5);
-
-        const checkinEl = document.getElementById('upcoming-checkins');
-        if (upcoming.length === 0) {
-            checkinEl.innerHTML = `<div class="empty-state small"><p>${t('dash.noUpcoming')}</p></div>`;
-        } else {
-            checkinEl.innerHTML = upcoming.map((reservation) => `
-                <div class="checkin-item" onclick="openReservationDetail('${reservation.id}')">
-                    <div class="checkin-dot" style="background: ${reservation.status === 'confirmed' ? 'var(--green)' : 'var(--orange)'}"></div>
-                    <div class="checkin-info">
-                        <div class="checkin-name">${escapeHtml(reservation.groupName)}</div>
-                        <div class="checkin-detail">${reservation.guestCount} ${t('dash.guests')} &middot; ${reservation.roomCount} ${t('res.rooms')}</div>
-                    </div>
-                    <div class="checkin-date">${formatDateDisplay(reservation.checkin)}</div>
-                </div>
-            `).join('');
-        }
-
-        const activityEl = document.getElementById('today-activity');
-        const activities = [];
-
-        todayCheckins.forEach((reservation) => {
-            activities.push(`
-                <div class="activity-item">
-                    <div class="activity-icon checkin">&#8593;</div>
-                    <div>
-                        <div class="activity-text"><strong>${escapeHtml(reservation.groupName)}</strong> ${t('dash.checkingIn')}</div>
-                        <div class="activity-time">${reservation.guestCount} ${t('dash.guests')}</div>
-                    </div>
-                </div>
-            `);
-        });
-
-        todayCheckouts.forEach((reservation) => {
-            activities.push(`
-                <div class="activity-item">
-                    <div class="activity-icon checkout">&#8595;</div>
-                    <div>
-                        <div class="activity-text"><strong>${escapeHtml(reservation.groupName)}</strong> ${t('dash.checkingOut')}</div>
-                        <div class="activity-time">${reservation.guestCount} ${t('dash.guests')}</div>
-                    </div>
-                </div>
-            `);
-        });
-
-        if (activities.length === 0) {
-            activityEl.innerHTML = `<div class="empty-state small"><p>${t('dash.noActivity')}</p></div>`;
-        } else {
-            activityEl.innerHTML = activities.join('');
-        }
+        setText('dash-rooms-available', available);
+        setText('dash-rooms-occupied', occupied);
+        setText('dash-rooms-maintenance', maintenance);
 
         bindAgendaControls(todayStr);
         if (!selectedAgendaDate) selectedAgendaDate = todayStr;
         syncAgendaDateInput();
         renderAgendaList();
 
-        const lang = getCurrentLang ? getCurrentLang() : 'it';
-        const locale = lang === 'en' ? 'en-GB' : 'it-IT';
         const next7Days = Array.from({ length: 7 }, (_, index) => {
             const date = addDays(parseDate(todayStr), index);
             const dayStr = formatDate(date);
             const dayReservations = liveReservations.filter((reservation) => reservation.checkin <= dayStr && reservation.checkout > dayStr);
             const roomsBooked = dayReservations.reduce((sum, reservation) => sum + (reservation.roomCount || 0), 0);
-            const guestsBooked = dayReservations.reduce((sum, reservation) => sum + (reservation.guestCount || 0), 0);
-            const dayMovements = liveReservations.filter((reservation) => reservation.checkin === dayStr || reservation.checkout === dayStr).length;
+            const arrivals = liveReservations.filter((reservation) => reservation.checkin === dayStr).length;
+            const departures = liveReservations.filter((reservation) => reservation.checkout === dayStr).length;
+            const occupancy = totalRooms > 0 ? Math.round((roomsBooked / totalRooms) * 100) : 0;
 
             return {
-                date,
                 label: date.toLocaleDateString(locale, { weekday: 'short', day: 'numeric' }),
-                dayStr,
-                guests: guestsBooked,
-                movements: dayMovements,
-                rooms: roomsBooked
+                occupiedRooms: roomsBooked,
+                arrivals,
+                departures,
+                occupancy
             };
         });
 
-        renderTrendChart(next7Days, totalRooms, t);
+        renderMovementList('dashboard-arrivals-list', todayCheckins
+            .slice()
+            .sort((a, b) => Number(b.status === 'pending') - Number(a.status === 'pending') || (b.guestCount || 0) - (a.guestCount || 0)), {
+            emptyMessage: copy(lang, 'Nessun arrivo previsto per oggi', 'No arrivals planned for today'),
+            escapeHtml,
+            formatDateDisplay,
+            lang,
+            roomsById,
+            sideLabel: (reservation) => reservation.status === 'pending' && reservation.expiration
+                ? copy(lang, `Scade ${formatDateDisplay(reservation.expiration)}`, `Expires ${formatDateDisplay(reservation.expiration)}`)
+                : copy(lang, 'Check-in', 'Check-in'),
+            t
+        });
 
-        const peakDay = next7Days.reduce((best, entry) => {
-            if (!best) return entry;
-            if (entry.rooms > best.rooms) return entry;
-            if (entry.rooms === best.rooms && entry.movements > best.movements) return entry;
+        renderMovementList('dashboard-departures-list', todayCheckouts
+            .slice()
+            .sort((a, b) => (b.roomCount || 0) - (a.roomCount || 0) || (b.guestCount || 0) - (a.guestCount || 0)), {
+            emptyMessage: copy(lang, 'Nessuna partenza prevista per oggi', 'No departures planned for today'),
+            escapeHtml,
+            formatDateDisplay,
+            lang,
+            roomsById,
+            sideLabel: () => copy(lang, 'Check-out', 'Check-out'),
+            t
+        });
+
+        const expiringToday = liveReservations.filter((reservation) => reservation.status === 'pending' && reservation.expiration === todayStr);
+        const arrivalsWithoutRoom = todayCheckins.filter((reservation) => (reservation.roomIds || []).length < (reservation.roomCount || 0));
+        const roomPressure = next7Days.reduce((best, day) => {
+            if (!best || day.occupancy > best.occupancy) return day;
             return best;
         }, null);
 
-        const peakOccupancy = peakDay && totalRooms > 0 ? Math.round((peakDay.rooms / totalRooms) * 100) : 0;
-        const peakGuests = next7Days.reduce((max, entry) => Math.max(max, entry.guests), 0);
-        setText('stat-peak-occupancy', `${peakOccupancy}%`);
-        setText('stat-peak-guests', peakGuests);
-        setText('stat-busiest-day', peakDay ? peakDay.label : '-');
+        const priorities = [
+            {
+                tone: expiringToday.length ? 'urgent' : 'calm',
+                badge: copy(lang, 'Opzioni', 'Options'),
+                title: copy(lang, 'Prenotazioni in scadenza oggi', 'Reservations expiring today'),
+                text: expiringToday.length
+                    ? copy(lang, `${expiringToday.length} pratiche pending richiedono una decisione`, `${expiringToday.length} pending bookings need a decision`)
+                    : copy(lang, 'Nessuna scadenza urgente nelle opzioni di oggi', 'No urgent option expirations today'),
+                value: String(expiringToday.length)
+            },
+            {
+                tone: arrivalsWithoutRoom.length ? 'warning' : 'calm',
+                badge: copy(lang, 'Assegnazioni', 'Assignments'),
+                title: copy(lang, 'Arrivi senza camera completa', 'Arrivals missing room assignment'),
+                text: arrivalsWithoutRoom.length
+                    ? copy(lang, `${arrivalsWithoutRoom.length} arrivi di oggi non hanno ancora tutte le camere assegnate`, `${arrivalsWithoutRoom.length} arrivals today still need room assignment`)
+                    : copy(lang, 'Tutti gli arrivi di oggi risultano assegnati', 'All today arrivals are assigned'),
+                value: String(arrivalsWithoutRoom.length)
+            },
+            {
+                tone: maintenance ? 'warning' : 'calm',
+                badge: copy(lang, 'Camere', 'Rooms'),
+                title: copy(lang, 'Camere fuori servizio', 'Rooms out of service'),
+                text: maintenance
+                    ? copy(lang, `${maintenance} camere in manutenzione riducono la disponibilita operativa`, `${maintenance} maintenance rooms are reducing available inventory`)
+                    : copy(lang, 'Nessuna camera risulta bloccata per manutenzione', 'No rooms are blocked for maintenance'),
+                value: String(maintenance)
+            },
+            {
+                tone: roomPressure && roomPressure.occupancy >= 85 ? 'urgent' : 'calm',
+                badge: copy(lang, 'Carico', 'Load'),
+                title: copy(lang, 'Giorno piu intenso nei prossimi 7 giorni', 'Busiest day in the next 7 days'),
+                text: roomPressure
+                    ? copy(lang, `${roomPressure.label} raggiunge ${roomPressure.occupancy}% di occupazione`, `${roomPressure.label} reaches ${roomPressure.occupancy}% occupancy`)
+                    : copy(lang, 'Nessun picco rilevato', 'No peak detected'),
+                value: roomPressure ? `${roomPressure.occupancy}%` : '0%'
+            }
+        ];
+        renderPriorityList(priorities, {
+            emptyMessage: copy(lang, 'Nessuna priorita aperta', 'No open priorities'),
+            escapeHtml
+        });
 
-        const statusOrder = ['checked-in', 'confirmed', 'pending', 'cancelled'];
-        const statusData = statusOrder.map((status) => ({
-            count: reservations.filter((reservation) => reservation.status === status).length,
-            label: getStatusLabel(status, t),
-            status
-        }));
-        renderReservationMix(statusData, reservations.length, t);
+        const floors = rooms.reduce((map, room) => {
+            const key = String(room.floor ?? '-');
+            if (!map.has(key)) {
+                map.set(key, { floor: key, total: 0, occupied: 0, available: 0, maintenance: 0 });
+            }
+            const entry = map.get(key);
+            entry.total += 1;
+            if (room.status === 'occupied') entry.occupied += 1;
+            else if (room.status === 'maintenance') entry.maintenance += 1;
+            else entry.available += 1;
+            return map;
+        }, new Map());
 
-        const avgStay = liveReservations.length > 0
-            ? (liveReservations.reduce((sum, reservation) => sum + nightsBetween(reservation.checkin, reservation.checkout), 0) / liveReservations.length)
-            : 0;
-        const arrivalsNextWeek = liveReservations.filter((reservation) => reservation.checkin >= todayStr && reservation.checkin <= next7Days[next7Days.length - 1].dayStr).length;
-        const departuresNextWeek = liveReservations.filter((reservation) => reservation.checkout >= todayStr && reservation.checkout <= next7Days[next7Days.length - 1].dayStr).length;
+        renderRoomWatchList(
+            [...floors.values()].sort((a, b) => Number(a.floor) - Number(b.floor)),
+            { escapeHtml, lang, t }
+        );
 
-        setText('stat-average-stay', t('dash.nightsShort', { count: avgStay > 0 ? avgStay.toFixed(1) : '0' }));
-        setText('stat-arrivals-next-week', arrivalsNextWeek);
-        setText('stat-departures-next-week', departuresNextWeek);
+        renderForecastList(next7Days, { escapeHtml, lang, totalRooms });
     }
 
     global.GroupStayDashboard = {
