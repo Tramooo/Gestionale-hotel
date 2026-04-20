@@ -259,7 +259,7 @@
             const RH = getPlannerRowHeight();
             roomsPanel += `<div class="p-floor-left">${t('rooms.floor')} ${floor}</div>`;
             floors[floor].forEach((room) => {
-                roomsPanel += `<div class="p-room-left" style="height:${RH}px" onclick="openEditRoom('${room.id}')">
+                roomsPanel += `<div class="p-room-left${room.status === 'maintenance' ? ' is-maintenance' : ''}" style="height:${RH}px" onclick="openEditRoom('${room.id}')">
                     <span class="planner-room-status ${room.status}"></span>
                     <span class="planner-room-label">${room.number}</span>
                     <span class="planner-room-type">${room.type.substring(0, 3)}</span>
@@ -282,7 +282,7 @@
             grid += '</div>';
 
             floors[floor].forEach((room) => {
-                grid += `<div class="p-grid-room-row" style="height:${getPlannerRowHeight()}px" data-room-id="${room.id}">`;
+                grid += `<div class="p-grid-room-row${room.status === 'maintenance' ? ' is-maintenance' : ''}" style="height:${getPlannerRowHeight()}px" data-room-id="${room.id}">`;
                 for (let i = 0; i < totalDays; i++) {
                     const date = dayIndexToDate(i);
                     const dow = date.getDay();

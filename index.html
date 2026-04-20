@@ -301,7 +301,7 @@
                         <div class="card-header">
                             <div>
                                 <h3 data-i18n="dash.dailyAgenda">Agenda operativa</h3>
-                                <p class="card-subtitle">Task e promemoria essenziali della giornata.</p>
+                                <p class="card-subtitle">Task e promemoria di oggi e dei prossimi due giorni.</p>
                             </div>
                         </div>
                         <div class="card-body">
@@ -337,6 +337,7 @@
                                 <h3>Stato struttura</h3>
                                 <p class="card-subtitle">Disponibilita camere, manutenzioni e carico a breve termine.</p>
                             </div>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="openMaintenanceRoomModal()" data-i18n="rooms.quickMaintenance">Aggiungi manutenzione</button>
                         </div>
                         <div class="card-body">
                             <div class="dashboard-room-summary">
@@ -360,7 +361,7 @@
                             </div>
 
                             <div class="dashboard-panel-block">
-                                <div class="dashboard-subsection-title">Prossimi 7 giorni</div>
+                                <div class="dashboard-subsection-title">Prossimi giorni</div>
                                 <div class="dashboard-forecast-list" id="dashboard-forecast-list"></div>
                             </div>
                         </div>
@@ -1106,11 +1107,39 @@
                             <label data-i18n="rooms.capacity">Capacità</label>
                             <input type="number" id="roomCapacity" min="1" value="2">
                         </div>
+                        <div class="form-group">
+                            <label data-i18n="rooms.operationalStatus">Stato operativo</label>
+                            <select id="roomStatus">
+                                <option value="available" data-i18n="rooms.available">Disponibili</option>
+                                <option value="maintenance" data-i18n="rooms.maintenance">Manutenzione</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="modal-actions">
                         <button type="button" class="btn btn-danger" id="deleteRoomBtn" onclick="deleteRoom()" style="margin-right:auto;display:none" data-i18n="common.delete">Elimina</button>
                         <button type="button" class="btn btn-ghost" onclick="closeModal('roomModal')" data-i18n="common.cancel">Annulla</button>
                         <button type="submit" class="btn btn-primary" data-i18n="common.save">Salva</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="maintenanceModal">
+        <div class="modal modal-sm">
+            <div class="modal-header">
+                <h2 data-i18n="rooms.quickMaintenance">Aggiungi manutenzione</h2>
+                <button class="modal-close" type="button" onclick="closeModal('maintenanceModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="maintenanceForm" onsubmit="saveRoomMaintenance(event)">
+                    <div class="form-group">
+                        <label for="maintenanceRoomId" data-i18n="rooms.selectRoom">Camera</label>
+                        <select id="maintenanceRoomId" required></select>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-ghost" onclick="closeModal('maintenanceModal')" data-i18n="common.cancel">Annulla</button>
+                        <button type="submit" class="btn btn-primary" data-i18n="rooms.quickMaintenance">Aggiungi manutenzione</button>
                     </div>
                 </form>
             </div>

@@ -762,6 +762,9 @@ const TRANSLATIONS = {
     'dash.addTask': { en: 'Add', it: 'Aggiungi' },
     'dash.noTasks': { en: 'No planned tasks', it: 'Nessuna attivita pianificata' },
     'dash.noTasksForDate': { en: 'No planned tasks for {date}', it: 'Nessuna attivita pianificata per {date}' },
+    'dash.noTasksNextThreeDays': { en: 'No planned tasks in the next three days', it: 'Nessuna attivita pianificata nei prossimi tre giorni' },
+    'dash.tomorrow': { en: 'Tomorrow', it: 'Domani' },
+    'dash.inTwoDays': { en: 'In two days', it: 'Tra due giorni' },
     'dash.noTime': { en: 'No time', it: 'Senza orario' },
     'dash.deleteTask': { en: 'Delete task', it: 'Elimina attivita' },
     'dash.markTodoDone': { en: 'Mark task as done', it: 'Segna attivita come completata' },
@@ -813,6 +816,9 @@ const TRANSLATIONS = {
     'rooms.type': { en: 'Type', it: 'Tipo' },
     'rooms.capacity': { en: 'Capacity', it: 'Capacità' },
     'rooms.roomNumber': { en: 'Room Number', it: 'Numero Camera' },
+    'rooms.operationalStatus': { en: 'Operational status', it: 'Stato operativo' },
+    'rooms.quickMaintenance': { en: 'Add maintenance', it: 'Aggiungi manutenzione' },
+    'rooms.selectRoom': { en: 'Room', it: 'Camera' },
 
     // Room types
     'roomType.single': { en: 'Single', it: 'Singola' },
@@ -1091,6 +1097,8 @@ const TRANSLATIONS = {
     'toast.roomUpdated': { en: 'Room updated', it: 'Camera aggiornata' },
     'toast.roomExists': { en: 'Room number already exists', it: 'Numero camera già esistente' },
     'toast.roomAdded': { en: 'Room added', it: 'Camera aggiunta' },
+    'toast.roomMaintenanceUpdated': { en: 'Room moved to maintenance', it: 'Camera impostata in manutenzione' },
+    'toast.noRoomsForMaintenance': { en: 'No available rooms can be moved to maintenance', it: 'Nessuna camera disponibile da mettere in manutenzione' },
     'toast.roomSaveFail': { en: 'Failed to save room', it: 'Salvataggio camera fallito' },
     'toast.roomDeleted': { en: 'Room deleted', it: 'Camera eliminata' },
     'toast.roomDeleteFail': { en: 'Failed to delete room', it: 'Eliminazione camera fallita' },
@@ -2507,7 +2515,9 @@ function setRoomFilter(filter, el) { return window.GroupStayRooms.setRoomFilter(
 function filterRooms() { return window.GroupStayRooms.filterRooms(); }
 function openNewRoomModal() { return window.GroupStayRooms.openNewRoomModal(); }
 function openEditRoom(id) { return window.GroupStayRooms.openEditRoom(id); }
+function openMaintenanceRoomModal() { return window.GroupStayRooms.openMaintenanceRoomModal(); }
 async function saveRoom(e) { return window.GroupStayRooms.saveRoom(e); }
+async function saveRoomMaintenance(e) { return window.GroupStayRooms.saveRoomMaintenance(e); }
 async function deleteRoom() { return window.GroupStayRooms.deleteRoom(); }
 
 // =============================================

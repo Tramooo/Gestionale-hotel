@@ -6,6 +6,16 @@
         return deps;
     }
 
+    function sortRoomsByNumber(a, b) {
+        return (a.floor ?? 0) - (b.floor ?? 0) || String(a.number).localeCompare(String(b.number), undefined, { numeric: true });
+    }
+
+    function setRoomStatusFieldValue(status) {
+        const statusField = document.getElementById('roomStatus');
+        if (!statusField) return;
+        statusField.value = status === 'maintenance' ? 'maintenance' : 'available';
+    }
+
     function renderRooms() {
         const {
             computeRoomStatuses,
@@ -30,7 +40,7 @@
             );
         }
 
-        filtered.sort((a, b) => parseInt(a.number) - parseInt(b.number));
+        filtered.sort(sortRoomsByNumber);
 
         const grid = document.getElementById('roomsGrid');
         if (!grid) return;
@@ -70,6 +80,7 @@
         document.getElementById('roomModalTitle').textContent = t('rooms.addRoom');
         document.getElementById('roomForm').reset();
         document.getElementById('roomId').value = '';
+        setRoomStatusFieldValue('available');
         document.getElementById('deleteRoomBtn').style.display = 'none';
         openModal('roomModal');
     }
@@ -85,8 +96,43 @@
         document.getElementById('roomFloor').value = room.floor;
         document.getElementById('roomType').value = room.type;
         document.getElementById('roomCapacity').value = room.capacity;
+        setRoomStatusFieldValue(room.status);
         document.getElementById('deleteRoomBtn').style.display = '';
         openModal('roomModal');
+    }
+
+    function openMaintenanceRoomModal() {
+        const {
+            computeRoomStatuses,
+            getRooms,
+            openModal,
+            showToast,
+            t
+        } = requireDeps();
+
+        computeRoomStatuses();
+        const select = document.getElementById('maintenanceRoomId');
+        if (!select) return;
+
+        const availableRooms = getRooms()
+            .filter((room) => room.status === 'available')
+            .slice()
+            .sort(sortRoomsByNumber);
+
+        if (!availableRooms.length) {
+            showToast(t('toast.noRoomsForMaintenance'), 'error');
+            return;
+        }
+
+        select.innerHTML = `
+            <option value="" disabled selected>${t('rooms.selectRoom')}</option>
+            ${availableRooms.map((room) => `
+                <option value="${room.id}">${room.number} · ${t('rooms.floor')} ${room.floor}</option>
+            `).join('')}
+        `;
+
+        document.getElementById('maintenanceForm')?.reset();
+        openModal('maintenanceModal');
     }
 
     async function saveRoom(e) {
@@ -113,7 +159,7 @@
             floor: parseInt(document.getElementById('roomFloor').value) || 1,
             type: document.getElementById('roomType').value,
             capacity: parseInt(document.getElementById('roomCapacity').value) || 1,
-            status: 'available'
+            status: document.getElementById('roomStatus').value || 'available'
         };
 
         try {
@@ -139,6 +185,54 @@
         }
 
         closeModal('roomModal');
+        onRoomsChanged();
+        renderDashboard();
+        refreshCalendar();
+    }
+
+    async function saveRoomMaintenance(e) {
+        e.preventDefault();
+
+        const {
+            API,
+            apiPut,
+            closeModal,
+            computeRoomStatuses,
+            getRooms,
+            onRoomsChanged,
+            refreshCalendar,
+            renderDashboard,
+            setRooms,
+            showToast,
+            t
+        } = requireDeps();
+
+        computeRoomStatuses();
+        const roomId = document.getElementById('maintenanceRoomId').value;
+        const room = getRooms().find((entry) => entry.id === roomId);
+        if (!room || room.status !== 'available') {
+            showToast(t('toast.noRoomsForMaintenance'), 'error');
+            return;
+        }
+
+        const previousRooms = getRooms();
+        const updatedRoom = {
+            ...room,
+            status: 'maintenance'
+        };
+
+        try {
+            setRooms(previousRooms.map((entry) => entry.id === roomId ? updatedRoom : entry));
+            await apiPut(API.rooms, updatedRoom);
+        } catch (err) {
+            console.error(err);
+            setRooms(previousRooms);
+            showToast(t('toast.roomSaveFail'), 'error');
+            return;
+        }
+
+        closeModal('maintenanceModal');
+        showToast(t('toast.roomMaintenanceUpdated'));
         onRoomsChanged();
         renderDashboard();
         refreshCalendar();
@@ -191,7 +285,9 @@
         filterRooms,
         openNewRoomModal,
         openEditRoom,
+        openMaintenanceRoomModal,
         saveRoom,
+        saveRoomMaintenance,
         deleteRoom
     };
 })(window);

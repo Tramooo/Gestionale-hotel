@@ -100,60 +100,89 @@
         if (dateInput) dateInput.value = getSelectedAgendaDate();
     }
 
+    function getAgendaWindowLabel(dateStr, baseDateStr, locale, t) {
+        if (dateStr === baseDateStr) return t('cal.today');
+
+        const tomorrow = requireDeps().formatDate(addDays(parseDate(baseDateStr), 1));
+        if (dateStr === tomorrow) return t('dash.tomorrow');
+
+        const inTwoDays = requireDeps().formatDate(addDays(parseDate(baseDateStr), 2));
+        if (dateStr === inTwoDays) return t('dash.inTwoDays');
+
+        return parseDate(dateStr).toLocaleDateString(locale, {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long'
+        });
+    }
+
     function renderAgendaList() {
-        const { escapeHtml, formatDateDisplay, getCurrentLang, t } = requireDeps();
+        const { escapeHtml, formatDate, formatDateDisplay, getCurrentLang, t } = requireDeps();
         const listEl = document.getElementById('dashboard-task-list');
         if (!listEl) return;
 
         const selectedDate = getSelectedAgendaDate();
         const locale = getCurrentLang && getCurrentLang() === 'en' ? 'en-GB' : 'it-IT';
-        const heading = parseDate(selectedDate).toLocaleDateString(locale, {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long'
-        });
+        const agendaWindow = Array.from({ length: 3 }, (_, offset) => formatDate(addDays(parseDate(selectedDate), offset)));
+        const items = sortAgendaItems(loadAgendaItems());
+        const totalItemsInWindow = items.filter((item) => agendaWindow.includes(item.date)).length;
 
-        const items = sortAgendaItems(loadAgendaItems()).filter((item) => item.date === selectedDate);
-
-        if (!items.length) {
+        if (!totalItemsInWindow) {
             listEl.innerHTML = `
                 <div class="empty-state small">
-                    <p>${escapeHtml(t('dash.noTasksForDate', { date: heading }))}</p>
+                    <p>${escapeHtml(t('dash.noTasksNextThreeDays'))}</p>
                 </div>
             `;
             return;
         }
 
-        listEl.innerHTML = `
-            <div class="todo-list-header">${escapeHtml(formatDateDisplay(selectedDate))}</div>
-            ${items.map((item) => `
-                <div class="todo-item${item.done ? ' is-done' : ''}">
-                    <button
-                        type="button"
-                        class="todo-check"
-                        data-task-action="toggle"
-                        data-task-id="${item.id}"
-                        aria-label="${item.done ? t('dash.markTodoUndone') : t('dash.markTodoDone')}"
-                        title="${item.done ? t('dash.markTodoUndone') : t('dash.markTodoDone')}"
-                    >${item.done ? '&#10003;' : ''}</button>
-                    <div class="todo-content">
-                        <div class="todo-text">${escapeHtml(item.text)}</div>
-                        <div class="todo-meta">
-                            <span>${escapeHtml(item.time || t('dash.noTime'))}</span>
-                            <span>${escapeHtml(heading)}</span>
-                        </div>
+        listEl.innerHTML = agendaWindow.map((dateStr) => {
+            const dayItems = items.filter((item) => item.date === dateStr);
+            const sectionLabel = getAgendaWindowLabel(dateStr, selectedDate, locale, t);
+            const sectionDate = parseDate(dateStr).toLocaleDateString(locale, {
+                weekday: 'short',
+                day: 'numeric',
+                month: 'long'
+            });
+
+            return `
+                <section class="agenda-window-day${dayItems.length ? '' : ' is-empty'}">
+                    <div class="agenda-window-day-head">
+                        <div class="agenda-window-day-label">${escapeHtml(sectionLabel)}</div>
+                        <div class="agenda-window-day-date">${escapeHtml(sectionDate)}</div>
                     </div>
-                    <button
-                        type="button"
-                        class="todo-delete"
-                        data-task-action="delete"
-                        data-task-id="${item.id}"
-                        aria-label="${t('dash.deleteTask')}"
-                        title="${t('dash.deleteTask')}"
-                    >&times;</button>
-                </div>
-            `).join('')}
-        `;
+                    ${dayItems.length ? dayItems.map((item) => `
+                        <div class="todo-item${item.done ? ' is-done' : ''}">
+                            <button
+                                type="button"
+                                class="todo-check"
+                                data-task-action="toggle"
+                                data-task-id="${item.id}"
+                                aria-label="${item.done ? t('dash.markTodoUndone') : t('dash.markTodoDone')}"
+                                title="${item.done ? t('dash.markTodoUndone') : t('dash.markTodoDone')}"
+                            >${item.done ? '&#10003;' : ''}</button>
+                            <div class="todo-content">
+                                <div class="todo-text">${escapeHtml(item.text)}</div>
+                                <div class="todo-meta">
+                                    <span>${escapeHtml(item.time || t('dash.noTime'))}</span>
+                                    <span>${escapeHtml(formatDateDisplay(dateStr))}</span>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                class="todo-delete"
+                                data-task-action="delete"
+                                data-task-id="${item.id}"
+                                aria-label="${t('dash.deleteTask')}"
+                                title="${t('dash.deleteTask')}"
+                            >&times;</button>
+                        </div>
+                    `).join('') : `
+                        <div class="agenda-window-empty">${escapeHtml(t('dash.noTasksForDate', { date: formatDateDisplay(dateStr) }))}</div>
+                    `}
+                </section>
+            `;
+        }).join('');
     }
 
     function setAgendaDate(dateStr) {
@@ -352,7 +381,7 @@
         }
 
         listEl.innerHTML = rooms.map((room) => `
-            <div class="dashboard-room-status-item">
+            <button type="button" class="dashboard-room-status-item" onclick="openEditRoom('${room.id}')">
                 <div class="dashboard-room-status-head">
                     <strong>${escapeHtml(copy(lang, `Camera ${room.number}`, `Room ${room.number}`))}</strong>
                     <span>${escapeHtml(`${t('rooms.floor')} ${room.floor ?? '-'}`)}</span>
@@ -362,7 +391,7 @@
                     <span>${escapeHtml(copy(lang, `Capienza ${room.capacity || 0}`, `Capacity ${room.capacity || 0}`))}</span>
                     <span>${escapeHtml(copy(lang, 'Fuori servizio', 'Out of service'))}</span>
                 </div>
-            </div>
+            </button>
         `).join('');
     }
 
@@ -471,7 +500,7 @@
         renderMovementList('dashboard-arrivals-list', todayCheckins
             .slice()
             .sort((a, b) => Number(b.status === 'pending') - Number(a.status === 'pending') || (b.guestCount || 0) - (a.guestCount || 0))
-            .slice(0, 5), {
+            .slice(0, 4), {
             emptyMessage: copy(lang, 'Nessun arrivo previsto per oggi', 'No arrivals planned for today'),
             escapeHtml,
             formatDateDisplay,
@@ -486,7 +515,7 @@
         renderMovementList('dashboard-departures-list', todayCheckouts
             .slice()
             .sort((a, b) => (b.roomCount || 0) - (a.roomCount || 0) || (b.guestCount || 0) - (a.guestCount || 0))
-            .slice(0, 5), {
+            .slice(0, 4), {
             emptyMessage: copy(lang, 'Nessuna partenza prevista per oggi', 'No departures planned for today'),
             escapeHtml,
             formatDateDisplay,
