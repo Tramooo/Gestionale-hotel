@@ -341,31 +341,6 @@
         }).join('');
     }
 
-    function renderPriorityList(items, options) {
-        const { escapeHtml } = options;
-        const listEl = document.getElementById('dashboard-priority-list');
-        if (!listEl) return;
-
-        if (!items.length) {
-            listEl.innerHTML = `
-                <div class="empty-state small">
-                    <p>${escapeHtml(options.emptyMessage)}</p>
-                </div>
-            `;
-            return;
-        }
-
-        listEl.innerHTML = items.map((item) => `
-            <article class="dashboard-priority-item ${item.tone || 'calm'}">
-                <div class="dashboard-priority-badge">${escapeHtml(item.value)}</div>
-                <div>
-                    <div class="dashboard-priority-title">${escapeHtml(item.title)}</div>
-                    <p class="dashboard-priority-meta">${escapeHtml(item.text)}</p>
-                </div>
-            </article>
-        `).join('');
-    }
-
     function renderMaintenanceList(rooms, options) {
         const { escapeHtml, lang, t } = options;
         const listEl = document.getElementById('dashboard-maintenance-list');
@@ -496,7 +471,7 @@
         renderMovementList('dashboard-arrivals-list', todayCheckins
             .slice()
             .sort((a, b) => Number(b.status === 'pending') - Number(a.status === 'pending') || (b.guestCount || 0) - (a.guestCount || 0))
-            .slice(0, 6), {
+            .slice(0, 5), {
             emptyMessage: copy(lang, 'Nessun arrivo previsto per oggi', 'No arrivals planned for today'),
             escapeHtml,
             formatDateDisplay,
@@ -511,7 +486,7 @@
         renderMovementList('dashboard-departures-list', todayCheckouts
             .slice()
             .sort((a, b) => (b.roomCount || 0) - (a.roomCount || 0) || (b.guestCount || 0) - (a.guestCount || 0))
-            .slice(0, 6), {
+            .slice(0, 5), {
             emptyMessage: copy(lang, 'Nessuna partenza prevista per oggi', 'No departures planned for today'),
             escapeHtml,
             formatDateDisplay,
@@ -519,51 +494,6 @@
             roomsById,
             sideLabel: () => copy(lang, 'Check-out', 'Check-out'),
             t
-        });
-
-        const expiringToday = liveReservations.filter((reservation) => reservation.status === 'pending' && reservation.expiration === todayStr);
-        const arrivalsWithoutRoom = todayCheckins.filter((reservation) => (reservation.roomIds || []).length < (reservation.roomCount || 0));
-        const roomPressure = next7Days.reduce((best, day) => {
-            if (!best || day.occupancy > best.occupancy) return day;
-            return best;
-        }, null);
-
-        renderPriorityList([
-            {
-                tone: expiringToday.length ? 'urgent' : 'calm',
-                title: copy(lang, 'Opzioni in scadenza oggi', 'Reservations expiring today'),
-                text: expiringToday.length
-                    ? copy(lang, `${expiringToday.length} pratiche pending richiedono una decisione`, `${expiringToday.length} pending bookings need a decision`)
-                    : copy(lang, 'Nessuna pratica urgente da confermare oggi', 'No urgent bookings need confirmation today'),
-                value: String(expiringToday.length)
-            },
-            {
-                tone: arrivalsWithoutRoom.length ? 'warning' : 'calm',
-                title: copy(lang, 'Arrivi senza assegnazione completa', 'Arrivals missing room assignment'),
-                text: arrivalsWithoutRoom.length
-                    ? copy(lang, `${arrivalsWithoutRoom.length} arrivi di oggi non hanno ancora tutte le camere assegnate`, `${arrivalsWithoutRoom.length} arrivals still need full room assignment`)
-                    : copy(lang, 'Tutti gli arrivi risultano assegnati', 'All arrivals are assigned'),
-                value: String(arrivalsWithoutRoom.length)
-            },
-            {
-                tone: maintenance ? 'warning' : 'calm',
-                title: copy(lang, 'Camere fuori servizio', 'Rooms out of service'),
-                text: maintenance
-                    ? copy(lang, `${maintenance} camere riducono la disponibilita operativa di oggi`, `${maintenance} rooms are reducing today availability`)
-                    : copy(lang, 'Nessuna camera bloccata per manutenzione', 'No rooms are blocked for maintenance'),
-                value: String(maintenance)
-            },
-            {
-                tone: roomPressure && roomPressure.occupancy >= 85 ? 'urgent' : 'calm',
-                title: copy(lang, 'Picco di occupazione in settimana', 'Occupancy peak this week'),
-                text: roomPressure
-                    ? copy(lang, `${roomPressure.label} e il giorno con piu carico previsto`, `${roomPressure.label} is the busiest upcoming day`)
-                    : copy(lang, 'Nessun picco rilevante nei prossimi giorni', 'No significant peak in the upcoming days'),
-                value: roomPressure ? `${roomPressure.occupancy}%` : '0%'
-            }
-        ], {
-            emptyMessage: copy(lang, 'Nessuna azione aperta', 'No open actions'),
-            escapeHtml
         });
 
         renderMaintenanceList(
@@ -574,7 +504,7 @@
             { escapeHtml, lang, t }
         );
 
-        renderForecastList(next7Days, { escapeHtml, lang, totalRooms });
+        renderForecastList(next7Days.slice(0, 5), { escapeHtml, lang, totalRooms });
     }
 
     global.GroupStayDashboard = {

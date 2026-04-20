@@ -244,82 +244,64 @@
             </header>
 
             <div class="dashboard-shell">
-                <div class="dashboard-column dashboard-column-main">
-                    <section class="card dashboard-panel dashboard-panel-overview">
-                        <div class="card-header card-header-stack">
+                <section class="dashboard-metrics-strip" aria-label="Panoramica operativa">
+                    <article class="dashboard-stat-card">
+                        <span class="dashboard-stat-label">Arrivi oggi</span>
+                        <strong class="dashboard-stat-value" id="dash-arrivals-value">0</strong>
+                        <span class="dashboard-stat-meta" id="dash-arrivals-meta">Nessun arrivo pianificato</span>
+                    </article>
+                    <article class="dashboard-stat-card">
+                        <span class="dashboard-stat-label">Partenze oggi</span>
+                        <strong class="dashboard-stat-value" id="dash-departures-value">0</strong>
+                        <span class="dashboard-stat-meta" id="dash-departures-meta">Nessuna partenza pianificata</span>
+                    </article>
+                    <article class="dashboard-stat-card">
+                        <span class="dashboard-stat-label">Ospiti in casa</span>
+                        <strong class="dashboard-stat-value" id="dash-inhouse-value">0</strong>
+                        <span class="dashboard-stat-meta" id="dash-inhouse-meta">Presenze attive in struttura</span>
+                    </article>
+                    <article class="dashboard-stat-card">
+                        <span class="dashboard-stat-label">Occupazione camere</span>
+                        <strong class="dashboard-stat-value" id="dash-occupancy-value">0%</strong>
+                        <span class="dashboard-stat-meta" id="dash-occupancy-meta">0 occupate su 0</span>
+                    </article>
+                </section>
+
+                <div class="dashboard-workspace-grid">
+                    <section class="card dashboard-panel dashboard-panel-movements">
+                        <div class="card-header">
                             <div>
-                                <h3>Panoramica operativa</h3>
-                                <p class="card-subtitle">Quadro rapido della giornata tra reception, presenze e disponibilita camere.</p>
+                                <h3>Movimenti di oggi</h3>
+                                <p class="card-subtitle">Arrivi e partenze del turno in corso.</p>
                             </div>
+                            <a href="#" class="card-link" onclick="navigateTo('reservations')">Apri prenotazioni</a>
                         </div>
                         <div class="card-body">
-                            <div class="dashboard-stat-grid">
-                                <article class="dashboard-stat-card">
-                                    <span class="dashboard-stat-label">Arrivi oggi</span>
-                                    <strong class="dashboard-stat-value" id="dash-arrivals-value">0</strong>
-                                    <span class="dashboard-stat-meta" id="dash-arrivals-meta">Nessun arrivo pianificato</span>
-                                </article>
-                                <article class="dashboard-stat-card">
-                                    <span class="dashboard-stat-label">Partenze oggi</span>
-                                    <strong class="dashboard-stat-value" id="dash-departures-value">0</strong>
-                                    <span class="dashboard-stat-meta" id="dash-departures-meta">Nessuna partenza pianificata</span>
-                                </article>
-                                <article class="dashboard-stat-card">
-                                    <span class="dashboard-stat-label">Ospiti in casa</span>
-                                    <strong class="dashboard-stat-value" id="dash-inhouse-value">0</strong>
-                                    <span class="dashboard-stat-meta" id="dash-inhouse-meta">Presenze attive in struttura</span>
-                                </article>
-                                <article class="dashboard-stat-card">
-                                    <span class="dashboard-stat-label">Occupazione camere</span>
-                                    <strong class="dashboard-stat-value" id="dash-occupancy-value">0%</strong>
-                                    <span class="dashboard-stat-meta" id="dash-occupancy-meta">0 occupate su 0</span>
-                                </article>
+                            <div class="dashboard-movement-grid">
+                                <section class="dashboard-list-section">
+                                    <div class="dashboard-section-heading">
+                                        <h4>Arrivi</h4>
+                                        <p>Gruppi attesi e camere assegnate.</p>
+                                    </div>
+                                    <div class="dashboard-movement-list" id="dashboard-arrivals-list"></div>
+                                </section>
+
+                                <section class="dashboard-list-section">
+                                    <div class="dashboard-section-heading">
+                                        <h4>Partenze</h4>
+                                        <p>Camere da liberare e gruppi in uscita.</p>
+                                    </div>
+                                    <div class="dashboard-movement-list" id="dashboard-departures-list"></div>
+                                </section>
                             </div>
                         </div>
                     </section>
 
-                    <div class="dashboard-row">
-                        <section class="card dashboard-panel dashboard-panel-movements">
-                            <div class="card-header">
-                                <h3>Movimenti di oggi</h3>
-                                <a href="#" class="card-link" onclick="navigateTo('reservations')">Apri prenotazioni</a>
-                            </div>
-                            <div class="card-body">
-                                <div class="dashboard-movement-grid">
-                                    <section class="dashboard-list-section">
-                                        <div class="dashboard-section-heading">
-                                            <h4>Arrivi</h4>
-                                            <p>Gruppi attesi e camere assegnate.</p>
-                                        </div>
-                                        <div class="dashboard-movement-list" id="dashboard-arrivals-list"></div>
-                                    </section>
-
-                                    <section class="dashboard-list-section">
-                                        <div class="dashboard-section-heading">
-                                            <h4>Partenze</h4>
-                                            <p>Camere da liberare e gruppi in uscita.</p>
-                                        </div>
-                                        <div class="dashboard-movement-list" id="dashboard-departures-list"></div>
-                                    </section>
-                                </div>
-                            </div>
-                        </section>
-
-                        <section class="card dashboard-panel dashboard-panel-priorities">
-                            <div class="card-header">
-                                <h3>Azioni da verificare</h3>
-                            </div>
-                            <div class="card-body">
-                                <div class="dashboard-priority-list" id="dashboard-priority-list"></div>
-                            </div>
-                        </section>
-                    </div>
-
                     <section class="card dashboard-panel dashboard-panel-agenda-v2">
-                        <div class="card-header card-header-stack">
+                        <div class="card-header">
                             <div>
-                                <h3 data-i18n="dash.dailyAgenda">Agenda Giornaliera</h3>
-                                <p class="card-subtitle">Attivita operative, promemoria e consegne del turno.</p>
+                                <h3 data-i18n="dash.dailyAgenda">Agenda operativa</h3>
+                                <p class="card-subtitle">Task e promemoria essenziali della giornata.</p>
                             </div>
                         </div>
                         <div class="card-body">
@@ -348,14 +330,12 @@
                             </div>
                         </div>
                     </section>
-                </div>
 
-                <aside class="dashboard-column dashboard-column-side">
-                    <section class="card dashboard-panel dashboard-panel-focus">
-                        <div class="card-header card-header-stack">
+                    <section class="card dashboard-panel dashboard-panel-operations">
+                        <div class="card-header">
                             <div>
                                 <h3>Stato struttura</h3>
-                                <p class="card-subtitle">Disponibilita camere e blocchi manutentivi attivi.</p>
+                                <p class="card-subtitle">Disponibilita camere, manutenzioni e carico a breve termine.</p>
                             </div>
                         </div>
                         <div class="card-body">
@@ -373,23 +353,19 @@
                                     <strong id="dash-rooms-maintenance">0</strong>
                                 </div>
                             </div>
-                            <div class="dashboard-subsection-title">Camere in manutenzione</div>
-                            <div class="dashboard-room-status-list" id="dashboard-maintenance-list"></div>
-                        </div>
-                    </section>
 
-                    <section class="card dashboard-panel dashboard-panel-forecast">
-                        <div class="card-header card-header-stack">
-                            <div>
-                                <h3>Prossimi 7 giorni</h3>
-                                <p class="card-subtitle">Occupazione prevista e flusso arrivi-partenze.</p>
+                            <div class="dashboard-panel-block">
+                                <div class="dashboard-subsection-title">Camere in manutenzione</div>
+                                <div class="dashboard-room-status-list" id="dashboard-maintenance-list"></div>
+                            </div>
+
+                            <div class="dashboard-panel-block">
+                                <div class="dashboard-subsection-title">Prossimi 7 giorni</div>
+                                <div class="dashboard-forecast-list" id="dashboard-forecast-list"></div>
                             </div>
                         </div>
-                        <div class="card-body">
-                            <div class="dashboard-forecast-list" id="dashboard-forecast-list"></div>
-                        </div>
                     </section>
-                </aside>
+                </div>
             </div>
         </section>
 
