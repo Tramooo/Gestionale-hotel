@@ -39,6 +39,16 @@
         syncRoomMaintenanceNoteVisibility();
     }
 
+    function configureDeleteButton(mode) {
+        const { t } = requireDeps();
+        const deleteButton = document.getElementById('deleteRoomBtn');
+        if (!deleteButton) return;
+        deleteButton.dataset.mode = mode;
+        deleteButton.textContent = mode === 'maintenance'
+            ? t('rooms.removeMaintenance')
+            : t('common.delete');
+    }
+
     function renderRooms() {
         const {
             computeRoomStatuses,
@@ -106,6 +116,7 @@
         setRoomStatusFieldValue('available');
         setRoomMaintenanceNoteValue('');
         bindRoomStatusControl();
+        configureDeleteButton('room');
         document.getElementById('deleteRoomBtn').style.display = 'none';
         openModal('roomModal');
     }
@@ -124,6 +135,7 @@
         setRoomStatusFieldValue(room.status);
         setRoomMaintenanceNoteValue(room.maintenanceNote);
         bindRoomStatusControl();
+        configureDeleteButton(room.status === 'maintenance' ? 'maintenance' : 'room');
         document.getElementById('deleteRoomBtn').style.display = '';
         openModal('roomModal');
     }
@@ -276,6 +288,7 @@
         const {
             API,
             apiDelete,
+            apiPut,
             closeModal,
             getGuests,
             getRooms,
@@ -290,6 +303,38 @@
 
         const id = document.getElementById('roomId').value;
         if (!id) return;
+        const deleteMode = document.getElementById('deleteRoomBtn')?.dataset.mode || 'room';
+
+        if (deleteMode === 'maintenance') {
+            const room = getRooms().find((entry) => entry.id === id);
+            if (!room) return;
+            if (!confirm(t('confirm.removeMaintenance'))) return;
+
+            const previousRooms = getRooms();
+            const updatedRoom = {
+                ...room,
+                status: 'available',
+                maintenanceNote: ''
+            };
+
+            try {
+                setRooms(previousRooms.map((entry) => entry.id === id ? updatedRoom : entry));
+                await apiPut(API.rooms, updatedRoom);
+            } catch (err) {
+                console.error(err);
+                setRooms(previousRooms);
+                showToast(t('toast.roomSaveFail'), 'error');
+                return;
+            }
+
+            closeModal('roomModal');
+            showToast(t('toast.roomMaintenanceRemoved'));
+            onRoomsChanged();
+            renderDashboard();
+            refreshCalendar();
+            return;
+        }
+
         if (!confirm(t('confirm.deleteRoom'))) return;
 
         setRooms(getRooms().filter((room) => room.id !== id));
