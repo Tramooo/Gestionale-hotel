@@ -6973,6 +6973,151 @@ select.cell-input {
         gap: 12px;
     }
 
+    #page-dashboard {
+        padding-top: calc(12px + env(safe-area-inset-top, 0px));
+        padding-bottom: calc(128px + env(safe-area-inset-bottom, 0px));
+    }
+
+    #page-dashboard .page-header {
+        position: static;
+        padding: 0;
+        margin-bottom: 14px;
+        background: none;
+    }
+
+    #page-dashboard .dashboard-header-now {
+        width: 100%;
+        min-width: 0;
+        flex-direction: row;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 11px 14px;
+        border: 1px solid var(--border-light);
+        border-radius: 16px;
+        background: color-mix(in srgb, var(--bg-secondary) 82%, var(--bg-primary));
+    }
+
+    #page-dashboard .dashboard-header-date {
+        font-size: 12px;
+        line-height: 1.35;
+    }
+
+    #page-dashboard .dashboard-header-time {
+        margin-top: 0;
+        font-size: 28px;
+    }
+
+    .dashboard-shell {
+        gap: 12px;
+    }
+
+    .dashboard-metrics-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .dashboard-stat-card {
+        min-height: 0;
+        padding: 14px;
+        border-radius: 16px;
+    }
+
+    .dashboard-stat-value {
+        margin-top: 10px;
+        font-size: 28px;
+    }
+
+    .dashboard-stat-meta {
+        min-height: 0;
+        padding-top: 8px;
+        font-size: 11.5px;
+    }
+
+    .dashboard-workspace-grid {
+        gap: 14px;
+    }
+
+    .dashboard-panel {
+        height: auto;
+    }
+
+    .dashboard-panel .card-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .dashboard-panel .card-link,
+    .dashboard-panel .btn {
+        width: 100%;
+        justify-content: center;
+        align-self: stretch;
+    }
+
+    .dashboard-panel-movements .card-body,
+    .dashboard-panel-agenda-v2 .card-body,
+    .dashboard-panel-operations .card-body {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .dashboard-panel-operations .card-body {
+        grid-template-rows: none;
+    }
+
+    .dashboard-movement-grid {
+        grid-template-rows: none;
+        gap: 10px;
+    }
+
+    .dashboard-list-section,
+    .dashboard-panel-block {
+        padding: 14px;
+        overflow: visible;
+    }
+
+    .dashboard-movement-list,
+    .dashboard-room-status-list,
+    .dashboard-forecast-list {
+        overflow: visible;
+        padding-right: 0;
+    }
+
+    .dashboard-room-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .dashboard-room-chip {
+        padding: 12px 12px 13px;
+    }
+
+    .dashboard-room-chip:last-child {
+        grid-column: 1 / -1;
+    }
+
+    .dashboard-room-chip strong {
+        margin-top: 6px;
+        font-size: 24px;
+    }
+
+    .dashboard-panel-agenda-v2 .todo-toolbar,
+    .dashboard-panel-agenda-v2 .todo-form {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .dashboard-panel-agenda-v2 .todo-toolbar .btn-secondary,
+    .dashboard-panel-agenda-v2 .todo-form .btn {
+        width: 100%;
+    }
+
+    .dashboard-panel-agenda-v2 .todo-list {
+        padding: 12px 14px 6px;
+    }
+
     .card-header,
     .card-body {
         padding-left: 16px;
@@ -7162,6 +7307,21 @@ select.cell-input {
 
     .stats-grid {
         grid-template-columns: 1fr;
+    }
+
+    #page-dashboard .dashboard-header-now {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+    }
+
+    .dashboard-metrics-strip,
+    .dashboard-room-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .dashboard-room-chip:last-child {
+        grid-column: auto;
     }
 }
 
