@@ -819,6 +819,8 @@ const TRANSLATIONS = {
     'rooms.operationalStatus': { en: 'Operational status', it: 'Stato operativo' },
     'rooms.quickMaintenance': { en: 'Add maintenance', it: 'Aggiungi manutenzione' },
     'rooms.selectRoom': { en: 'Room', it: 'Camera' },
+    'rooms.maintenanceDetails': { en: 'Maintenance type', it: 'Tipo di manutenzione' },
+    'rooms.maintenancePlaceholder': { en: 'E.g. AC check or bathroom repair', it: 'Es. controllo climatizzazione o bagno' },
 
     // Room types
     'roomType.single': { en: 'Single', it: 'Singola' },

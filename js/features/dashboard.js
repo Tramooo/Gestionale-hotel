@@ -390,6 +390,7 @@
                     <span>${escapeHtml(room.type || copy(lang, 'Tipologia non definita', 'Type not set'))}</span>
                     <span>${escapeHtml(copy(lang, `Capienza ${room.capacity || 0}`, `Capacity ${room.capacity || 0}`))}</span>
                     <span>${escapeHtml(copy(lang, 'Fuori servizio', 'Out of service'))}</span>
+                    ${room.maintenanceNote ? `<span>${escapeHtml(room.maintenanceNote)}</span>` : ''}
                 </div>
             </button>
         `).join('');

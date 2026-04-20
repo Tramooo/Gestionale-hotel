@@ -1114,6 +1114,10 @@
                                 <option value="maintenance" data-i18n="rooms.maintenance">Manutenzione</option>
                             </select>
                         </div>
+                        <div class="form-group full" id="roomMaintenanceNoteGroup">
+                            <label for="roomMaintenanceNote" data-i18n="rooms.maintenanceDetails">Tipo di manutenzione</label>
+                            <input type="text" id="roomMaintenanceNote" data-i18n-placeholder="rooms.maintenancePlaceholder" placeholder="Es. controllo climatizzazione" maxlength="140">
+                        </div>
                     </div>
                     <div class="modal-actions">
                         <button type="button" class="btn btn-danger" id="deleteRoomBtn" onclick="deleteRoom()" style="margin-right:auto;display:none" data-i18n="common.delete">Elimina</button>
@@ -1136,6 +1140,10 @@
                     <div class="form-group">
                         <label for="maintenanceRoomId" data-i18n="rooms.selectRoom">Camera</label>
                         <select id="maintenanceRoomId" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="maintenanceDescription" data-i18n="rooms.maintenanceDetails">Tipo di manutenzione</label>
+                        <input type="text" id="maintenanceDescription" data-i18n-placeholder="rooms.maintenancePlaceholder" placeholder="Es. controllo climatizzazione" maxlength="140">
                     </div>
                     <div class="modal-actions">
                         <button type="button" class="btn btn-ghost" onclick="closeModal('maintenanceModal')" data-i18n="common.cancel">Annulla</button>

@@ -16,6 +16,7 @@ export default async function handler(req, res) {
         type: r.type,
         capacity: r.capacity,
         status: r.status,
+        maintenanceNote: r.maintenance_note || '',
         price: Number(r.price)
       })));
     }
@@ -24,9 +25,10 @@ export default async function handler(req, res) {
       const r = req.body;
       const status = r.status || 'available';
       const price = r.price || 0;
+      const maintenanceNote = r.maintenanceNote || '';
       await sql`
-        INSERT INTO rooms (id, owner_user_id, number, floor, type, capacity, status, price)
-        VALUES (${r.id}, ${user.id}, ${r.number}, ${r.floor}, ${r.type}, ${r.capacity}, ${status}, ${price})
+        INSERT INTO rooms (id, owner_user_id, number, floor, type, capacity, status, price, maintenance_note)
+        VALUES (${r.id}, ${user.id}, ${r.number}, ${r.floor}, ${r.type}, ${r.capacity}, ${status}, ${price}, ${maintenanceNote})
       `;
       return res.status(201).json({ success: true });
     }
@@ -34,9 +36,10 @@ export default async function handler(req, res) {
     if (req.method === 'PUT') {
       const r = req.body;
       const price = r.price || 0;
+      const maintenanceNote = r.maintenanceNote || '';
       await sql`
         UPDATE rooms SET number=${r.number}, floor=${r.floor}, type=${r.type},
-        capacity=${r.capacity}, status=${r.status}, price=${price}
+        capacity=${r.capacity}, status=${r.status}, price=${price}, maintenance_note=${maintenanceNote}
         WHERE id=${r.id} AND owner_user_id = ${user.id}
       `;
       return res.status(200).json({ success: true });

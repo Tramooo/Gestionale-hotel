@@ -16,6 +16,29 @@
         statusField.value = status === 'maintenance' ? 'maintenance' : 'available';
     }
 
+    function setRoomMaintenanceNoteValue(value) {
+        const noteField = document.getElementById('roomMaintenanceNote');
+        if (!noteField) return;
+        noteField.value = value || '';
+    }
+
+    function syncRoomMaintenanceNoteVisibility() {
+        const statusField = document.getElementById('roomStatus');
+        const noteGroup = document.getElementById('roomMaintenanceNoteGroup');
+        if (!statusField || !noteGroup) return;
+        noteGroup.hidden = statusField.value !== 'maintenance';
+    }
+
+    function bindRoomStatusControl() {
+        const statusField = document.getElementById('roomStatus');
+        if (!statusField) return;
+        statusField.onchange = () => {
+            syncRoomMaintenanceNoteVisibility();
+            if (statusField.value !== 'maintenance') setRoomMaintenanceNoteValue('');
+        };
+        syncRoomMaintenanceNoteVisibility();
+    }
+
     function renderRooms() {
         const {
             computeRoomStatuses,
@@ -81,6 +104,8 @@
         document.getElementById('roomForm').reset();
         document.getElementById('roomId').value = '';
         setRoomStatusFieldValue('available');
+        setRoomMaintenanceNoteValue('');
+        bindRoomStatusControl();
         document.getElementById('deleteRoomBtn').style.display = 'none';
         openModal('roomModal');
     }
@@ -97,6 +122,8 @@
         document.getElementById('roomType').value = room.type;
         document.getElementById('roomCapacity').value = room.capacity;
         setRoomStatusFieldValue(room.status);
+        setRoomMaintenanceNoteValue(room.maintenanceNote);
+        bindRoomStatusControl();
         document.getElementById('deleteRoomBtn').style.display = '';
         openModal('roomModal');
     }
@@ -132,6 +159,8 @@
         `;
 
         document.getElementById('maintenanceForm')?.reset();
+        const descriptionField = document.getElementById('maintenanceDescription');
+        if (descriptionField) descriptionField.value = '';
         openModal('maintenanceModal');
     }
 
@@ -154,12 +183,15 @@
         } = requireDeps();
 
         const id = document.getElementById('roomId').value;
+        const selectedStatus = document.getElementById('roomStatus').value || 'available';
+        const maintenanceNote = (document.getElementById('roomMaintenanceNote').value || '').trim();
         const data = {
             number: document.getElementById('roomNumber').value.trim(),
             floor: parseInt(document.getElementById('roomFloor').value) || 1,
             type: document.getElementById('roomType').value,
             capacity: parseInt(document.getElementById('roomCapacity').value) || 1,
-            status: document.getElementById('roomStatus').value || 'available'
+            status: selectedStatus,
+            maintenanceNote: selectedStatus === 'maintenance' ? maintenanceNote : ''
         };
 
         try {
@@ -209,6 +241,7 @@
 
         computeRoomStatuses();
         const roomId = document.getElementById('maintenanceRoomId').value;
+        const maintenanceNote = (document.getElementById('maintenanceDescription').value || '').trim();
         const room = getRooms().find((entry) => entry.id === roomId);
         if (!room || room.status !== 'available') {
             showToast(t('toast.noRoomsForMaintenance'), 'error');
@@ -218,7 +251,8 @@
         const previousRooms = getRooms();
         const updatedRoom = {
             ...room,
-            status: 'maintenance'
+            status: 'maintenance',
+            maintenanceNote
         };
 
         try {
