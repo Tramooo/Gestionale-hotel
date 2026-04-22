@@ -1,6 +1,7 @@
 (function initUiFeedback(global) {
     let deps = null;
     let listenersBound = false;
+    let pendingConfirm = null;
 
     function requireDeps() {
         if (!deps) throw new Error('GroupStayUI not initialized');
@@ -34,7 +35,81 @@
         const modal = document.getElementById(id);
         if (!modal) return;
         modal.classList.remove('open');
+        if (id === 'customConfirmModal' && pendingConfirm) {
+            const { resolve } = pendingConfirm;
+            pendingConfirm = null;
+            resolve(false);
+        }
         syncModalState();
+    }
+
+    function ensureConfirmModal() {
+        let modal = document.getElementById('customConfirmModal');
+        if (modal) return modal;
+
+        modal = document.createElement('div');
+        modal.id = 'customConfirmModal';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal modal-sm confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="customConfirmTitle">
+                <div class="modal-body confirm-dialog-body">
+                    <div class="confirm-dialog-icon" aria-hidden="true">!</div>
+                    <div class="confirm-dialog-content">
+                        <h2 id="customConfirmTitle" class="confirm-dialog-title">Conferma</h2>
+                        <p id="customConfirmMessage" class="confirm-dialog-message"></p>
+                    </div>
+                    <div class="modal-actions confirm-dialog-actions">
+                        <button id="customConfirmCancel" type="button" class="btn btn-ghost">Annulla</button>
+                        <button id="customConfirmOk" type="button" class="btn btn-primary">Conferma</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeModal('customConfirmModal');
+        });
+        modal.querySelector('#customConfirmCancel').addEventListener('click', () => closeModal('customConfirmModal'));
+        modal.querySelector('#customConfirmOk').addEventListener('click', () => {
+            if (!pendingConfirm) return;
+            const { resolve } = pendingConfirm;
+            pendingConfirm = null;
+            modal.classList.remove('open');
+            syncModalState();
+            resolve(true);
+        });
+        return modal;
+    }
+
+    function showConfirmDialog(message, options = {}) {
+        const modal = ensureConfirmModal();
+        const translate = deps && typeof deps.t === 'function' ? deps.t : null;
+        const title = options.title || (translate ? translate('common.confirmation') : 'Conferma');
+        const confirmLabel = options.confirmLabel || (translate ? translate('common.confirm') : 'Conferma');
+        const cancelLabel = options.cancelLabel || (translate ? translate('common.cancel') : 'Annulla');
+        const titleEl = modal.querySelector('#customConfirmTitle');
+        const messageEl = modal.querySelector('#customConfirmMessage');
+        const cancelBtn = modal.querySelector('#customConfirmCancel');
+        const okBtn = modal.querySelector('#customConfirmOk');
+
+        if (pendingConfirm) {
+            pendingConfirm.resolve(false);
+            pendingConfirm = null;
+        }
+
+        titleEl.textContent = title;
+        messageEl.textContent = message;
+        cancelBtn.textContent = cancelLabel;
+        okBtn.textContent = confirmLabel;
+
+        modal.classList.add('open');
+        syncModalState();
+        setTimeout(() => okBtn.focus(), 0);
+
+        return new Promise((resolve) => {
+            pendingConfirm = { resolve };
+        });
     }
 
     function showLoading(message = 'Caricamento...') {
@@ -79,9 +154,8 @@
             if (e.key === 'Escape') {
                 requireDeps().closeAllDatePickers();
                 document.querySelectorAll('.modal-overlay.open').forEach((modal) => {
-                    modal.classList.remove('open');
+                    closeModal(modal.id);
                 });
-                syncModalState();
             }
         });
 
@@ -99,6 +173,7 @@
         },
         openModal,
         closeModal,
+        showConfirmDialog,
         showLoading,
         hideLoading,
         showToast,

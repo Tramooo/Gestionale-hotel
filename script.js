@@ -26,6 +26,7 @@ const {
     closeModal,
     hideLoading,
     openModal,
+    showConfirmDialog,
     showLoading,
     showToast
 } = window.GroupStayUI;
@@ -60,7 +61,8 @@ const {
 } = window.GroupStayDatePicker;
 
 window.GroupStayUI.init({
-    closeAllDatePickers
+    closeAllDatePickers,
+    t
 });
 
 window.GroupStayRooms.init({
@@ -236,6 +238,7 @@ window.GroupStayGuestImport.init({
     parseImportDate,
     renderDashboard,
     setGuests: (nextGuests) => { guests = nextGuests; },
+    showConfirmDialog,
     showLoading,
     showToast,
     t
@@ -1078,6 +1081,9 @@ const TRANSLATIONS = {
 
     // Common
     'common.cancel': { en: 'Cancel', it: 'Annulla' },
+    'common.confirm': { en: 'Confirm', it: 'Conferma' },
+    'common.confirmation': { en: 'Confirmation', it: 'Conferma' },
+    'common.import': { en: 'Import', it: 'Importa' },
     'common.save': { en: 'Save', it: 'Salva' },
     'common.delete': { en: 'Delete', it: 'Elimina' },
     'common.edit': { en: 'Edit', it: 'Modifica' },

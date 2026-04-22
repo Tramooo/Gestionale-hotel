@@ -716,6 +716,7 @@
             openGuestsList,
             renderDashboard,
             setGuests,
+            showConfirmDialog,
             showLoading,
             showToast,
             t
@@ -726,7 +727,15 @@
             showToast(t('toast.noValidGuests'), 'error');
             return;
         }
-        if (!confirm(t('confirm.importGuests', { n: toImport.length }))) return;
+        const shouldImport = await showConfirmDialog(
+            t('confirm.importGuests', { n: toImport.length }),
+            {
+                title: t('common.confirmation'),
+                confirmLabel: t('common.import'),
+                cancelLabel: t('common.cancel')
+            }
+        );
+        if (!shouldImport) return;
         showLoading(`Importazione ospiti 0/${toImport.length}`);
         let success = 0;
         let errors = 0;
