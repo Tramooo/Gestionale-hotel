@@ -100,7 +100,8 @@ window.GroupStayMenus.init({
     generateId,
     getReservations: () => reservations,
     nightsBetween,
-    setReservations: (nextReservations) => { reservations = nextReservations; }
+    setReservations: (nextReservations) => { reservations = nextReservations; },
+    showToast
 });
 
 window.GroupStayReservationsList.init({
@@ -1506,6 +1507,8 @@ function addIntoleranceRow(resId) { return window.GroupStayMenus.addIntoleranceR
 function removeIntoleranceRow(btn, resId) { return window.GroupStayMenus.removeIntoleranceRow(btn, resId); }
 async function saveIntolerances(resId) { return window.GroupStayMenus.saveIntolerances(resId); }
 function printMenu(resId) { return window.GroupStayMenus.printMenu(resId); }
+function markMenusDirty() { return window.GroupStayMenus.markMenusDirty(); }
+async function saveAllMenus(resId) { return window.GroupStayMenus.saveAllMenus(resId); }
 async function saveMenuField(input) { return window.GroupStayMenus.saveMenuField(input); }
 
 async function loadReservationFiles(reservationId) { return window.GroupStayReservationFiles.loadReservationFiles(reservationId); }

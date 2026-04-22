@@ -6,6 +6,21 @@
         return deps;
     }
 
+    function sortGuestsForGroupFlow(guests) {
+        return guests
+            .map((guest, index) => ({ guest, index }))
+            .sort((a, b) => {
+                const guestTypeRank = (guestType) => {
+                    if (guestType === '17' || guestType === '18') return 0;
+                    if (guestType === '19' || guestType === '20') return 1;
+                    return 2;
+                };
+                const rankDiff = guestTypeRank(String(a.guest.guestType || '16')) - guestTypeRank(String(b.guest.guestType || '16'));
+                return rankDiff !== 0 ? rankDiff : a.index - b.index;
+            })
+            .map((entry) => entry.guest);
+    }
+
     function getGuestMissingFields(guest) {
         const { t } = requireDeps();
         const missing = [];
@@ -37,7 +52,9 @@
         const reservation = getReservations().find((entry) => entry.id === reservationId);
         if (!reservation) return;
 
-        const reservationGuests = getGuests().filter((guest) => guest.reservationId === reservationId);
+        const reservationGuests = sortGuestsForGroupFlow(
+            getGuests().filter((guest) => guest.reservationId === reservationId)
+        );
         const hasGroupTypes = reservationGuests.some((guest) => guest.guestType === '17' || guest.guestType === '18');
         const isGroup = hasGroupTypes || reservationGuests.length > 1;
 

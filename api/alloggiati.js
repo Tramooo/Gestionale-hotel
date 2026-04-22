@@ -63,6 +63,62 @@ function extractAllEsiti(xml) {
   return details;
 }
 
+function extractRowEsiti(xml, expectedCount) {
+  const allEsiti = extractAllEsiti(xml);
+  if (!Array.isArray(allEsiti) || allEsiti.length === 0) {
+    return {
+      details: [],
+      meta: {
+        mode: 'none',
+        rawCount: 0,
+        expectedCount
+      }
+    };
+  }
+
+  if (expectedCount > 0 && allEsiti.length === expectedCount + 1) {
+    return {
+      details: allEsiti.slice(1),
+      meta: {
+        mode: 'drop-leading-overall',
+        rawCount: allEsiti.length,
+        expectedCount
+      }
+    };
+  }
+
+  if (expectedCount > 0 && allEsiti.length === expectedCount) {
+    return {
+      details: allEsiti,
+      meta: {
+        mode: 'exact',
+        rawCount: allEsiti.length,
+        expectedCount
+      }
+    };
+  }
+
+  if (expectedCount > 0 && allEsiti.length > expectedCount) {
+    return {
+      details: allEsiti.slice(allEsiti.length - expectedCount),
+      meta: {
+        mode: 'trim-to-expected-tail',
+        rawCount: allEsiti.length,
+        expectedCount
+      }
+    };
+  }
+
+  return {
+    details: allEsiti,
+    meta: {
+      mode: 'partial',
+      rawCount: allEsiti.length,
+      expectedCount
+    }
+  };
+}
+
 // Common country name → code fallback (for when lookup tables didn't load)
 const COUNTRY_FALLBACK = {
   'italia': '100000100', 'italy': '100000100',
@@ -262,8 +318,7 @@ async function runBirthBlockDiagnostics({ action, normalizedGuests, records, fai
         </all:ElencoSchedine>
       </all:${methodName}>`);
 
-    const allEsiti = extractAllEsiti(xml);
-    const dettaglio = allEsiti.length > 1 ? allEsiti.slice(1) : allEsiti;
+    const { details: dettaglio } = extractRowEsiti(xml, 1);
     const detail = dettaglio[0] || extractEsito(xml, `${methodName}Result`);
 
     results.push({
@@ -350,8 +405,7 @@ async function runGroupDiagnostics({ action, normalizedGuests, records, failingD
     </all:${methodName}>`);
 
   const result = extractEsito(xml, `${methodName}Result`);
-  const allEsiti = extractAllEsiti(xml);
-  const dettaglio = allEsiti.length > 1 ? allEsiti.slice(1) : allEsiti;
+  const { details: dettaglio } = extractRowEsiti(xml, groupRecords.length);
 
   return {
     leaderIndex,
@@ -489,8 +543,7 @@ async function runFailingGuestFieldDiagnostics({ action, normalizedGuests, recor
         </all:ElencoSchedine>
       </all:${methodName}>`);
 
-    const allEsiti = extractAllEsiti(xml);
-    const dettaglio = allEsiti.length > 1 ? allEsiti.slice(1) : allEsiti;
+    const { details: dettaglio } = extractRowEsiti(xml, payloadRecords.length);
     const detail = dettaglio[payloadRecords.length - 1] || dettaglio[0] || extractEsito(xml, `${methodName}Result`);
 
     results.push({
@@ -563,8 +616,7 @@ async function runLeaderMemberPairDiagnostics({ action, normalizedGuests, record
         </all:ElencoSchedine>
       </all:${methodName}>`);
 
-    const allEsiti = extractAllEsiti(xml);
-    const dettaglio = allEsiti.length > 1 ? allEsiti.slice(1) : allEsiti;
+    const { details: dettaglio } = extractRowEsiti(xml, 2);
     const leaderDetail = dettaglio[0] || null;
     const memberDetail = dettaglio[1] || dettaglio[0] || extractEsito(xml, `${methodName}Result`);
 
@@ -784,15 +836,13 @@ export default async function handler(req, res) {
       const esito = extractEsito(xml, resultTag);
       const validCount = extractTag(xml, 'SchedineValide');
 
-      // Extract per-row details (skip the first one which is the overall result)
-      const allEsiti = extractAllEsiti(xml);
-      // The first EsitoOperazioneServizio is the overall result, the rest are per-row in Dettaglio
-      const dettaglio = allEsiti.length > 1 ? allEsiti.slice(1) : allEsiti;
+      const { details: dettaglio, meta: detailMeta } = extractRowEsiti(xml, records.length);
 
       const responsePayload = {
         success: esito.esito,
         validCount: parseInt(validCount) || 0,
         totalCount: records.length,
+        detailAlignment: detailMeta,
         details: dettaglio.map((d, i) => {
           const g = normalizedGuests[i];
           const record = records[i] || '';

@@ -7,6 +7,31 @@
         return deps;
     }
 
+    function getMenuSaveStatusElement() {
+        return document.getElementById('menuSaveStatus');
+    }
+
+    function setMenuSaveStatus(state, message = '') {
+        const el = getMenuSaveStatusElement();
+        if (!el) return;
+        el.dataset.state = state;
+        el.textContent = message;
+    }
+
+    function markMenusDirty() {
+        setMenuSaveStatus('dirty', 'Modifiche non salvate');
+    }
+
+    function upsertCachedMenu(entry) {
+        const key = `${entry.date}_${entry.mealType}`;
+        const index = lastMenus.findIndex((menu) => `${menu.date}_${menu.mealType}` === key);
+        if (index === -1) {
+            lastMenus.push({ ...entry });
+        } else {
+            lastMenus[index] = { ...lastMenus[index], ...entry };
+        }
+    }
+
     async function loadReservationMenus(reservation) {
         const { API, apiGet } = requireDeps();
         const container = document.getElementById('menuContainer');
@@ -15,8 +40,10 @@
             const menus = await apiGet(`${API.menus}?reservationId=${reservation.id}`);
             lastMenus = menus;
             renderMenuSection(reservation, menus);
+            setMenuSaveStatus('idle', 'Salvataggio automatico attivo');
         } catch (err) {
             container.innerHTML = '<div class="menu-error">Errore caricamento menu</div>';
+            setMenuSaveStatus('error', 'Errore caricamento menu');
         }
     }
 
@@ -76,9 +103,9 @@
                         intolerances.map((it, i) => `
                         <div class="intol-row" data-idx="${i}">
                             <input class="form-control intol-count" type="number" min="1" value="${it.count || 1}" placeholder="N"
-                                onblur="saveIntolerances('${reservation.id}')" style="width:60px">
+                                oninput="markMenusDirty()" onblur="saveIntolerances('${reservation.id}')" style="width:60px">
                             <input class="form-control intol-note" type="text" value="${escapeHtml(it.note || '')}" placeholder="es. celiaco, no maiale…"
-                                onblur="saveIntolerances('${reservation.id}')">
+                                oninput="markMenusDirty()" onblur="saveIntolerances('${reservation.id}')">
                             <button class="btn btn-ghost btn-sm intol-del-btn" onclick="removeIntoleranceRow(this,'${reservation.id}')">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                             </button>
@@ -121,7 +148,7 @@
                     <label class="menu-field-label">${field.charAt(0).toUpperCase() + field.slice(1)}</label>
                     <input class="form-control menu-input" type="text" value="${escapeHtml(menu[field] || '')}"
                         data-resid="${reservation.id}" data-date="${date}" data-mealtype="${mealType}" data-field="${field}" data-mid="${menu.id || ''}"
-                        onblur="saveMenuField(this)" placeholder="—">
+                        oninput="markMenusDirty()" onblur="saveMenuField(this)" placeholder="—">
                 </div>`;
             });
             html += '</div></div>';
@@ -139,6 +166,7 @@
         reservation.intolerances.push({ count: 1, note: '' });
         setReservations([...reservations]);
         renderMenuSection(reservation, lastMenus || []);
+        markMenusDirty();
     }
 
     function removeIntoleranceRow(btn, resId) {
@@ -152,12 +180,13 @@
         setReservations([...reservations]);
         saveIntolerances(resId);
         renderMenuSection(reservation, lastMenus || []);
+        markMenusDirty();
     }
 
     async function saveIntolerances(resId) {
         const { API, apiPut, getReservations } = requireDeps();
         const reservation = getReservations().find((item) => item.id === resId);
-        if (!reservation) return;
+        if (!reservation) return false;
         const rows = document.querySelectorAll('#intolList .intol-row');
         const list = [];
         rows.forEach((row) => {
@@ -168,8 +197,12 @@
         reservation.intolerances = list;
         try {
             await apiPut(API.reservations, { ...reservation, id: resId });
+            setMenuSaveStatus('saved', 'Ultime modifiche salvate');
+            return true;
         } catch (err) {
             console.error('Intolerances save error', err);
+            setMenuSaveStatus('error', 'Errore nel salvataggio');
+            return false;
         }
     }
 
@@ -270,24 +303,75 @@
         setTimeout(() => w.print(), 400);
     }
 
-    async function saveMenuField(input) {
-        const { API, apiPost, generateId } = requireDeps();
-        const { resid, date, mealtype } = input.dataset;
-        const allInputs = document.querySelectorAll(
-            `.menu-input[data-resid="${resid}"][data-date="${date}"][data-mealtype="${mealtype}"]`
-        );
-        const entry = { reservationId: resid, date, mealType: mealtype, primo: '', secondo: '', contorno: '', dessert: '' };
-        allInputs.forEach((inp) => { entry[inp.dataset.field] = inp.value.trim(); });
-        let mid = input.dataset.mid;
-        if (!mid) {
-            mid = generateId();
-            allInputs.forEach((inp) => { inp.dataset.mid = mid; });
+    function buildMenuEntryFromInputs(inputs, reservationId, date, mealType) {
+        const { generateId } = requireDeps();
+        const entry = { reservationId, date, mealType, primo: '', secondo: '', contorno: '', dessert: '' };
+        let menuId = inputs.find((item) => item.dataset.mid)?.dataset.mid || '';
+        if (!menuId) {
+            menuId = generateId();
+            inputs.forEach((item) => { item.dataset.mid = menuId; });
         }
-        entry.id = mid;
+        entry.id = menuId;
+        inputs.forEach((item) => { entry[item.dataset.field] = item.value.trim(); });
+        return entry;
+    }
+
+    async function saveMenuField(input) {
+        const { API, apiPost } = requireDeps();
+        const { resid, date, mealtype } = input.dataset;
+        const allInputs = Array.from(document.querySelectorAll(
+            `.menu-input[data-resid="${resid}"][data-date="${date}"][data-mealtype="${mealtype}"]`
+        ));
+        const entry = buildMenuEntryFromInputs(allInputs, resid, date, mealtype);
         try {
             await apiPost(API.menus, entry);
+            upsertCachedMenu(entry);
+            setMenuSaveStatus('saved', 'Ultime modifiche salvate');
+            return true;
         } catch (err) {
             console.error('Menu save error', err);
+            setMenuSaveStatus('error', 'Errore nel salvataggio');
+            return false;
+        }
+    }
+
+    async function saveAllMenus(resId) {
+        const { API, apiPost, showToast } = requireDeps();
+        const inputs = Array.from(document.querySelectorAll(`.menu-input[data-resid="${resId}"]`));
+        const groupedInputs = new Map();
+
+        inputs.forEach((input) => {
+            const key = `${input.dataset.date}_${input.dataset.mealtype}`;
+            if (!groupedInputs.has(key)) groupedInputs.set(key, []);
+            groupedInputs.get(key).push(input);
+        });
+
+        setMenuSaveStatus('saving', 'Salvataggio menu in corso...');
+        let savedCount = 0;
+
+        try {
+            for (const [key, group] of groupedInputs.entries()) {
+                const [date, mealType] = key.split('_');
+                const entry = buildMenuEntryFromInputs(group, resId, date, mealType);
+                const hasContent = [entry.primo, entry.secondo, entry.contorno, entry.dessert].some(Boolean);
+                const hasExistingId = group.some((input) => input.dataset.mid);
+                if (!hasContent && !hasExistingId) continue;
+                await apiPost(API.menus, entry);
+                upsertCachedMenu(entry);
+                savedCount += 1;
+            }
+
+            const intolerancesSaved = await saveIntolerances(resId);
+            if (!intolerancesSaved) throw new Error('intolleranze');
+
+            setMenuSaveStatus('saved', 'Ultime modifiche salvate');
+            showToast('Modifiche menu salvate', 'success');
+            return true;
+        } catch (err) {
+            console.error('Save all menus error', err);
+            setMenuSaveStatus('error', 'Errore nel salvataggio');
+            showToast('Errore nel salvataggio del menu', 'error');
+            return false;
         }
     }
 
@@ -302,6 +386,8 @@
         removeIntoleranceRow,
         saveIntolerances,
         printMenu,
+        markMenusDirty,
+        saveAllMenus,
         saveMenuField
     };
 })(window);

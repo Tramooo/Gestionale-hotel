@@ -3884,6 +3884,63 @@ select.cell-input option {
     gap: 10px;
 }
 
+.menu-title-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.menu-title-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.menu-save-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 32px;
+    padding: 0 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border-light);
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+}
+
+.menu-save-status[data-state="dirty"] {
+    background: #fff5df;
+    border-color: #ecd4a2;
+    color: #926b0f;
+}
+
+.menu-save-status[data-state="saving"] {
+    background: #edf4ff;
+    border-color: #cfdcf7;
+    color: #36568b;
+}
+
+.menu-save-status[data-state="saved"] {
+    background: #edf9f0;
+    border-color: #cde6d4;
+    color: #2f6b46;
+}
+
+.menu-save-status[data-state="error"] {
+    background: #fff1f0;
+    border-color: #efc6c2;
+    color: #a3453c;
+}
+
 .meal-plan-badge {
     font-size: 11px;
     font-weight: 700;
@@ -7278,6 +7335,16 @@ select.cell-input {
         align-items: flex-start;
         gap: 10px;
         min-width: 0;
+    }
+
+    .menu-title-meta,
+    .menu-title-actions {
+        width: 100%;
+    }
+
+    .menu-title-actions {
+        margin-left: 0;
+        justify-content: flex-start;
     }
 
     .detail-menu-title-row > * {

@@ -129,12 +129,21 @@
             <div class="detail-menu-section">
                 <div class="detail-menu-header">
                     <div class="detail-menu-title-row">
-                        <span class="detail-info-label">Menu</span>
-                        <span class="meal-plan-badge meal-plan-${reservation.mealPlan || 'BB'}">${reservation.mealPlan || 'BB'}</span>
-                        <button class="btn btn-sm btn-secondary" style="margin-left:auto" onclick="printMenu('${reservation.id}')">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-                            Stampa Menu
-                        </button>
+                        <div class="menu-title-meta">
+                            <span class="detail-info-label">Menu</span>
+                            <span class="meal-plan-badge meal-plan-${reservation.mealPlan || 'BB'}">${reservation.mealPlan || 'BB'}</span>
+                        </div>
+                        <div class="menu-title-actions">
+                            <span id="menuSaveStatus" class="menu-save-status" data-state="idle">Salvataggio automatico attivo</span>
+                            <button class="btn btn-sm btn-primary" onclick="saveAllMenus('${reservation.id}')">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                                Salva menu
+                            </button>
+                            <button class="btn btn-sm btn-secondary" onclick="printMenu('${reservation.id}')">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                                Stampa Menu
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <div id="menuContainer" class="menu-container">
