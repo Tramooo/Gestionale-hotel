@@ -156,11 +156,17 @@
             renderDashboard,
             setGuests,
             setReservations,
+            showConfirmDialog,
             showToast,
             t
         } = requireDeps();
 
-        if (!confirm(t('confirm.deleteReservation'))) return;
+        if (!await showConfirmDialog(t('confirm.deleteReservation'), {
+            title: t('common.confirmation'),
+            confirmLabel: t('common.delete'),
+            cancelLabel: t('common.cancel'),
+            intent: 'danger'
+        })) return;
 
         setReservations(getReservations().filter((reservation) => reservation.id !== id));
         setGuests(getGuests().filter((guest) => guest.reservationId !== id));

@@ -601,11 +601,17 @@
             getWorkEntries,
             setEmployees,
             setWorkEntries,
+            showConfirmDialog,
             showToast,
             t
         } = requireDeps();
         const id = document.getElementById('empId').value;
-        if (!id || !confirm(t('confirm.deleteEmployee'))) return;
+        if (!id || !await showConfirmDialog(t('confirm.deleteEmployee'), {
+            title: t('common.confirmation'),
+            confirmLabel: t('common.delete'),
+            cancelLabel: t('common.cancel'),
+            intent: 'danger'
+        })) return;
         try {
             await apiDelete(API.employees, id);
             setEmployees(getEmployees().filter((employee) => employee.id !== id));
@@ -723,10 +729,17 @@
     }
 
     async function empCalDayClick(empId, dateStr) {
-        const { API, apiPost, apiPut, generateId, getWorkEntries, setWorkEntries, t } = requireDeps();
+        const { API, apiPost, apiPut, generateId, getWorkEntries, setWorkEntries, showPromptDialog, t } = requireDeps();
         const existing = getWorkEntries().find((entry) => entry.employeeId === empId && entry.workDate === dateStr);
         if (existing) {
-            const input = prompt(t('emp.enterHours'), existing.hours);
+            const input = await showPromptDialog(t('emp.enterHours'), {
+                title: t('emp.workHours'),
+                confirmLabel: t('common.save'),
+                cancelLabel: t('common.cancel'),
+                defaultValue: String(existing.hours ?? ''),
+                inputType: 'number',
+                inputMode: 'decimal'
+            });
             if (input === null) return;
             const hours = parseFloat(input);
             if (isNaN(hours) || hours < 0) return;
@@ -741,7 +754,14 @@
                 setWorkEntries(getWorkEntries().map((entry) => entry.id === existing.id ? updated : entry));
             }
         } else {
-            const input = prompt(t('emp.enterHours'), '8');
+            const input = await showPromptDialog(t('emp.enterHours'), {
+                title: t('emp.workHours'),
+                confirmLabel: t('common.save'),
+                cancelLabel: t('common.cancel'),
+                defaultValue: '8',
+                inputType: 'number',
+                inputMode: 'decimal'
+            });
             if (input === null) return;
             const hours = parseFloat(input);
             if (isNaN(hours) || hours <= 0) return;
@@ -847,8 +867,13 @@
     }
 
     async function deleteWorkEntry(workId, empId) {
-        const { API, getWorkEntries, setWorkEntries, showToast, t } = requireDeps();
-        if (!confirm(t('confirm.deleteWorkEntry'))) return;
+        const { API, getWorkEntries, setWorkEntries, showConfirmDialog, showToast, t } = requireDeps();
+        if (!await showConfirmDialog(t('confirm.deleteWorkEntry'), {
+            title: t('common.confirmation'),
+            confirmLabel: t('common.delete'),
+            cancelLabel: t('common.cancel'),
+            intent: 'danger'
+        })) return;
         try {
             await fetch(`${API.employees}?id=${workId}&type=work`, { method: 'DELETE', credentials: 'include' });
             setWorkEntries(getWorkEntries().filter((entry) => entry.id !== workId));

@@ -1,7 +1,7 @@
 (function initUiFeedback(global) {
     let deps = null;
     let listenersBound = false;
-    let pendingConfirm = null;
+    let pendingDialog = null;
 
     function requireDeps() {
         if (!deps) throw new Error('GroupStayUI not initialized');
@@ -35,32 +35,35 @@
         const modal = document.getElementById(id);
         if (!modal) return;
         modal.classList.remove('open');
-        if (id === 'customConfirmModal' && pendingConfirm) {
-            const { resolve } = pendingConfirm;
-            pendingConfirm = null;
-            resolve(false);
+        if (id === 'customDialogModal' && pendingDialog) {
+            const { resolve, type } = pendingDialog;
+            pendingDialog = null;
+            resolve(type === 'confirm' ? false : null);
         }
         syncModalState();
     }
 
-    function ensureConfirmModal() {
-        let modal = document.getElementById('customConfirmModal');
+    function ensureDialogModal() {
+        let modal = document.getElementById('customDialogModal');
         if (modal) return modal;
 
         modal = document.createElement('div');
-        modal.id = 'customConfirmModal';
+        modal.id = 'customDialogModal';
         modal.className = 'modal-overlay';
         modal.innerHTML = `
-            <div class="modal modal-sm confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="customConfirmTitle">
-                <div class="modal-body confirm-dialog-body">
-                    <div class="confirm-dialog-icon" aria-hidden="true">!</div>
-                    <div class="confirm-dialog-content">
-                        <h2 id="customConfirmTitle" class="confirm-dialog-title">Conferma</h2>
-                        <p id="customConfirmMessage" class="confirm-dialog-message"></p>
+            <div class="modal modal-sm dialog-modal" role="dialog" aria-modal="true" aria-labelledby="customDialogTitle">
+                <div class="modal-body dialog-modal-body">
+                    <div id="customDialogIcon" class="dialog-modal-icon" aria-hidden="true">!</div>
+                    <div class="dialog-modal-content">
+                        <h2 id="customDialogTitle" class="dialog-modal-title">Conferma</h2>
+                        <p id="customDialogMessage" class="dialog-modal-message"></p>
+                        <label id="customDialogInputWrap" class="dialog-modal-input-wrap" hidden>
+                            <input id="customDialogInput" class="input dialog-modal-input" type="text" />
+                        </label>
                     </div>
-                    <div class="modal-actions confirm-dialog-actions">
-                        <button id="customConfirmCancel" type="button" class="btn btn-ghost">Annulla</button>
-                        <button id="customConfirmOk" type="button" class="btn btn-primary">Conferma</button>
+                    <div class="modal-actions dialog-modal-actions">
+                        <button id="customDialogCancel" type="button" class="btn btn-ghost">Annulla</button>
+                        <button id="customDialogOk" type="button" class="btn btn-primary">Conferma</button>
                     </div>
                 </div>
             </div>
@@ -68,47 +71,113 @@
         document.body.appendChild(modal);
 
         modal.addEventListener('click', (e) => {
-            if (e.target === modal) closeModal('customConfirmModal');
+            if (e.target === modal) closeModal('customDialogModal');
         });
-        modal.querySelector('#customConfirmCancel').addEventListener('click', () => closeModal('customConfirmModal'));
-        modal.querySelector('#customConfirmOk').addEventListener('click', () => {
-            if (!pendingConfirm) return;
-            const { resolve } = pendingConfirm;
-            pendingConfirm = null;
+        modal.querySelector('#customDialogCancel').addEventListener('click', () => closeModal('customDialogModal'));
+        modal.querySelector('#customDialogOk').addEventListener('click', () => {
+            if (!pendingDialog) return;
+            const { resolve, type } = pendingDialog;
+            const input = modal.querySelector('#customDialogInput');
+            pendingDialog = null;
             modal.classList.remove('open');
             syncModalState();
-            resolve(true);
+            resolve(type === 'prompt' ? input.value : true);
+        });
+        modal.querySelector('#customDialogInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                modal.querySelector('#customDialogOk').click();
+            }
         });
         return modal;
     }
 
-    function showConfirmDialog(message, options = {}) {
-        const modal = ensureConfirmModal();
+    function getDialogText(options = {}) {
         const translate = deps && typeof deps.t === 'function' ? deps.t : null;
-        const title = options.title || (translate ? translate('common.confirmation') : 'Conferma');
-        const confirmLabel = options.confirmLabel || (translate ? translate('common.confirm') : 'Conferma');
-        const cancelLabel = options.cancelLabel || (translate ? translate('common.cancel') : 'Annulla');
-        const titleEl = modal.querySelector('#customConfirmTitle');
-        const messageEl = modal.querySelector('#customConfirmMessage');
-        const cancelBtn = modal.querySelector('#customConfirmCancel');
-        const okBtn = modal.querySelector('#customConfirmOk');
+        return {
+            title: options.title || (translate ? translate('common.confirmation') : 'Conferma'),
+            confirmLabel: options.confirmLabel || (translate ? translate('common.confirm') : 'Conferma'),
+            cancelLabel: options.cancelLabel || (translate ? translate('common.cancel') : 'Annulla')
+        };
+    }
 
-        if (pendingConfirm) {
-            pendingConfirm.resolve(false);
-            pendingConfirm = null;
+    function showConfirmDialog(message, options = {}) {
+        const modal = ensureDialogModal();
+        const labels = getDialogText(options);
+        const titleEl = modal.querySelector('#customDialogTitle');
+        const messageEl = modal.querySelector('#customDialogMessage');
+        const iconEl = modal.querySelector('#customDialogIcon');
+        const inputWrap = modal.querySelector('#customDialogInputWrap');
+        const cancelBtn = modal.querySelector('#customDialogCancel');
+        const okBtn = modal.querySelector('#customDialogOk');
+
+        if (pendingDialog) {
+            pendingDialog.resolve(pendingDialog.type === 'confirm' ? false : null);
+            pendingDialog = null;
         }
 
-        titleEl.textContent = title;
+        modal.querySelector('.dialog-modal').dataset.mode = 'confirm';
+        modal.querySelector('.dialog-modal').dataset.intent = options.intent || 'default';
+        titleEl.textContent = labels.title;
         messageEl.textContent = message;
-        cancelBtn.textContent = cancelLabel;
-        okBtn.textContent = confirmLabel;
+        iconEl.textContent = options.icon || '!';
+        inputWrap.hidden = true;
+        cancelBtn.hidden = false;
+        cancelBtn.textContent = labels.cancelLabel;
+        okBtn.textContent = labels.confirmLabel;
 
         modal.classList.add('open');
         syncModalState();
         setTimeout(() => okBtn.focus(), 0);
 
         return new Promise((resolve) => {
-            pendingConfirm = { resolve };
+            pendingDialog = { resolve, type: 'confirm' };
+        });
+    }
+
+    function showPromptDialog(message, options = {}) {
+        const modal = ensureDialogModal();
+        const labels = getDialogText({
+            ...options,
+            title: options.title || (deps?.t ? deps.t('common.inputRequired') : 'Inserimento richiesto'),
+            confirmLabel: options.confirmLabel || (deps?.t ? deps.t('common.save') : 'Salva')
+        });
+        const titleEl = modal.querySelector('#customDialogTitle');
+        const messageEl = modal.querySelector('#customDialogMessage');
+        const iconEl = modal.querySelector('#customDialogIcon');
+        const inputWrap = modal.querySelector('#customDialogInputWrap');
+        const input = modal.querySelector('#customDialogInput');
+        const cancelBtn = modal.querySelector('#customDialogCancel');
+        const okBtn = modal.querySelector('#customDialogOk');
+
+        if (pendingDialog) {
+            pendingDialog.resolve(pendingDialog.type === 'confirm' ? false : null);
+            pendingDialog = null;
+        }
+
+        modal.querySelector('.dialog-modal').dataset.mode = 'prompt';
+        modal.querySelector('.dialog-modal').dataset.intent = options.intent || 'default';
+        titleEl.textContent = labels.title;
+        messageEl.textContent = message;
+        iconEl.textContent = options.icon || 'i';
+        inputWrap.hidden = false;
+        input.value = options.defaultValue ?? '';
+        input.placeholder = options.placeholder || '';
+        input.type = options.inputType || 'text';
+        input.inputMode = options.inputMode || '';
+        cancelBtn.hidden = false;
+        cancelBtn.textContent = labels.cancelLabel;
+        okBtn.textContent = labels.confirmLabel;
+
+        modal.classList.add('open');
+        syncModalState();
+        setTimeout(() => {
+            input.focus();
+            input.select();
+        }, 0);
+
+        return new Promise((resolve) => {
+            pendingDialog = { resolve, type: 'prompt' };
         });
     }
 
@@ -144,8 +213,7 @@
         document.querySelectorAll('.modal-overlay').forEach((overlay) => {
             overlay.addEventListener('click', (e) => {
                 if (e.target === overlay) {
-                    overlay.classList.remove('open');
-                    syncModalState();
+                    closeModal(overlay.id);
                 }
             });
         });
@@ -153,9 +221,9 @@
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 requireDeps().closeAllDatePickers();
-                document.querySelectorAll('.modal-overlay.open').forEach((modal) => {
-                    closeModal(modal.id);
-                });
+                const openModals = Array.from(document.querySelectorAll('.modal-overlay.open'));
+                const topModal = openModals[openModals.length - 1];
+                if (topModal?.id) closeModal(topModal.id);
             }
         });
 
@@ -174,6 +242,7 @@
         openModal,
         closeModal,
         showConfirmDialog,
+        showPromptDialog,
         showLoading,
         hideLoading,
         showToast,

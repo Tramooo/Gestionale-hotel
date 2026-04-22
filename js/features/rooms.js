@@ -297,6 +297,7 @@
             renderDashboard,
             setGuests,
             setRooms,
+            showConfirmDialog,
             showToast,
             t
         } = requireDeps();
@@ -308,7 +309,12 @@
         if (deleteMode === 'maintenance') {
             const room = getRooms().find((entry) => entry.id === id);
             if (!room) return;
-            if (!confirm(t('confirm.removeMaintenance'))) return;
+            if (!await showConfirmDialog(t('confirm.removeMaintenance'), {
+                title: t('common.confirmation'),
+                confirmLabel: t('common.delete'),
+                cancelLabel: t('common.cancel'),
+                intent: 'danger'
+            })) return;
 
             const previousRooms = getRooms();
             const updatedRoom = {
@@ -335,7 +341,12 @@
             return;
         }
 
-        if (!confirm(t('confirm.deleteRoom'))) return;
+        if (!await showConfirmDialog(t('confirm.deleteRoom'), {
+            title: t('common.confirmation'),
+            confirmLabel: t('common.delete'),
+            cancelLabel: t('common.cancel'),
+            intent: 'danger'
+        })) return;
 
         setRooms(getRooms().filter((room) => room.id !== id));
         setGuests(getGuests().filter((guest) => guest.roomId !== id));

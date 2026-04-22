@@ -460,10 +460,16 @@
             apiDelete,
             getGuests,
             setGuests,
+            showConfirmDialog,
             showToast,
             t
         } = requireDeps();
-        if (!confirm(t('confirm.removeAllGuests'))) return;
+        if (!await showConfirmDialog(t('confirm.removeAllGuests'), {
+            title: t('common.confirmation'),
+            confirmLabel: t('common.delete'),
+            cancelLabel: t('common.cancel'),
+            intent: 'danger'
+        })) return;
         const reservationGuests = getGuests().filter((guest) => guest.reservationId === reservationId);
         try {
             await Promise.all(reservationGuests.map((guest) => apiDelete(API.guests, guest.id)));
@@ -484,10 +490,16 @@
             getGuests,
             openReservationDetail,
             setGuests,
+            showConfirmDialog,
             showToast,
             t
         } = requireDeps();
-        if (!confirm(t('confirm.removeGuest'))) return;
+        if (!await showConfirmDialog(t('confirm.removeGuest'), {
+            title: t('common.confirmation'),
+            confirmLabel: t('common.delete'),
+            cancelLabel: t('common.cancel'),
+            intent: 'danger'
+        })) return;
         setGuests(getGuests().filter((guest) => guest.id !== guestId));
         try {
             await apiDelete(API.guests, guestId);

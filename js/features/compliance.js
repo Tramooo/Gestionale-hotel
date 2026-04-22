@@ -312,8 +312,13 @@
     }
 
     async function deleteCompCert(id) {
-        const { API, apiDelete, getComplianceCerts, renderCompliance, setComplianceCerts, showToast } = requireDeps();
-        if (!confirm('Eliminare questo certificato?')) return;
+        const { API, apiDelete, getComplianceCerts, renderCompliance, setComplianceCerts, showConfirmDialog, showToast } = requireDeps();
+        if (!await showConfirmDialog('Eliminare questo certificato?', {
+            title: 'Conferma',
+            confirmLabel: 'Elimina',
+            cancelLabel: 'Annulla',
+            intent: 'danger'
+        })) return;
         await apiDelete(API.compliance + '?target=certs', id);
         setComplianceCerts(getComplianceCerts().filter((cert) => cert.id !== id));
         renderComplianceNow();
@@ -408,8 +413,13 @@
     }
 
     async function deleteCompDoc(id) {
-        const { API, apiDelete, getComplianceDocs, renderCompliance, setComplianceDocs, showToast } = requireDeps();
-        if (!confirm('Eliminare questo documento?')) return;
+        const { API, apiDelete, getComplianceDocs, renderCompliance, setComplianceDocs, showConfirmDialog, showToast } = requireDeps();
+        if (!await showConfirmDialog('Eliminare questo documento?', {
+            title: 'Conferma',
+            confirmLabel: 'Elimina',
+            cancelLabel: 'Annulla',
+            intent: 'danger'
+        })) return;
         await apiDelete(API.compliance + '?target=docs', id);
         setComplianceDocs(getComplianceDocs().filter((doc) => doc.id !== id));
         renderComplianceNow();

@@ -123,8 +123,13 @@
     }
 
     async function deleteReservationFile(fileId, reservationId) {
-        const { API, apiDelete, showToast, t } = requireDeps();
-        if (!confirm(t('rooms.confirmDelete') || 'Delete this file?')) return;
+        const { API, apiDelete, showConfirmDialog, showToast, t } = requireDeps();
+        if (!await showConfirmDialog(t('rooms.confirmDelete') || 'Delete this file?', {
+            title: t('common.confirmation'),
+            confirmLabel: t('common.delete'),
+            cancelLabel: t('common.cancel'),
+            intent: 'danger'
+        })) return;
         try {
             await apiDelete(API.files, fileId);
             showToast(t('toast.fileDeleted'));

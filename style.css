@@ -2990,40 +2990,68 @@ select.cell-input option {
     border-top: 1px solid var(--border-light);
 }
 
-.confirm-dialog {
+.dialog-modal {
     max-width: 440px;
 }
 
-.confirm-dialog-body {
+.dialog-modal-body {
     padding: 28px;
 }
 
-.confirm-dialog-icon {
+.dialog-modal-icon {
     width: 48px;
     height: 48px;
-    border-radius: 14px;
+    border-radius: 10px;
     background: var(--orange-light);
     color: var(--orange);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
+    font-size: 22px;
     font-weight: 700;
     margin-bottom: 18px;
 }
 
-.confirm-dialog-title {
+.dialog-modal[data-mode="prompt"] .dialog-modal-icon {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.dialog-modal[data-intent="danger"] .dialog-modal-icon {
+    background: color-mix(in srgb, var(--red) 12%, white);
+    color: var(--red);
+}
+
+.dialog-modal[data-intent="danger"] #customDialogOk {
+    background: var(--red);
+}
+
+.dialog-modal[data-intent="danger"] #customDialogOk:hover:not(:disabled) {
+    background: #E0352B;
+    box-shadow: 0 4px 12px rgba(255,59,48,0.22);
+}
+
+.dialog-modal-title {
     font-size: 20px;
     font-weight: 700;
     margin-bottom: 8px;
 }
 
-.confirm-dialog-message {
+.dialog-modal-message {
     color: var(--text-secondary);
     line-height: 1.5;
 }
 
-.confirm-dialog-actions {
+.dialog-modal-input-wrap {
+    display: block;
+    margin-top: 16px;
+}
+
+.dialog-modal-input {
+    width: 100%;
+}
+
+.dialog-modal-actions {
     margin-top: 22px;
 }
 

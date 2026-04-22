@@ -27,6 +27,7 @@ const {
     hideLoading,
     openModal,
     showConfirmDialog,
+    showPromptDialog,
     showLoading,
     showToast
 } = window.GroupStayUI;
@@ -83,6 +84,7 @@ window.GroupStayRooms.init({
     setCurrentRoomFilter: (filter) => { currentRoomFilter = filter; },
     setGuests: (nextGuests) => { guests = nextGuests; },
     setRooms: (nextRooms) => { rooms = nextRooms; },
+    showConfirmDialog,
     showToast,
     t
 });
@@ -164,6 +166,7 @@ window.GroupStayGroupReservation.init({
     setDateFieldValue,
     setGuests: (nextGuests) => { guests = nextGuests; },
     setReservations: (nextReservations) => { reservations = nextReservations; },
+    showConfirmDialog,
     showToast,
     t
 });
@@ -175,6 +178,7 @@ window.GroupStayReservationFiles.init({
     apiPost,
     escapeHtml,
     generateId,
+    showConfirmDialog,
     showToast,
     t
 });
@@ -215,6 +219,7 @@ window.GroupStayGuests.init({
     openModal,
     openReservationDetail,
     setGuests: (nextGuests) => { guests = nextGuests; },
+    showConfirmDialog,
     showToast,
     t
 });
@@ -286,6 +291,7 @@ window.GroupStayCompliance.init({
     setComplianceCerts: (nextCerts) => { complianceCerts = nextCerts; },
     setComplianceDocs: (nextDocs) => { complianceDocs = nextDocs; },
     setDateFieldValue,
+    showConfirmDialog,
     showToast
 });
 
@@ -308,6 +314,8 @@ window.GroupStayEmployees.init({
     setEmpViewMonth: (nextMonth) => { empViewMonth = nextMonth; },
     setMonthPayOverrides: (nextOverrides) => { monthPayOverrides = nextOverrides; },
     setWorkEntries: (nextEntries) => { workEntries = nextEntries; },
+    showConfirmDialog,
+    showPromptDialog,
     showToast,
     t
 });
@@ -1084,6 +1092,8 @@ const TRANSLATIONS = {
     'common.confirm': { en: 'Confirm', it: 'Conferma' },
     'common.confirmation': { en: 'Confirmation', it: 'Conferma' },
     'common.import': { en: 'Import', it: 'Importa' },
+    'common.send': { en: 'Send', it: 'Invia' },
+    'common.inputRequired': { en: 'Input required', it: 'Inserimento richiesto' },
     'common.save': { en: 'Save', it: 'Salva' },
     'common.delete': { en: 'Delete', it: 'Elimina' },
     'common.edit': { en: 'Edit', it: 'Modifica' },
@@ -1184,6 +1194,7 @@ const TRANSLATIONS = {
     'emp.daysInMonth': { en: 'Days in Month', it: 'Giorni nel Mese' },
     'emp.actions': { en: 'Actions', it: 'Azioni' },
     'emp.enterHours': { en: 'Enter hours worked (0 to remove):', it: 'Inserisci ore lavorate (0 per rimuovere):' },
+    'emp.workHours': { en: 'Work hours', it: 'Ore lavorate' },
     'emp.calHintHourly': { en: 'Click a day to enter hours worked. Click again to edit or enter 0 to remove.', it: 'Clicca un giorno per inserire le ore. Clicca di nuovo per modificare o inserisci 0 per rimuovere.' },
     'emp.calHintMonthly': { en: 'Click a day to mark as worked. Click again to unmark.', it: 'Clicca un giorno per segnarlo come lavorato. Clicca di nuovo per rimuovere.' },
     'emp.startTime': { en: 'Start', it: 'Inizio' },
@@ -2033,7 +2044,11 @@ async function alloggiatiTest(reservationId) {
 }
 
 async function alloggiatiSend(reservationId) {
-    if (!confirm(t('confirm.sendSchedule'))) return;
+    if (!await showConfirmDialog(t('confirm.sendSchedule'), {
+        title: t('common.confirmation'),
+        confirmLabel: t('common.send') || 'Invia',
+        cancelLabel: t('common.cancel')
+    })) return;
     const container = document.getElementById('alloggiatiResults');
     container.innerHTML = '';
     showLoading('Invio schedine alla Polizia...');
@@ -2336,9 +2351,14 @@ function addPlannerColumn() {
     renderAssignmentSpreadsheet();
 }
 
-function removePlannerColumn(idx) {
+async function removePlannerColumn(idx) {
     const col = plannerColumns[idx];
-    if (!confirm(`${t('confirm.removeColumn')} "${col.name}"? ${t('confirm.removeColumnData')}`)) return;
+    if (!await showConfirmDialog(`${t('confirm.removeColumn')} "${col.name}"? ${t('confirm.removeColumnData')}`, {
+        title: t('common.confirmation'),
+        confirmLabel: t('common.delete'),
+        cancelLabel: t('common.cancel'),
+        intent: 'danger'
+    })) return;
 
     plannerColumns.splice(idx, 1);
 
@@ -3034,7 +3054,11 @@ async function executeCsvImport() {
         return;
     }
 
-    if (!confirm(t('confirm.importReservations', { n: toImport.length }))) return;
+    if (!await showConfirmDialog(t('confirm.importReservations', { n: toImport.length }), {
+        title: t('common.confirmation'),
+        confirmLabel: t('common.import'),
+        cancelLabel: t('common.cancel')
+    })) return;
 
     showLoading(`Importazione prenotazioni (0 / ${toImport.length})...`);
     let success = 0;
