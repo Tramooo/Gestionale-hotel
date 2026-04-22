@@ -238,19 +238,6 @@
                     <p class="page-subtitle" data-i18n="dash.subtitle">Panoramica delle operazioni dell'hotel</p>
                 </div>
                 <div class="dashboard-header-actions">
-                    <div class="dashboard-header-now" aria-label="Data e ora attuale">
-                        <span class="dashboard-header-now-icon" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="8"></circle>
-                                <path d="M12 7v5l3 2"></path>
-                            </svg>
-                        </span>
-                        <div class="dashboard-header-now-copy">
-                            <span class="dashboard-header-label">Operativita di oggi</span>
-                            <div class="dashboard-header-date" id="dash-current-date">--</div>
-                            <div class="dashboard-header-time" id="dash-current-time">--:--</div>
-                        </div>
-                    </div>
                     <button type="button" class="dashboard-header-chip" onclick="window.GroupStayDashboard && window.GroupStayDashboard.focusAgendaDate && window.GroupStayDashboard.focusAgendaDate()">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <rect x="3.5" y="4.5" width="17" height="16" rx="2.5"></rect>
@@ -347,7 +334,7 @@
                                 <section class="dashboard-list-section">
                                     <div class="dashboard-section-heading">
                                         <h4>Arrivi</h4>
-                                        <p>Gruppi attesi e camere assegnate.</p>
+                                        <span class="dashboard-section-count" id="dash-arrivals-count">0</span>
                                     </div>
                                     <div class="dashboard-movement-list" id="dashboard-arrivals-list"></div>
                                 </section>
@@ -355,7 +342,7 @@
                                 <section class="dashboard-list-section">
                                     <div class="dashboard-section-heading">
                                         <h4>Partenze</h4>
-                                        <p>Camere da liberare e gruppi in uscita.</p>
+                                        <span class="dashboard-section-count" id="dash-departures-count">0</span>
                                     </div>
                                     <div class="dashboard-movement-list" id="dashboard-departures-list"></div>
                                 </section>
@@ -407,27 +394,32 @@
                         </div>
                         <div class="card-body">
                             <div class="dashboard-room-summary">
-                                <div class="dashboard-room-chip">
+                                <div class="dashboard-room-chip dashboard-room-chip-available">
                                     <span>Disponibili</span>
                                     <strong id="dash-rooms-available">0</strong>
                                 </div>
-                                <div class="dashboard-room-chip">
+                                <div class="dashboard-room-chip dashboard-room-chip-occupied">
                                     <span>Occupate</span>
                                     <strong id="dash-rooms-occupied">0</strong>
                                 </div>
-                                <div class="dashboard-room-chip">
+                                <div class="dashboard-room-chip dashboard-room-chip-maintenance">
                                     <span>Manutenzione</span>
                                     <strong id="dash-rooms-maintenance">0</strong>
                                 </div>
                             </div>
 
                             <div class="dashboard-panel-block">
-                                <div class="dashboard-subsection-title">Camere in manutenzione</div>
+                                <div class="dashboard-subsection-header">
+                                    <div class="dashboard-subsection-title">Camere in manutenzione</div>
+                                    <span class="dashboard-subsection-count" id="dash-maintenance-count">0</span>
+                                </div>
                                 <div class="dashboard-room-status-list" id="dashboard-maintenance-list"></div>
                             </div>
 
                             <div class="dashboard-panel-block">
-                                <div class="dashboard-subsection-title">Prossimi giorni</div>
+                                <div class="dashboard-subsection-header">
+                                    <div class="dashboard-subsection-title">Previsione prossimi 5 giorni</div>
+                                </div>
                                 <div class="dashboard-forecast-list" id="dashboard-forecast-list"></div>
                             </div>
                         </div>

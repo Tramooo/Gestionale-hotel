@@ -2,7 +2,6 @@
     let deps = null;
     let selectedAgendaDate = null;
     let agendaControlsBound = false;
-    let clockTimerId = null;
 
     function requireDeps() {
         if (!deps) throw new Error('GroupStayDashboard not initialized');
@@ -30,30 +29,6 @@
     function setText(id, value) {
         const el = document.getElementById(id);
         if (el) el.textContent = value;
-    }
-
-    function updateCurrentDateTime() {
-        const { getCurrentLang } = requireDeps();
-        const lang = getCurrentLang ? getCurrentLang() : 'it';
-        const locale = lang === 'en' ? 'en-GB' : 'it-IT';
-        const now = new Date();
-
-        setText('dash-current-date', now.toLocaleDateString(locale, {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric'
-        }));
-        setText('dash-current-time', now.toLocaleTimeString(locale, {
-            hour: '2-digit',
-            minute: '2-digit'
-        }));
-    }
-
-    function ensureClockRunning() {
-        updateCurrentDateTime();
-        if (clockTimerId) return;
-        clockTimerId = window.setInterval(updateCurrentDateTime, 30000);
     }
 
     function createAgendaItemId() {
@@ -369,11 +344,14 @@
                 <button type="button" class="dashboard-movement-item" onclick="openReservationDetail('${reservation.id}')">
                     <div class="dashboard-movement-main">
                         <div class="dashboard-movement-name">${escapeHtml(reservation.groupName || '-')}</div>
-                        <div class="dashboard-movement-meta">${escapeHtml(detailParts.join(' · '))}</div>
+                        <div class="dashboard-movement-details">
+                            ${detailParts.map((detail) => `<span class="dashboard-movement-detail">${escapeHtml(detail)}</span>`).join('')}
+                        </div>
                     </div>
                     <div class="dashboard-movement-side">
                         <span class="dashboard-pill ${reservation.status}">${escapeHtml(getStatusLabel(reservation.status, t))}</span>
                         <span class="dashboard-movement-date">${escapeHtml(extraLabel || formatDateDisplay(reservation.checkin))}</span>
+                        <span class="dashboard-movement-open" aria-hidden="true">></span>
                     </div>
                 </button>
             `;
@@ -393,15 +371,17 @@
         listEl.innerHTML = rooms.map((room) => `
             <button type="button" class="dashboard-room-status-item" onclick="openEditRoom('${room.id}')">
                 <div class="dashboard-room-status-head">
-                    <strong>${escapeHtml(copy(lang, `Camera ${room.number}`, `Room ${room.number}`))}</strong>
-                    <span>${escapeHtml(`${t('rooms.floor')} ${room.floor ?? '-'}`)}</span>
+                    <span class="dashboard-room-status-number">${escapeHtml(String(room.number || '-'))}</span>
+                    <div class="dashboard-room-status-body">
+                        <strong>${escapeHtml(room.type || copy(lang, 'Tipologia non definita', 'Type not set'))}</strong>
+                        <div class="dashboard-room-status-meta">
+                            <span>${escapeHtml(`${t('rooms.floor')} ${room.floor ?? '-'}`)}</span>
+                            <span>${escapeHtml(copy(lang, `Capienza ${room.capacity || 0}`, `Capacity ${room.capacity || 0}`))}</span>
+                        </div>
+                    </div>
+                    <span class="dashboard-room-status-state">${escapeHtml(copy(lang, 'Fuori servizio', 'Out of service'))}</span>
                 </div>
-                <div class="dashboard-room-status-meta">
-                    <span>${escapeHtml(room.type || copy(lang, 'Tipologia non definita', 'Type not set'))}</span>
-                    <span>${escapeHtml(copy(lang, `Capienza ${room.capacity || 0}`, `Capacity ${room.capacity || 0}`))}</span>
-                    <span>${escapeHtml(copy(lang, 'Fuori servizio', 'Out of service'))}</span>
-                    ${room.maintenanceNote ? `<span>${escapeHtml(room.maintenanceNote)}</span>` : ''}
-                </div>
+                ${room.maintenanceNote ? `<div class="dashboard-room-status-note">${escapeHtml(room.maintenanceNote)}</div>` : ''}
             </button>
         `).join('');
     }
@@ -419,15 +399,15 @@
         listEl.innerHTML = days.map((day) => `
             <div class="dashboard-forecast-row">
                 <div class="dashboard-forecast-day">
-                    <strong>${escapeHtml(day.label)}</strong>
-                    <span>${escapeHtml(copy(lang, `${day.occupiedRooms}/${totalRooms} camere`, `${day.occupiedRooms}/${totalRooms} rooms`))}</span>
+                    <span>${escapeHtml(day.label)}</span>
+                    <strong>${escapeHtml(copy(lang, `${day.occupancy}% occupazione`, `${day.occupancy}% occupancy`))}</strong>
                 </div>
                 <div class="dashboard-forecast-bar" aria-hidden="true">
                     <span style="width: ${Math.max(0, Math.min(day.occupancy, 100))}%"></span>
                 </div>
                 <div class="dashboard-forecast-summary">
-                    <strong>${escapeHtml(copy(lang, `${day.occupancy}% occupazione`, `${day.occupancy}% occupancy`))}</strong>
-                    <span>${escapeHtml(copy(lang, `${day.arrivals} arrivi · ${day.departures} partenze`, `${day.arrivals} arrivals · ${day.departures} departures`))}</span>
+                    <strong>${escapeHtml(copy(lang, `${day.occupiedRooms}/${totalRooms} camere`, `${day.occupiedRooms}/${totalRooms} rooms`))}</strong>
+                    <span>${escapeHtml(copy(lang, `${day.arrivals} arrivi - ${day.departures} partenze`, `${day.arrivals} arrivals - ${day.departures} departures`))}</span>
                 </div>
             </div>
         `).join('');
@@ -483,9 +463,11 @@
         setText('dash-rooms-available', available);
         setText('dash-rooms-occupied', occupied);
         setText('dash-rooms-maintenance', maintenance);
+        setText('dash-arrivals-count', todayCheckins.length);
+        setText('dash-departures-count', todayCheckouts.length);
+        setText('dash-maintenance-count', maintenance);
 
         bindAgendaControls(todayStr);
-        ensureClockRunning();
         if (!selectedAgendaDate) selectedAgendaDate = todayStr;
         syncAgendaDateInput();
         renderAgendaList();
