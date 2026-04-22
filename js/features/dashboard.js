@@ -294,34 +294,12 @@
         return `${count} ${count === 1 ? itSingular : itPlural}`;
     }
 
-    function getRoomAssignmentLabel(reservation, roomsById, lang) {
-        const assignedRooms = (reservation.roomIds || [])
-            .map((roomId) => roomsById.get(roomId))
-            .filter(Boolean)
-            .sort((a, b) => a.floor - b.floor || a.number.localeCompare(b.number, undefined, { numeric: true }));
-
-        if (assignedRooms.length) {
-            return copy(
-                lang,
-                `Camere ${assignedRooms.map((room) => room.number).join(', ')}`,
-                `Rooms ${assignedRooms.map((room) => room.number).join(', ')}`
-            );
-        }
-
-        return copy(
-            lang,
-            `${reservation.roomCount || 0} da assegnare`,
-            `${reservation.roomCount || 0} to assign`
-        );
-    }
-
     function renderMovementList(elementId, reservations, options) {
         const {
             emptyMessage,
             escapeHtml,
             formatDateDisplay,
             lang,
-            roomsById,
             sideLabel,
             t
         } = options;
@@ -335,9 +313,7 @@
 
         listEl.innerHTML = reservations.map((reservation) => {
             const guestSummary = pluralize(lang, reservation.guestCount || 0, 'ospite', 'ospiti', 'guest', 'guests');
-            const roomSummary = pluralize(lang, reservation.roomCount || 0, 'camera', 'camere', 'room', 'rooms');
-            const assignmentSummary = getRoomAssignmentLabel(reservation, roomsById, lang);
-            const detailParts = [guestSummary, roomSummary, assignmentSummary];
+            const detailParts = [guestSummary];
             const extraLabel = sideLabel ? sideLabel(reservation) : '';
 
             return `
@@ -433,7 +409,6 @@
         const todayStr = formatDate(new Date());
         const lang = getCurrentLang ? getCurrentLang() : 'it';
         const locale = lang === 'en' ? 'en-GB' : 'it-IT';
-        const roomsById = new Map(rooms.map((room) => [room.id, room]));
         const inHouseReservations = liveReservations.filter((reservation) => reservation.checkin <= todayStr && reservation.checkout > todayStr);
         const todayGuests = inHouseReservations.reduce((sum, reservation) => sum + (reservation.guestCount || 0), 0);
         const todayCheckins = liveReservations.filter((reservation) => reservation.checkin === todayStr);
@@ -498,7 +473,6 @@
             escapeHtml,
             formatDateDisplay,
             lang,
-            roomsById,
             sideLabel: (reservation) => reservation.status === 'pending' && reservation.expiration
                 ? copy(lang, `Scade ${formatDateDisplay(reservation.expiration)}`, `Expires ${formatDateDisplay(reservation.expiration)}`)
                 : copy(lang, 'Check-in', 'Check-in'),
@@ -513,7 +487,6 @@
             escapeHtml,
             formatDateDisplay,
             lang,
-            roomsById,
             sideLabel: () => copy(lang, 'Check-out', 'Check-out'),
             t
         });

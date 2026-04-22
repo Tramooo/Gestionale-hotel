@@ -8822,3 +8822,223 @@ body {
         font-size: 36px;
     }
 }
+
+/* =============================================
+   DASHBOARD THREE-COLUMN LAYOUT
+   ============================================= */
+
+.dashboard-workspace-grid {
+    grid-template-columns: minmax(0, 1.06fr) minmax(0, 1fr) minmax(0, 1.04fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 18px;
+    align-items: stretch;
+}
+
+.dashboard-panel-movements,
+.dashboard-panel-agenda-v2,
+.dashboard-panel-operations {
+    grid-column: auto;
+    grid-row: auto;
+    min-width: 0;
+}
+
+.dashboard-panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+}
+
+.dashboard-panel .card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.dashboard-panel .card-header > div {
+    min-width: 0;
+}
+
+.dashboard-panel .card-subtitle {
+    display: block;
+    margin-top: 4px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--text-secondary);
+}
+
+.dashboard-panel .card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    flex: 1;
+    min-height: 0;
+}
+
+.dashboard-panel-movements .card-body {
+    padding-top: 14px;
+}
+
+.dashboard-movement-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    flex: 1;
+}
+
+.dashboard-list-section {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.dashboard-movement-list,
+.dashboard-room-status-list,
+.dashboard-forecast-list {
+    display: grid;
+    gap: 10px;
+    align-content: start;
+}
+
+.dashboard-movement-item {
+    min-height: 90px;
+    align-items: start;
+}
+
+.dashboard-movement-main {
+    align-content: start;
+}
+
+.dashboard-movement-name {
+    line-height: 1.35;
+}
+
+.dashboard-movement-side {
+    min-width: 92px;
+    justify-items: end;
+}
+
+.dashboard-movement-date {
+    white-space: nowrap;
+}
+
+.dashboard-panel-agenda-v2 .card-body {
+    gap: 14px;
+}
+
+.dashboard-panel-agenda-v2 .todo-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 12px;
+}
+
+.dashboard-panel-agenda-v2 .todo-form {
+    display: grid;
+    grid-template-columns: 112px minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 12px;
+}
+
+.dashboard-panel-agenda-v2 .todo-field {
+    min-width: 0;
+}
+
+.dashboard-panel-agenda-v2 .todo-list {
+    flex: 1;
+    min-height: 0;
+}
+
+.dashboard-panel-operations .card-body {
+    gap: 14px;
+}
+
+.dashboard-room-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.dashboard-room-chip {
+    min-height: 102px;
+}
+
+.dashboard-panel-operations .dashboard-panel-block {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.dashboard-room-status-list,
+.dashboard-forecast-list {
+    min-height: 0;
+}
+
+.dashboard-forecast-row {
+    grid-template-columns: 92px minmax(0, 1fr);
+    align-items: center;
+}
+
+.dashboard-forecast-summary {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px 12px;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 1380px) {
+    .dashboard-workspace-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .dashboard-panel-operations {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 1080px) {
+    .dashboard-workspace-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .dashboard-panel-operations {
+        grid-column: auto;
+    }
+}
+
+@media (max-width: 768px) {
+    .dashboard-panel .card-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .dashboard-panel-agenda-v2 .todo-toolbar,
+    .dashboard-panel-agenda-v2 .todo-form {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .dashboard-movement-item,
+    .dashboard-room-status-head,
+    .dashboard-forecast-row {
+        grid-template-columns: 1fr;
+    }
+
+    .dashboard-movement-side {
+        justify-items: start;
+    }
+
+    .dashboard-room-status-state {
+        justify-self: start;
+    }
+
+    .dashboard-room-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .dashboard-forecast-summary {
+        display: grid;
+        justify-content: start;
+    }
+}
