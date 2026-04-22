@@ -727,7 +727,7 @@
             return;
         }
         if (!confirm(t('confirm.importGuests', { n: toImport.length }))) return;
-        showLoading(`Importazione ospiti (0 / ${toImport.length})...`);
+        showLoading(`Importazione ospiti 0/${toImport.length}`);
         let success = 0;
         let errors = 0;
         const importedGuests = [...getGuests()];
@@ -750,7 +750,7 @@
                 console.error('Guest import error:', error);
                 errors++;
             }
-            document.getElementById('loadingMessage').textContent = `Importazione ospiti (${success + errors} / ${toImport.length})...`;
+            document.getElementById('loadingMessage').textContent = `Importazione ospiti ${success + errors}/${toImport.length}`;
         }
         setGuests(importedGuests);
         closeModal('fileImportModal');
