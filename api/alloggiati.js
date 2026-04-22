@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { neon } from '@neondatabase/serverless';
 import { requireAuth } from './_auth.js';
 
@@ -116,6 +117,134 @@ function extractRowEsiti(xml, expectedCount) {
       rawCount: allEsiti.length,
       expectedCount
     }
+  };
+}
+
+function formatRomeDate(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Rome',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(date);
+
+  const year = parts.find((part) => part.type === 'year')?.value || '0000';
+  const month = parts.find((part) => part.type === 'month')?.value || '01';
+  const day = parts.find((part) => part.type === 'day')?.value || '01';
+  return `${year}-${month}-${day}`;
+}
+
+function estimateBase64Bytes(base64) {
+  const raw = String(base64 || '').replace(/^data:[^,]+,/, '');
+  if (!raw) return 0;
+  let padding = 0;
+  if (raw.endsWith('==')) padding = 2;
+  else if (raw.endsWith('=')) padding = 1;
+  return Math.max(0, Math.floor(raw.length * 3 / 4) - padding);
+}
+
+async function generateTokenInternal(UTENTE, PASSWORD, WSKEY) {
+  const xml = await soapCall('GenerateToken', `
+    <all:GenerateToken>
+      <all:Utente>${UTENTE}</all:Utente>
+      <all:Password>${PASSWORD}</all:Password>
+      <all:WsKey>${WSKEY}</all:WsKey>
+    </all:GenerateToken>`);
+
+  const esito = extractEsito(xml, 'result');
+  if (!esito.esito) {
+    const error = new Error('Token generation failed');
+    error.details = esito;
+    throw error;
+  }
+
+  const tokenBlock = extractTag(xml, 'GenerateTokenResult');
+  return extractTag(tokenBlock, 'token');
+}
+
+async function ensureAlloggiatiSubmissionTable(sql) {
+  await sql`
+    CREATE TABLE IF NOT EXISTS alloggiati_submissions (
+      id TEXT PRIMARY KEY,
+      owner_user_id TEXT NOT NULL,
+      reservation_id TEXT NOT NULL REFERENCES reservations(id) ON DELETE CASCADE,
+      submission_date DATE NOT NULL,
+      sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      valid_count INTEGER NOT NULL DEFAULT 0,
+      total_count INTEGER NOT NULL DEFAULT 0,
+      method_name TEXT DEFAULT '',
+      receipt_file_id TEXT,
+      receipt_file_name TEXT DEFAULT '',
+      receipt_saved_at TIMESTAMPTZ
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_alloggiati_submissions_owner_reservation_sent_at ON alloggiati_submissions(owner_user_id, reservation_id, sent_at DESC)`;
+}
+
+async function getLatestSubmissionForReservation(sql, userId, reservationId) {
+  const reservations = await sql`
+    SELECT id, group_name
+    FROM reservations
+    WHERE id = ${reservationId} AND owner_user_id = ${userId}
+    LIMIT 1
+  `;
+  if (reservations.length === 0) {
+    return { error: { status: 404, message: 'Reservation not found' } };
+  }
+
+  const submissions = await sql`
+    SELECT id, submission_date, sent_at, receipt_file_id, receipt_file_name
+    FROM alloggiati_submissions
+    WHERE reservation_id = ${reservationId} AND owner_user_id = ${userId}
+    ORDER BY sent_at DESC
+    LIMIT 1
+  `;
+  if (submissions.length === 0) {
+    return { error: { status: 400, message: 'Nessun invio schedine riuscito trovato per questo gruppo' } };
+  }
+
+  const submission = submissions[0];
+  const submissionDate = String(submission.submission_date).substring(0, 10);
+  let existingReceipt = null;
+
+  if (submission.receipt_file_id) {
+    const existingFiles = await sql`
+      SELECT id, file_name
+      FROM reservation_files
+      WHERE id = ${submission.receipt_file_id} AND owner_user_id = ${userId}
+      LIMIT 1
+    `;
+    if (existingFiles.length > 0) {
+      existingReceipt = {
+        fileId: existingFiles[0].id,
+        fileName: existingFiles[0].file_name
+      };
+    }
+  }
+
+  return {
+    reservation: reservations[0],
+    submission,
+    submissionDate,
+    existingReceipt
+  };
+}
+
+async function fetchReceiptPdfForDate({ UTENTE, PASSWORD, WSKEY, submissionDate }) {
+  const token = await generateTokenInternal(UTENTE, PASSWORD, WSKEY);
+  const xml = await soapCall('Ricevuta', `
+    <all:Ricevuta>
+      <all:Utente>${UTENTE}</all:Utente>
+      <all:token>${token}</all:token>
+      <all:Data>${submissionDate}T00:00:00</all:Data>
+    </all:Ricevuta>`);
+
+  const esito = extractEsito(xml, 'RicevutaResult');
+  const pdfBase64 = extractTag(xml, 'PDF');
+
+  return {
+    esito,
+    pdfBase64
   };
 }
 
@@ -659,27 +788,32 @@ export default async function handler(req, res) {
 
   try {
     const { action } = req.query;
+    const sql = neon(process.env.DATABASE_URL);
 
     // ---- Generate Token ----
     if (action === 'token') {
-      const xml = await soapCall('GenerateToken', `
-        <all:GenerateToken>
-          <all:Utente>${UTENTE}</all:Utente>
-          <all:Password>${PASSWORD}</all:Password>
-          <all:WsKey>${WSKEY}</all:WsKey>
-        </all:GenerateToken>`);
+      try {
+        const xml = await soapCall('GenerateToken', `
+          <all:GenerateToken>
+            <all:Utente>${UTENTE}</all:Utente>
+            <all:Password>${PASSWORD}</all:Password>
+            <all:WsKey>${WSKEY}</all:WsKey>
+          </all:GenerateToken>`);
 
-      const esito = extractEsito(xml, 'result');
-      if (!esito.esito) {
-        return res.status(400).json({ error: 'Token generation failed', details: esito });
+        const esito = extractEsito(xml, 'result');
+        if (!esito.esito) {
+          return res.status(400).json({ error: 'Token generation failed', details: esito });
+        }
+
+        const tokenBlock = extractTag(xml, 'GenerateTokenResult');
+        return res.status(200).json({
+          token: extractTag(tokenBlock, 'token'),
+          issued: extractTag(tokenBlock, 'issued'),
+          expires: extractTag(tokenBlock, 'expires')
+        });
+      } catch (err) {
+        return res.status(400).json({ error: err.message, details: err.details || null });
       }
-
-      const tokenBlock = extractTag(xml, 'GenerateTokenResult');
-      return res.status(200).json({
-        token: extractTag(tokenBlock, 'token'),
-        issued: extractTag(tokenBlock, 'issued'),
-        expires: extractTag(tokenBlock, 'expires')
-      });
     }
 
     // ---- Build records from reservation guests ----
@@ -689,9 +823,6 @@ export default async function handler(req, res) {
       if (!reservationId) {
         return res.status(400).json({ error: 'reservationId is required' });
       }
-
-      const sql = neon(process.env.DATABASE_URL);
-
       // Get reservation for dates
       const reservations = await sql`SELECT * FROM reservations WHERE id = ${reservationId} AND owner_user_id = ${user.id}`;
       if (reservations.length === 0) {
@@ -913,7 +1044,115 @@ export default async function handler(req, res) {
         }
       }
 
+      if (action === 'send' && esito.esito && (parseInt(validCount) || 0) === records.length) {
+        try {
+          await ensureAlloggiatiSubmissionTable(sql);
+          const submissionDate = formatRomeDate();
+          await sql`
+            INSERT INTO alloggiati_submissions (
+              id, owner_user_id, reservation_id, submission_date, sent_at,
+              valid_count, total_count, method_name
+            ) VALUES (
+              ${crypto.randomUUID()}, ${user.id}, ${reservationId}, ${submissionDate}, ${new Date().toISOString()},
+              ${parseInt(validCount) || 0}, ${records.length}, ${methodName}
+            )
+          `;
+          responsePayload.submissionDate = submissionDate;
+        } catch (submissionError) {
+          responsePayload.submissionLogError = submissionError?.message || String(submissionError);
+        }
+      }
+
       return res.status(200).json(responsePayload);
+    }
+
+    if (action === 'verifica-ricevuta' || action === 'salva-ricevuta') {
+      const { reservationId } = req.method === 'POST' ? req.body : req.query;
+      if (!reservationId) {
+        return res.status(400).json({ error: 'reservationId is required' });
+      }
+
+      await ensureAlloggiatiSubmissionTable(sql);
+      const submissionInfo = await getLatestSubmissionForReservation(sql, user.id, reservationId);
+      if (submissionInfo.error) {
+        return res.status(submissionInfo.error.status).json({ error: submissionInfo.error.message });
+      }
+
+      const { submission, submissionDate, existingReceipt } = submissionInfo;
+      if (existingReceipt) {
+        return res.status(200).json({
+          success: true,
+          available: true,
+          alreadySaved: true,
+          fileId: existingReceipt.fileId,
+          fileName: existingReceipt.fileName,
+          submissionDate
+        });
+      }
+
+      let receiptResult;
+      try {
+        receiptResult = await fetchReceiptPdfForDate({ UTENTE, PASSWORD, WSKEY, submissionDate });
+      } catch (tokenError) {
+        return res.status(400).json({
+          error: 'Impossibile generare il token Alloggiati',
+          details: tokenError.details || null,
+          submissionDate
+        });
+      }
+
+      const { esito, pdfBase64 } = receiptResult;
+      if (!esito.esito || !pdfBase64) {
+        const payload = {
+          success: true,
+          available: false,
+          alreadySaved: false,
+          submissionDate,
+          details: esito
+        };
+        if (action === 'verifica-ricevuta') {
+          return res.status(200).json(payload);
+        }
+        return res.status(400).json({
+          error: 'La ricevuta non e ancora disponibile',
+          details: esito,
+          submissionDate
+        });
+      }
+
+      if (action === 'verifica-ricevuta') {
+        return res.status(200).json({
+          success: true,
+          available: true,
+          alreadySaved: false,
+          submissionDate
+        });
+      }
+
+      const fileId = crypto.randomUUID();
+      const fileName = `Ricevuta Alloggiati ${submissionDate}.pdf`;
+      const fileData = `data:application/pdf;base64,${pdfBase64}`;
+      const fileSize = estimateBase64Bytes(pdfBase64);
+
+      await sql`
+        INSERT INTO reservation_files (id, owner_user_id, reservation_id, file_name, file_type, file_size, file_data)
+        VALUES (${fileId}, ${user.id}, ${reservationId}, ${fileName}, ${'application/pdf'}, ${fileSize}, ${fileData})
+      `;
+
+      await sql`
+        UPDATE alloggiati_submissions
+        SET receipt_file_id = ${fileId},
+            receipt_file_name = ${fileName},
+            receipt_saved_at = ${new Date().toISOString()}
+        WHERE id = ${submission.id}
+      `;
+
+      return res.status(200).json({
+        success: true,
+        fileId,
+        fileName,
+        submissionDate
+      });
     }
 
     // ---- Download receipt ----
@@ -966,7 +1205,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, csv });
     }
 
-    return res.status(400).json({ error: 'Invalid action. Use: token, build, test, send, ricevuta, tabella' });
+    return res.status(400).json({ error: 'Invalid action. Use: token, build, test, send, verifica-ricevuta, salva-ricevuta, ricevuta, tabella' });
 
   } catch (err) {
     console.error('Alloggiati API error:', err);

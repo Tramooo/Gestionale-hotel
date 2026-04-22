@@ -2167,6 +2167,67 @@ async function alloggiatiSend(reservationId) {
     }
 }
 
+async function alloggiatiSaveReceipt(reservationId) {
+    const container = document.getElementById('alloggiatiResults');
+    showLoading('Recupero ricevuta Alloggiati...');
+    try {
+        const data = await apiPost(API.alloggiati + '?action=salva-ricevuta', { reservationId });
+        hideLoading();
+        if (data.alreadySaved) {
+            showToast(`La ricevuta del ${data.submissionDate} e gia presente nei file del gruppo`, 'success');
+        } else {
+            showToast(`Ricevuta del ${data.submissionDate} salvata nei file del gruppo`, 'success');
+        }
+        loadReservationFiles(reservationId);
+        if (container) {
+            container.innerHTML = `<p style="color:var(--green)">Ricevuta Alloggiati salvata nei file del gruppo${data.submissionDate ? ` (${data.submissionDate})` : ''}.</p>`;
+        }
+    } catch (err) {
+        hideLoading();
+        if (container) {
+            container.innerHTML = `<p style="color:var(--red)">Error: ${err.message}</p>`;
+        }
+        showToast(err.message || 'Impossibile salvare la ricevuta', 'error');
+    }
+}
+
+async function alloggiatiCheckReceipt(reservationId) {
+    const container = document.getElementById('alloggiatiResults');
+    showLoading('Verifica disponibilita ricevuta...');
+    try {
+        const data = await apiPost(API.alloggiati + '?action=verifica-ricevuta', { reservationId });
+        hideLoading();
+
+        if (data.alreadySaved) {
+            showToast(`La ricevuta del ${data.submissionDate} e gia salvata nei file del gruppo`, 'success');
+            if (container) {
+                container.innerHTML = `<p style="color:var(--green)">Ricevuta gia salvata nei file del gruppo (${data.submissionDate}).</p>`;
+            }
+            loadReservationFiles(reservationId);
+            return;
+        }
+
+        if (data.available) {
+            showToast(`La ricevuta del ${data.submissionDate} e disponibile`, 'success');
+            if (container) {
+                container.innerHTML = `<p style="color:var(--green)">Ricevuta disponibile${data.submissionDate ? ` per il ${data.submissionDate}` : ''}. Ora puoi salvarla nei file del gruppo.</p>`;
+            }
+            return;
+        }
+
+        showToast(`La ricevuta del ${data.submissionDate} non e ancora disponibile`, 'success');
+        if (container) {
+            container.innerHTML = `<p style="color:var(--text-secondary)">Ricevuta non ancora disponibile${data.submissionDate ? ` per il ${data.submissionDate}` : ''}. Riprova piu tardi.</p>`;
+        }
+    } catch (err) {
+        hideLoading();
+        if (container) {
+            container.innerHTML = `<p style="color:var(--red)">Error: ${err.message}</p>`;
+        }
+        showToast(err.message || 'Impossibile verificare la ricevuta', 'error');
+    }
+}
+
 // ---- Assign Rooms ----
 
 function openAssignRooms(reservationId) {

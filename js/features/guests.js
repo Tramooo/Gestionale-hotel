@@ -124,6 +124,8 @@
                 <div style="display:flex;gap:8px;align-items:center">
                     <button class="btn btn-sm btn-secondary" onclick="alloggiatiTest('${reservationId}')" ${reservationGuests.length === 0 ? 'disabled' : ''}>${t('detail.test')}</button>
                     <button class="btn btn-sm btn-primary" onclick="alloggiatiSend('${reservationId}')" ${totalErrors > 0 || reservationGuests.length === 0 ? 'disabled' : ''}>${t('detail.sendToPolice')}</button>
+                    <button class="btn btn-sm btn-secondary" onclick="alloggiatiCheckReceipt('${reservationId}')" ${reservationGuests.length === 0 ? 'disabled' : ''}>Verifica ricevuta</button>
+                    <button class="btn btn-sm btn-secondary" onclick="alloggiatiSaveReceipt('${reservationId}')" ${reservationGuests.length === 0 ? 'disabled' : ''}>Salva ricevuta</button>
                 </div>
             </div>
             <div id="alloggiatiResults"></div>

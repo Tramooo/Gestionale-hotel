@@ -249,6 +249,23 @@ export default async function handler(req, res) {
     await sql`ALTER TABLE agenda_items ADD COLUMN IF NOT EXISTS owner_user_id TEXT`;
     await sql`CREATE INDEX IF NOT EXISTS idx_agenda_items_owner_date ON agenda_items(owner_user_id, agenda_date, agenda_time, created_at)`;
 
+    await sql`
+      CREATE TABLE IF NOT EXISTS alloggiati_submissions (
+        id TEXT PRIMARY KEY,
+        owner_user_id TEXT NOT NULL,
+        reservation_id TEXT REFERENCES reservations(id) ON DELETE CASCADE,
+        submission_date DATE NOT NULL,
+        sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        valid_count INTEGER NOT NULL DEFAULT 0,
+        total_count INTEGER NOT NULL DEFAULT 0,
+        method_name TEXT DEFAULT '',
+        receipt_file_id TEXT,
+        receipt_file_name TEXT DEFAULT '',
+        receipt_saved_at TIMESTAMPTZ
+      )
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS idx_alloggiati_submissions_owner_reservation_sent_at ON alloggiati_submissions(owner_user_id, reservation_id, sent_at DESC)`;
+
     // Legacy single-tenant rows become owned by the first authenticated user
     // who runs the migration, preserving existing data for that account only.
     await sql`UPDATE rooms SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
