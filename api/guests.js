@@ -1,5 +1,6 @@
 import { requireAuth } from './_auth.js';
 import { getSQL } from './_db.js';
+import { decryptGuestRow, encryptGuestForStorage } from './_guest-crypto.js';
 
 export default async function handler(req, res) {
   const user = await requireAuth(req, res);
@@ -8,32 +9,18 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const rows = await sql`SELECT * FROM guests WHERE owner_user_id = ${user.id} ORDER BY last_name, first_name`;
-      return res.status(200).json(rows.map(g => ({
-        id: g.id,
-        reservationId: g.reservation_id,
-        firstName: g.first_name,
-        lastName: g.last_name,
-        email: g.email,
-        phone: g.phone,
-        docType: g.doc_type,
-        docNumber: g.doc_number,
-        roomId: g.room_id,
-        notes: g.notes,
-        sex: g.sex,
-        birthDate: g.birth_date,
-        birthComune: g.birth_comune,
-        birthProvince: g.birth_province,
-        birthCountry: g.birth_country,
-        citizenship: g.citizenship,
-        docIssuedPlace: g.doc_issued_place,
-        guestType: g.guest_type || '16',
-        residenceComune: g.residence_comune
-      })));
+      const rows = await sql`SELECT * FROM guests WHERE owner_user_id = ${user.id}`;
+      const guests = rows
+        .map(decryptGuestRow)
+        .sort((a, b) =>
+          (a.lastName || '').localeCompare(b.lastName || '', 'it', { sensitivity: 'base' }) ||
+          (a.firstName || '').localeCompare(b.firstName || '', 'it', { sensitivity: 'base' })
+        );
+      return res.status(200).json(guests);
     }
 
     if (req.method === 'POST') {
-      const g = req.body;
+      const g = encryptGuestForStorage(req.body);
       const roomId = g.roomId || null;
       await sql`
         INSERT INTO guests (id, owner_user_id, reservation_id, first_name, last_name, email, phone, doc_type, doc_number, room_id, notes,
@@ -45,7 +32,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'PUT') {
-      const g = req.body;
+      const g = encryptGuestForStorage(req.body);
       const roomId = g.roomId || null;
       await sql`
         UPDATE guests SET reservation_id=${g.reservationId}, first_name=${g.firstName}, last_name=${g.lastName},

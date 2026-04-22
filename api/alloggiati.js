@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { neon } from '@neondatabase/serverless';
 import { requireAuth } from './_auth.js';
+import { decryptGuestRow } from './_guest-crypto.js';
 
 const SOAP_URL = 'https://alloggiatiweb.poliziadistato.it/service/service.asmx';
 const NS = 'AlloggiatiService';
@@ -837,21 +838,7 @@ export default async function handler(req, res) {
       }
 
       // Map DB rows to camelCase
-      const dbGuests = guestRows.map(g => ({
-        id: g.id,
-        firstName: g.first_name,
-        lastName: g.last_name,
-        sex: g.sex,
-        birthDate: g.birth_date,
-        birthComune: g.birth_comune,
-        birthProvince: g.birth_province,
-        birthCountry: g.birth_country,
-        citizenship: g.citizenship,
-        docType: g.doc_type,
-        docNumber: g.doc_number,
-        docIssuedPlace: g.doc_issued_place,
-        guestType: g.guest_type || '16'
-      }));
+      const dbGuests = guestRows.map(decryptGuestRow);
 
       // If client sent resolved guest data, merge it with DB data.
       // DB is authoritative for identity fields; client provides resolved Alloggiati codes.
