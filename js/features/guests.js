@@ -57,6 +57,7 @@
                     const missing = getGuestMissingFields(guest);
                     const isLeader = guest.guestType === '17' || guest.guestType === '18';
                     const guestTypeLabel = guest.guestType === '17' ? 'Capofamiglia' : guest.guestType === '18' ? 'Capogruppo' : guest.guestType === '19' ? 'Familiare' : guest.guestType === '20' ? 'Membro' : '';
+                    const showDocumentSummary = requiresDocumentFields(guest.guestType) && guest.docNumber;
                     guestListHtml += `
                         <div class="detail-guest-item ${missing.length > 0 ? 'guest-has-errors' : ''}">
                             <div class="guest-avatar">${getInitials((guest.firstName || '') + ' ' + (guest.lastName || ''))}</div>
@@ -65,7 +66,7 @@
                                     <strong>${escapeHtml((guest.firstName || '') + ' ' + (guest.lastName || ''))}</strong>
                                     ${guestTypeLabel ? `<span class="guest-type-badge ${isLeader ? 'leader' : 'member'}">${guestTypeLabel}</span>` : ''}
                                 </div>
-                                <span>${room ? t('rooms.room') + ' ' + room.number : t('guestList.noRoomAssigned')}${guest.docNumber ? ' &middot; ' + escapeHtml(guest.docType || '') + ': ' + escapeHtml(guest.docNumber) : ''}</span>
+                                <span>${room ? t('rooms.room') + ' ' + room.number : t('guestList.noRoomAssigned')}${showDocumentSummary ? ' &middot; ' + escapeHtml(guest.docType || '') + ': ' + escapeHtml(guest.docNumber) : ''}</span>
                                 ${missing.length > 0 ? `<div class="guest-missing-fields">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                                     ${t('guest.missingFields')}: ${missing.join(', ')}
@@ -279,16 +280,27 @@
         const normalizedType = guestType || '20';
         const leaderFields = document.getElementById('guestLeaderFields');
         const needsDocs = requiresDocumentFields(normalizedType);
-        if (leaderFields) leaderFields.style.display = needsDocs ? '' : 'none';
+        if (leaderFields) {
+            leaderFields.style.display = needsDocs ? '' : 'none';
+            leaderFields.setAttribute('aria-hidden', needsDocs ? 'false' : 'true');
+            leaderFields.querySelectorAll('input, select, textarea').forEach((field) => {
+                field.disabled = !needsDocs;
+                if ('required' in field) field.required = needsDocs && [
+                    'guestResidenceComuneSearch',
+                    'guestDocType',
+                    'guestDocNumber',
+                    'guestDocIssuedPlaceSearch'
+                ].includes(field.id);
+                if (typeof field.setCustomValidity === 'function') field.setCustomValidity('');
+            });
+        }
 
-        [
-            'guestResidenceComuneSearch',
-            'guestDocType',
-            'guestDocNumber',
-            'guestDocIssuedPlaceSearch'
-        ].forEach((id) => {
+        ['guestResidenceComuneSearch', 'guestDocType', 'guestDocNumber', 'guestDocIssuedPlaceSearch'].forEach((id) => {
             const field = document.getElementById(id);
-            if (field) field.required = needsDocs;
+            if (!field) return;
+            field.required = needsDocs;
+            field.disabled = !needsDocs;
+            if (typeof field.setCustomValidity === 'function') field.setCustomValidity('');
         });
     }
 
