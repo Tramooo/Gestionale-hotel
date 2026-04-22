@@ -232,38 +232,104 @@
 
         <!-- ======================== DASHBOARD ======================== -->
         <section class="page active" id="page-dashboard">
-            <header class="page-header">
-                <div>
+            <header class="page-header dashboard-page-header">
+                <div class="dashboard-heading">
                     <h1 class="page-title" data-i18n="dash.title">Dashboard</h1>
                     <p class="page-subtitle" data-i18n="dash.subtitle">Panoramica delle operazioni dell'hotel</p>
                 </div>
-                <div class="dashboard-header-now" aria-label="Data e ora attuale">
-                    <div class="dashboard-header-date" id="dash-current-date">--</div>
-                    <div class="dashboard-header-time" id="dash-current-time">--:--</div>
+                <div class="dashboard-header-actions">
+                    <div class="dashboard-header-now" aria-label="Data e ora attuale">
+                        <span class="dashboard-header-now-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="8"></circle>
+                                <path d="M12 7v5l3 2"></path>
+                            </svg>
+                        </span>
+                        <div class="dashboard-header-now-copy">
+                            <span class="dashboard-header-label">Operativita di oggi</span>
+                            <div class="dashboard-header-date" id="dash-current-date">--</div>
+                            <div class="dashboard-header-time" id="dash-current-time">--:--</div>
+                        </div>
+                    </div>
+                    <button type="button" class="dashboard-header-chip" onclick="window.GroupStayDashboard && window.GroupStayDashboard.focusAgendaDate && window.GroupStayDashboard.focusAgendaDate()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <rect x="3.5" y="4.5" width="17" height="16" rx="2.5"></rect>
+                            <path d="M8 2.75v3.5"></path>
+                            <path d="M16 2.75v3.5"></path>
+                            <path d="M3.5 9.5h17"></path>
+                        </svg>
+                        <span data-i18n="dash.dailyAgenda">Agenda operativa</span>
+                    </button>
+                    <button type="button" class="btn btn-primary dashboard-header-cta" onclick="openNewReservationModal()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M12 5v14"></path>
+                            <path d="M5 12h14"></path>
+                        </svg>
+                        <span>Nuova prenotazione</span>
+                    </button>
                 </div>
             </header>
 
             <div class="dashboard-shell">
                 <section class="dashboard-metrics-strip" aria-label="Panoramica operativa">
-                    <article class="dashboard-stat-card">
-                        <span class="dashboard-stat-label">Arrivi oggi</span>
-                        <strong class="dashboard-stat-value" id="dash-arrivals-value">0</strong>
-                        <span class="dashboard-stat-meta" id="dash-arrivals-meta">Nessun arrivo pianificato</span>
+                    <article class="dashboard-stat-card dashboard-stat-card-arrivals">
+                        <div class="dashboard-stat-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M6.5 18.5h11"></path>
+                                <path d="M5.5 18.5v-2.25a6.5 6.5 0 0 1 13 0v2.25"></path>
+                                <path d="M9.5 10.5h5"></path>
+                                <path d="M12 5.5v5"></path>
+                            </svg>
+                        </div>
+                        <div class="dashboard-stat-copy">
+                            <span class="dashboard-stat-label">Arrivi oggi</span>
+                            <strong class="dashboard-stat-value" id="dash-arrivals-value">0</strong>
+                            <span class="dashboard-stat-meta" id="dash-arrivals-meta">Nessun arrivo pianificato</span>
+                        </div>
                     </article>
-                    <article class="dashboard-stat-card">
-                        <span class="dashboard-stat-label">Partenze oggi</span>
-                        <strong class="dashboard-stat-value" id="dash-departures-value">0</strong>
-                        <span class="dashboard-stat-meta" id="dash-departures-meta">Nessuna partenza pianificata</span>
+                    <article class="dashboard-stat-card dashboard-stat-card-departures">
+                        <div class="dashboard-stat-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="4.5" y="8.5" width="15" height="10" rx="2.5"></rect>
+                                <path d="M9 8.5V5.5h6v3"></path>
+                                <path d="M12 13.5v3"></path>
+                            </svg>
+                        </div>
+                        <div class="dashboard-stat-copy">
+                            <span class="dashboard-stat-label">Partenze oggi</span>
+                            <strong class="dashboard-stat-value" id="dash-departures-value">0</strong>
+                            <span class="dashboard-stat-meta" id="dash-departures-meta">Nessuna partenza pianificata</span>
+                        </div>
                     </article>
-                    <article class="dashboard-stat-card">
-                        <span class="dashboard-stat-label">Ospiti in casa</span>
-                        <strong class="dashboard-stat-value" id="dash-inhouse-value">0</strong>
-                        <span class="dashboard-stat-meta" id="dash-inhouse-meta">Presenze attive in struttura</span>
+                    <article class="dashboard-stat-card dashboard-stat-card-inhouse">
+                        <div class="dashboard-stat-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="8" cy="8" r="2.75"></circle>
+                                <circle cx="16.25" cy="8.75" r="2.5"></circle>
+                                <path d="M3.75 18.5v-.75a4.25 4.25 0 0 1 8.5 0v.75"></path>
+                                <path d="M13 18.5v-.5a3.75 3.75 0 0 1 7.5 0v.5"></path>
+                            </svg>
+                        </div>
+                        <div class="dashboard-stat-copy">
+                            <span class="dashboard-stat-label">Ospiti in casa</span>
+                            <strong class="dashboard-stat-value" id="dash-inhouse-value">0</strong>
+                            <span class="dashboard-stat-meta" id="dash-inhouse-meta">Presenze attive in struttura</span>
+                        </div>
                     </article>
-                    <article class="dashboard-stat-card">
-                        <span class="dashboard-stat-label">Occupazione camere</span>
-                        <strong class="dashboard-stat-value" id="dash-occupancy-value">0%</strong>
-                        <span class="dashboard-stat-meta" id="dash-occupancy-meta">0 occupate su 0</span>
+                    <article class="dashboard-stat-card dashboard-stat-card-occupancy">
+                        <div class="dashboard-stat-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3.5 18.5h17"></path>
+                                <path d="M5.5 18.5v-7.25h13v7.25"></path>
+                                <path d="M5.5 13.5h13"></path>
+                                <path d="M7.5 11.25v-2a2.25 2.25 0 0 1 2.25-2.25h4.5A2.25 2.25 0 0 1 16.5 9.25v2"></path>
+                            </svg>
+                        </div>
+                        <div class="dashboard-stat-copy">
+                            <span class="dashboard-stat-label">Occupazione camere</span>
+                            <strong class="dashboard-stat-value" id="dash-occupancy-value">0%</strong>
+                            <span class="dashboard-stat-meta" id="dash-occupancy-meta">0 occupate su 0</span>
+                        </div>
                     </article>
                 </section>
 

@@ -100,6 +100,16 @@
         if (dateInput) dateInput.value = getSelectedAgendaDate();
     }
 
+    function focusAgendaDate() {
+        const dateInput = document.getElementById('dashboard-task-date');
+        if (!dateInput) return;
+
+        dateInput.focus();
+        if (typeof dateInput.showPicker === 'function') {
+            dateInput.showPicker();
+        }
+    }
+
     function getAgendaWindowLabel(dateStr, baseDateStr, locale, t) {
         if (dateStr === baseDateStr) return t('cal.today');
 
@@ -541,6 +551,7 @@
         init(nextDeps) {
             deps = nextDeps;
         },
+        focusAgendaDate,
         renderDashboard
     };
 })(window);
