@@ -7,10 +7,20 @@
         return deps;
     }
 
+    function hasOpenFilePreview() {
+        const preview = document.getElementById('filePreviewOverlay');
+        if (!preview) return false;
+        return preview.style.display !== 'none' && !preview.hasAttribute('hidden');
+    }
+
+    function applyBodyScrollLock(locked) {
+        document.body.classList.toggle('modal-open', locked);
+        document.body.style.overflow = locked ? 'hidden' : '';
+    }
+
     function syncModalState() {
         const hasOpenModal = !!document.querySelector('.modal-overlay.open');
-        document.body.classList.toggle('modal-open', hasOpenModal);
-        document.body.style.overflow = hasOpenModal ? 'hidden' : '';
+        applyBodyScrollLock(hasOpenModal || hasOpenFilePreview());
     }
 
     function openModal(id) {
@@ -91,6 +101,7 @@
         closeModal,
         showLoading,
         hideLoading,
-        showToast
+        showToast,
+        syncModalState
     };
 })(window);

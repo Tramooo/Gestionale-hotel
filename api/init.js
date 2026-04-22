@@ -25,6 +25,7 @@ export default async function handler(req, res) {
       )
     `;
     await sql`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS owner_user_id TEXT`;
+    await sql`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS maintenance_note TEXT DEFAULT ''`;
     await sql`
       DO $$
       DECLARE constraint_name TEXT;

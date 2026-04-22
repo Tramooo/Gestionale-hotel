@@ -19,6 +19,13 @@ function parseCookies(req) {
   );
 }
 
+function getSessionToken(req) {
+  const headerToken = req.headers['x-session-token'];
+  if (typeof headerToken === 'string' && headerToken.trim()) return headerToken.trim();
+  const cookieToken = parseCookies(req)[SESSION_COOKIE];
+  return cookieToken || null;
+}
+
 function cookieParts(value, maxAge = SESSION_DAYS * 24 * 60 * 60) {
   const parts = [
     `${SESSION_COOKIE}=${encodeURIComponent(value)}`,
@@ -64,7 +71,7 @@ export async function destroySession(req, res) {
 export async function getAuthenticatedUser(req) {
   await ensureAuthTables();
   const sql = getSQL();
-  const token = parseCookies(req)[SESSION_COOKIE];
+  const token = getSessionToken(req);
   if (!token) return null;
 
   const rows = await sql`

@@ -13,7 +13,29 @@ export default async function handler(req, res) {
     // ---- CERTS ----
     if (target === 'certs') {
       if (req.method === 'GET') {
-        const rows = await sql`SELECT * FROM compliance_certs WHERE owner_user_id = ${user.id} ORDER BY created_at DESC`;
+        const { id, includeFile } = req.query;
+        if (id && includeFile === '1') {
+          const rows = await sql`
+            SELECT id, file_name, file_data
+            FROM compliance_certs
+            WHERE id = ${id} AND owner_user_id = ${user.id}
+            LIMIT 1
+          `;
+          if (rows.length === 0) return res.status(404).json({ error: 'File not found' });
+          return res.status(200).json({
+            id: rows[0].id,
+            fileData: rows[0].file_data || '',
+            fileName: rows[0].file_name || ''
+          });
+        }
+
+        const rows = await sql`
+          SELECT id, employee_id, cert_type, issued_date, expiry_date, notes, file_name, created_at,
+                 CASE WHEN COALESCE(file_data, '') <> '' THEN TRUE ELSE FALSE END AS has_file
+          FROM compliance_certs
+          WHERE owner_user_id = ${user.id}
+          ORDER BY created_at DESC
+        `;
         return res.status(200).json(rows.map(r => ({
           id: r.id,
           employeeId: r.employee_id,
@@ -21,8 +43,8 @@ export default async function handler(req, res) {
           issuedDate: toDateStr(r.issued_date),
           expiryDate: toDateStr(r.expiry_date),
           notes: r.notes || '',
-          fileData: r.file_data || '',
           fileName: r.file_name || '',
+          hasFile: Boolean(r.has_file),
           createdAt: r.created_at
         })));
       }
@@ -36,12 +58,21 @@ export default async function handler(req, res) {
       }
       if (req.method === 'PUT') {
         const c = req.body;
-        await sql`
-          UPDATE compliance_certs SET
-            cert_type=${c.certType}, issued_date=${c.issuedDate || null}, expiry_date=${c.expiryDate || null},
-            notes=${c.notes || ''}, file_data=${c.fileData || ''}, file_name=${c.fileName || ''}
-          WHERE id=${c.id} AND owner_user_id = ${user.id}
-        `;
+        if (Object.prototype.hasOwnProperty.call(c, 'fileData')) {
+          await sql`
+            UPDATE compliance_certs SET
+              cert_type=${c.certType}, issued_date=${c.issuedDate || null}, expiry_date=${c.expiryDate || null},
+              notes=${c.notes || ''}, file_data=${c.fileData || ''}, file_name=${c.fileName || ''}
+            WHERE id=${c.id} AND owner_user_id = ${user.id}
+          `;
+        } else {
+          await sql`
+            UPDATE compliance_certs SET
+              cert_type=${c.certType}, issued_date=${c.issuedDate || null}, expiry_date=${c.expiryDate || null},
+              notes=${c.notes || ''}
+            WHERE id=${c.id} AND owner_user_id = ${user.id}
+          `;
+        }
         return res.status(200).json({ success: true });
       }
       if (req.method === 'DELETE') {
@@ -54,15 +85,37 @@ export default async function handler(req, res) {
     // ---- DOCS ----
     if (target === 'docs') {
       if (req.method === 'GET') {
-        const rows = await sql`SELECT * FROM compliance_docs WHERE owner_user_id = ${user.id} ORDER BY created_at DESC`;
+        const { id, includeFile } = req.query;
+        if (id && includeFile === '1') {
+          const rows = await sql`
+            SELECT id, file_name, file_data
+            FROM compliance_docs
+            WHERE id = ${id} AND owner_user_id = ${user.id}
+            LIMIT 1
+          `;
+          if (rows.length === 0) return res.status(404).json({ error: 'File not found' });
+          return res.status(200).json({
+            id: rows[0].id,
+            fileData: rows[0].file_data || '',
+            fileName: rows[0].file_name || ''
+          });
+        }
+
+        const rows = await sql`
+          SELECT id, doc_type, issued_date, expiry_date, notes, file_name, created_at,
+                 CASE WHEN COALESCE(file_data, '') <> '' THEN TRUE ELSE FALSE END AS has_file
+          FROM compliance_docs
+          WHERE owner_user_id = ${user.id}
+          ORDER BY created_at DESC
+        `;
         return res.status(200).json(rows.map(r => ({
           id: r.id,
           docType: r.doc_type,
           issuedDate: toDateStr(r.issued_date),
           expiryDate: toDateStr(r.expiry_date),
           notes: r.notes || '',
-          fileData: r.file_data || '',
           fileName: r.file_name || '',
+          hasFile: Boolean(r.has_file),
           createdAt: r.created_at
         })));
       }
@@ -76,12 +129,21 @@ export default async function handler(req, res) {
       }
       if (req.method === 'PUT') {
         const d = req.body;
-        await sql`
-          UPDATE compliance_docs SET
-            doc_type=${d.docType}, issued_date=${d.issuedDate || null}, expiry_date=${d.expiryDate || null},
-            notes=${d.notes || ''}, file_data=${d.fileData || ''}, file_name=${d.fileName || ''}
-          WHERE id=${d.id} AND owner_user_id = ${user.id}
-        `;
+        if (Object.prototype.hasOwnProperty.call(d, 'fileData')) {
+          await sql`
+            UPDATE compliance_docs SET
+              doc_type=${d.docType}, issued_date=${d.issuedDate || null}, expiry_date=${d.expiryDate || null},
+              notes=${d.notes || ''}, file_data=${d.fileData || ''}, file_name=${d.fileName || ''}
+            WHERE id=${d.id} AND owner_user_id = ${user.id}
+          `;
+        } else {
+          await sql`
+            UPDATE compliance_docs SET
+              doc_type=${d.docType}, issued_date=${d.issuedDate || null}, expiry_date=${d.expiryDate || null},
+              notes=${d.notes || ''}
+            WHERE id=${d.id} AND owner_user_id = ${user.id}
+          `;
+        }
         return res.status(200).json({ success: true });
       }
       if (req.method === 'DELETE') {

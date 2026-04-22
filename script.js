@@ -17,7 +17,9 @@ const {
     apiGet,
     apiPost,
     apiPut,
-    apiDelete
+    apiDelete,
+    clearSessionToken,
+    primeSessionToken
 } = window.GroupStayApi;
 
 const {
@@ -265,6 +267,7 @@ window.GroupStayCompliance.init({
     CERT_TYPES,
     DOC_TYPES,
     apiDelete,
+    apiGet,
     apiPost,
     apiPut,
     closeModal,
@@ -398,19 +401,19 @@ function loadDataCache() {
     } catch (e) { return false; }
 }
 
-async function loadAllData() {
+async function loadAllData(retryOnUnauthorized = true) {
     try {
+        setAuthDebug('Bootstrap: preparo il database...');
         // Keep schema migrations idempotent and run them on each load
         // so freshly added columns are available even in an existing session.
         try { await apiPost(API.init, {}); } catch (e) {}
 
-        const [resData, roomData, guestData, empData, certsData, docsData, agendaData] = await Promise.all([
+        setAuthDebug('Bootstrap: carico dati principali...');
+        const [resData, roomData, guestData, empData, agendaData] = await Promise.all([
             apiGet(API.reservations),
             apiGet(API.rooms),
             apiGet(API.guests),
             apiGet(API.employees).catch(() => ({ employees: [], workEntries: [] })),
-            apiGet(API.compliance + '?target=certs').catch(() => []),
-            apiGet(API.compliance + '?target=docs').catch(() => []),
             apiGet(API.agenda).catch(() => [])
         ]);
         reservations    = resData;
@@ -419,19 +422,26 @@ async function loadAllData() {
         employees        = empData.employees      || [];
         workEntries      = empData.workEntries    || [];
         monthPayOverrides = empData.monthOverrides || [];
-        complianceCerts = certsData;
-        complianceDocs  = docsData;
         agendaItems     = agendaData;
         computeRoomStatuses();
         saveDataCache();
+        setAuthDebug('Bootstrap completato.');
+        return true;
     } catch (err) {
         console.error('Failed to load data from database:', err);
+        setAuthDebug(`Bootstrap fallito: ${formatErrorMessage(err)}`);
         if (err && err.status === 401) {
+            if (retryOnUnauthorized) {
+                setAuthDebug('Bootstrap 401, ritento conferma sessione...');
+                const user = await ensureSessionReady(3, 300);
+                if (user) return loadAllData(false);
+            }
             showToast('Sessione scaduta, effettua di nuovo l’accesso', 'error');
             await logoutUser();
-            return;
+            return false;
         }
         showToast(t('toast.dbError'), 'error');
+        return false;
     }
 }
 
@@ -478,19 +488,59 @@ let currentUser = null;
 let currentAuthMode = 'login';
 const REMEMBERED_LOGIN_KEY = 'gs_remembered_login';
 
+function delay(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function nextPaint() {
+    return new Promise((resolve) => {
+        requestAnimationFrame(() => {
+            requestAnimationFrame(resolve);
+        });
+    });
+}
+
 // ---- i18n ----
 
 let currentLang = localStorage.getItem('gs_lang') || 'it';
 
 function setAuthLocked(locked) {
     document.body.classList.toggle('auth-locked', locked);
+    const authScreen = document.getElementById('authScreen');
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.getElementById('mainContent');
+    const mobileTabBar = document.getElementById('mobileTabBar');
+
+    if (authScreen) {
+        authScreen.style.display = locked ? 'flex' : 'none';
+        authScreen.setAttribute('aria-hidden', locked ? 'false' : 'true');
+        authScreen.style.pointerEvents = locked ? 'auto' : 'none';
+    }
+    if (sidebar) sidebar.style.visibility = locked ? 'hidden' : 'visible';
+    if (mainContent) mainContent.style.visibility = locked ? 'hidden' : 'visible';
+    if (mobileTabBar) mobileTabBar.style.visibility = locked ? 'hidden' : 'visible';
 }
 
 function clearAuthErrors() {
     const loginError = document.getElementById('loginError');
     const registerError = document.getElementById('registerError');
+    const authDebug = document.getElementById('authDebug');
     if (loginError) loginError.textContent = '';
     if (registerError) registerError.textContent = '';
+    if (authDebug) authDebug.textContent = '';
+}
+
+function setAuthDebug(message) {
+    const authDebug = document.getElementById('authDebug');
+    if (authDebug) authDebug.textContent = message || '';
+}
+
+function formatErrorMessage(error) {
+    if (!error) return 'Errore sconosciuto';
+    const parts = [];
+    if (error.message) parts.push(error.message);
+    if (error.status) parts.push(`status ${error.status}`);
+    return parts.join(' - ') || 'Errore sconosciuto';
 }
 
 function saveRememberedLogin(email, password, shouldRemember) {
@@ -572,8 +622,18 @@ async function fetchSession() {
         return currentUser;
     } catch (error) {
         currentUser = null;
+        setAuthDebug(`Sessione non letta: ${formatErrorMessage(error)}`);
         return null;
     }
+}
+
+async function ensureSessionReady(maxAttempts = 4, waitMs = 250) {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        const user = await fetchSession();
+        if (user) return user;
+        if (attempt < maxAttempts - 1) await delay(waitMs);
+    }
+    return null;
 }
 
 async function submitLogin(event) {
@@ -581,16 +641,23 @@ async function submitLogin(event) {
     clearAuthErrors();
 
     try {
+        setAuthDebug('Invio login...');
         const email = document.getElementById('loginEmail').value.trim();
         const password = document.getElementById('loginPassword').value;
         const shouldRemember = document.getElementById('loginRemember')?.checked;
         const data = await apiPost(`${API.auth}?action=login`, { email, password });
+        setAuthDebug('Login ok, confermo sessione...');
+        primeSessionToken?.(data.sessionToken);
         saveRememberedLogin(email, password, shouldRemember);
         currentUser = data.user;
         updateProfileHeader();
+        const sessionUser = await ensureSessionReady();
+        if (!sessionUser) throw new Error('Sessione non confermata. Riprova tra un attimo.');
+        setAuthDebug('Sessione confermata, avvio app...');
         setAuthLocked(false);
-        await startApplication();
+        await startApplication(true);
     } catch (error) {
+        setAuthDebug(`Login fallito: ${formatErrorMessage(error)}`);
         document.getElementById('loginError').textContent = error.message || 'Accesso non riuscito';
     }
 }
@@ -607,14 +674,21 @@ async function submitRegister(event) {
     }
 
     try {
+        setAuthDebug('Creazione account...');
         const fullName = document.getElementById('registerName').value.trim();
         const email = document.getElementById('registerEmail').value.trim();
         const data = await apiPost(`${API.auth}?action=register`, { fullName, email, password });
+        setAuthDebug('Account creato, confermo sessione...');
+        primeSessionToken?.(data.sessionToken);
         currentUser = data.user;
         updateProfileHeader();
+        const sessionUser = await ensureSessionReady();
+        if (!sessionUser) throw new Error('Sessione non confermata. Riprova tra un attimo.');
+        setAuthDebug('Sessione confermata, avvio app...');
         setAuthLocked(false);
-        await startApplication();
+        await startApplication(true);
     } catch (error) {
+        setAuthDebug(`Registrazione fallita: ${formatErrorMessage(error)}`);
         document.getElementById('registerError').textContent = error.message || 'Registrazione non riuscita';
     }
 }
@@ -627,6 +701,7 @@ async function logoutUser() {
         console.error('Logout failed:', error);
     }
 
+    clearSessionToken?.();
     currentUser = null;
     if (cacheUserId) {
         localStorage.removeItem(`${CACHE_KEY}:${cacheUserId}`);
@@ -687,6 +762,9 @@ const TRANSLATIONS = {
     'dash.addTask': { en: 'Add', it: 'Aggiungi' },
     'dash.noTasks': { en: 'No planned tasks', it: 'Nessuna attivita pianificata' },
     'dash.noTasksForDate': { en: 'No planned tasks for {date}', it: 'Nessuna attivita pianificata per {date}' },
+    'dash.noTasksNextThreeDays': { en: 'No planned tasks in the next three days', it: 'Nessuna attivita pianificata nei prossimi tre giorni' },
+    'dash.tomorrow': { en: 'Tomorrow', it: 'Domani' },
+    'dash.inTwoDays': { en: 'In two days', it: 'Tra due giorni' },
     'dash.noTime': { en: 'No time', it: 'Senza orario' },
     'dash.deleteTask': { en: 'Delete task', it: 'Elimina attivita' },
     'dash.markTodoDone': { en: 'Mark task as done', it: 'Segna attivita come completata' },
@@ -738,6 +816,12 @@ const TRANSLATIONS = {
     'rooms.type': { en: 'Type', it: 'Tipo' },
     'rooms.capacity': { en: 'Capacity', it: 'Capacità' },
     'rooms.roomNumber': { en: 'Room Number', it: 'Numero Camera' },
+    'rooms.operationalStatus': { en: 'Operational status', it: 'Stato operativo' },
+    'rooms.quickMaintenance': { en: 'Add maintenance', it: 'Aggiungi manutenzione' },
+    'rooms.removeMaintenance': { en: 'Remove maintenance', it: 'Rimuovi manutenzione' },
+    'rooms.selectRoom': { en: 'Room', it: 'Camera' },
+    'rooms.maintenanceDetails': { en: 'Maintenance type', it: 'Tipo di manutenzione' },
+    'rooms.maintenancePlaceholder': { en: 'E.g. AC check or bathroom repair', it: 'Es. controllo climatizzazione o bagno' },
 
     // Room types
     'roomType.single': { en: 'Single', it: 'Singola' },
@@ -1016,6 +1100,9 @@ const TRANSLATIONS = {
     'toast.roomUpdated': { en: 'Room updated', it: 'Camera aggiornata' },
     'toast.roomExists': { en: 'Room number already exists', it: 'Numero camera già esistente' },
     'toast.roomAdded': { en: 'Room added', it: 'Camera aggiunta' },
+    'toast.roomMaintenanceUpdated': { en: 'Room moved to maintenance', it: 'Camera impostata in manutenzione' },
+    'toast.roomMaintenanceRemoved': { en: 'Maintenance removed from room', it: 'Manutenzione rimossa dalla camera' },
+    'toast.noRoomsForMaintenance': { en: 'No available rooms can be moved to maintenance', it: 'Nessuna camera disponibile da mettere in manutenzione' },
     'toast.roomSaveFail': { en: 'Failed to save room', it: 'Salvataggio camera fallito' },
     'toast.roomDeleted': { en: 'Room deleted', it: 'Camera eliminata' },
     'toast.roomDeleteFail': { en: 'Failed to delete room', it: 'Eliminazione camera fallita' },
@@ -1045,6 +1132,7 @@ const TRANSLATIONS = {
     'confirm.removeColumn': { en: 'Remove column', it: 'Rimuovere la colonna' },
     'confirm.removeColumnData': { en: 'Data in this column will be lost on save.', it: 'I dati di questa colonna verranno persi al salvataggio.' },
     'confirm.deleteRoom': { en: 'Delete this room?', it: 'Eliminare questa camera?' },
+    'confirm.removeMaintenance': { en: 'Remove maintenance from this room?', it: 'Rimuovere la manutenzione da questa camera?' },
     'confirm.removeGuest': { en: 'Remove this guest?', it: 'Rimuovere questo ospite?' },
     'confirm.importReservations': { en: 'Import {n} reservations?', it: 'Importare {n} prenotazioni?' },
     'confirm.importGuests': { en: 'Import {n} guest(s) into this reservation?', it: 'Importare {n} ospite/i in questa prenotazione?' },
@@ -2432,7 +2520,9 @@ function setRoomFilter(filter, el) { return window.GroupStayRooms.setRoomFilter(
 function filterRooms() { return window.GroupStayRooms.filterRooms(); }
 function openNewRoomModal() { return window.GroupStayRooms.openNewRoomModal(); }
 function openEditRoom(id) { return window.GroupStayRooms.openEditRoom(id); }
+function openMaintenanceRoomModal() { return window.GroupStayRooms.openMaintenanceRoomModal(); }
 async function saveRoom(e) { return window.GroupStayRooms.saveRoom(e); }
+async function saveRoomMaintenance(e) { return window.GroupStayRooms.saveRoomMaintenance(e); }
 async function deleteRoom() { return window.GroupStayRooms.deleteRoom(); }
 
 // =============================================
@@ -3853,36 +3943,93 @@ applyTheme(getTheme());
 // =============================================
 
 let appStarted = false;
+let appStarting = false;
+let appStartPromise = null;
 
-async function startApplication() {
-    if (appStarted) return;
-    appStarted = true;
-    initSettingsModal();
-    applyTranslations();
-    updateProfileHeader();
-    document.querySelectorAll('[data-lang-val]').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.langVal === currentLang);
-        btn.addEventListener('click', () => setLanguage(btn.dataset.langVal));
-    });
-    const hasCached = loadDataCache();
-    if (hasCached) {
-        // Show UI immediately with cached data
-        renderDashboard();
-        renderCalendar();
-        // Refresh in background silently
-        loadAllData().then(() => {
-            const current = document.querySelector('.nav-item.active, .tab-item.active');
-            const page = current ? current.dataset.page : 'dashboard';
-            if (page === 'dashboard') renderDashboard();
-            else if (page === 'calendar') renderCalendar();
-        });
-    } else {
-        showLoading('Caricamento dati...');
-        await loadAllData();
-        hideLoading();
-        renderDashboard();
-        renderCalendar();
+function getBootPage() {
+    return document.body.dataset.activePage || 'dashboard';
+}
+
+async function startApplication(forceRestart = false) {
+    if (forceRestart) {
+        appStarted = false;
+        appStarting = false;
+        appStartPromise = null;
     }
+    if (appStarted) return true;
+    if (appStartPromise) return appStartPromise;
+
+    appStarting = true;
+    appStartPromise = (async () => {
+        try {
+        setAuthDebug('Avvio applicazione...');
+        initSettingsModal();
+        setAuthDebug('Avvio applicazione...\nImpostazioni inizializzate.');
+        applyTranslations();
+        setAuthDebug('Avvio applicazione...\nTraduzioni applicate.');
+        updateProfileHeader();
+        setAuthDebug('Avvio applicazione...\nProfilo aggiornato.');
+        document.querySelectorAll('[data-lang-val]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.langVal === currentLang);
+            btn.addEventListener('click', () => setLanguage(btn.dataset.langVal));
+        });
+        setAuthDebug('Avvio applicazione...\nControlli lingua pronti.');
+        const bootPage = getBootPage();
+        const hasCached = loadDataCache();
+        if (hasCached) {
+            setAuthDebug('Cache locale trovata, disegno l\'interfaccia...');
+            // Show UI immediately with cached data
+            await nextPaint();
+            if (bootPage === 'calendar') {
+                renderCalendar();
+                setAuthDebug('Calendario disegnato.');
+            } else {
+                renderDashboard();
+                setAuthDebug('Dashboard disegnata.');
+            }
+            setAuthDebug('Cache locale trovata, aggiorno in background...');
+            // Refresh in background silently
+            loadAllData().then((ok) => {
+                if (!ok) return;
+                const current = document.querySelector('.nav-item.active, .tab-item.active');
+                const page = current ? current.dataset.page : 'dashboard';
+                if (page === 'dashboard') renderDashboard();
+                else if (page === 'calendar') renderCalendar();
+            });
+        } else {
+            setAuthDebug('Nessuna cache, carico da server...');
+            showLoading('Caricamento dati...');
+            const ok = await loadAllData();
+            hideLoading();
+            if (!ok) {
+                appStarting = false;
+                return;
+            }
+            setAuthDebug('Dati server caricati, disegno l\'interfaccia...');
+            await nextPaint();
+            if (bootPage === 'calendar') {
+                renderCalendar();
+                setAuthDebug('Calendario disegnato.');
+            } else {
+                renderDashboard();
+                setAuthDebug('Dashboard disegnata.');
+            }
+        }
+        appStarted = true;
+        appStarting = false;
+        return true;
+        } catch (error) {
+            appStarting = false;
+            setAuthDebug(`Avvio app fallito: ${formatErrorMessage(error)}`);
+            document.getElementById('loginError').textContent = error.message || 'Errore durante l\'avvio dell\'app';
+            hideLoading();
+            return false;
+        } finally {
+            appStartPromise = null;
+        }
+    })();
+
+    return appStartPromise;
 }
 
 (async function init() {
