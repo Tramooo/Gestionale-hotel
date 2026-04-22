@@ -795,17 +795,73 @@ export default async function handler(req, res) {
         totalCount: records.length,
         details: dettaglio.map((d, i) => {
           const g = normalizedGuests[i];
+          const record = records[i] || '';
           return {
             guestName: g ? `${g.firstName} ${g.lastName}` : `Row ${i + 1}`,
             guestType: g?.guestType,
             docType: g?.docType,
             birthDate: g?.birthDate,
+            birthComune: g?.birthComune || '',
+            birthProvince: g?.birthProvince || '',
+            birthCountry: g?.birthCountry || '',
+            citizenship: g?.citizenship || '',
+            recordBirthBlock: record.substring(95, 134),
+            recordBirthComune: record.substring(105, 114),
+            recordBirthProvince: record.substring(114, 116),
+            recordBirthCountry: record.substring(116, 125),
             errorFieldHint: d?.errorDesc || d?.errorDetail || '',
             ...d
           };
         }),
         overallResult: esito
       };
+
+      if (action === 'test' && !esito.esito && dettaglio.some((detail) => !detail?.esito)) {
+        try {
+          responsePayload.diagnostics = {
+            birthBlock: await runBirthBlockDiagnostics({
+              action,
+              normalizedGuests,
+              records,
+              failingDetails: dettaglio,
+              reservation,
+              methodName,
+              token,
+              UTENTE
+            }),
+            failingGuestFields: await runFailingGuestFieldDiagnostics({
+              action,
+              normalizedGuests,
+              records,
+              failingDetails: dettaglio,
+              reservation,
+              methodName,
+              token,
+              UTENTE
+            }),
+            groupSequence: await runGroupDiagnostics({
+              action,
+              normalizedGuests,
+              records,
+              failingDetails: dettaglio,
+              methodName,
+              token,
+              UTENTE
+            }),
+            leaderMemberPairs: await runLeaderMemberPairDiagnostics({
+              action,
+              normalizedGuests,
+              records,
+              failingDetails: dettaglio,
+              methodName,
+              token,
+              UTENTE
+            })
+          };
+        } catch (diagnosticError) {
+          responsePayload.diagnosticsError = diagnosticError?.message || String(diagnosticError);
+        }
+      }
 
       return res.status(200).json(responsePayload);
     }

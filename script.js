@@ -1601,7 +1601,7 @@ function findCodeFromLabel(list, label) {
 
 function findLabelFromCode(list, code) {
     if (!list || !code) return '';
-    const match = list.find(l => l.code === code);
+    const match = lookupAlloggiatiEntry(list, code);
     return match ? match.label : '';
 }
 
@@ -1696,13 +1696,22 @@ function lookupAlloggiatiEntry(list, rawValue, provinceHint = '', options = {}) 
     const value = normalizeAlloggiatiLookupValue(rawValue);
     if (!value) return null;
 
-    const byCode = list.find((entry) => entry.code === value);
-    if (byCode) return byCode;
-
     const requestedProvince = (provinceHint || extractAlloggiatiProvinceHint(value) || '').toUpperCase();
-    const normalizedName = normalizeAlloggiatiLookupName(value);
     const candidates = list.filter((entry) => entry && entry.code);
     const contextDateUtc = options.birthDate ? parseAlloggiatiDateToken(String(options.birthDate).substring(0, 10).replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$1-$2-$3')) : null;
+    const byCode = candidates.filter((entry) => entry.code === value);
+
+    if (byCode.length === 1) return byCode[0];
+    if (byCode.length > 1) {
+        return byCode
+            .map((entry) => ({
+                entry,
+                score: 1000 + scoreAlloggiatiEntry(entry, value, normalizeAlloggiatiLookupName(value), requestedProvince, contextDateUtc)
+            }))
+            .sort((a, b) => b.score - a.score)[0]?.entry || null;
+    }
+
+    const normalizedName = normalizeAlloggiatiLookupName(value);
 
     const scored = candidates
         .map((entry) => ({
@@ -1820,6 +1829,21 @@ function renderAlloggiatiResults(container, data, mode) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
 
+    const renderDiagnosticRows = (rows, fields) => {
+        if (!Array.isArray(rows) || rows.length === 0) return '';
+        return `<div class="alloggiati-records">${rows.map((row) => `
+            <div class="alloggiati-record-item ${row.esito ? 'success' : 'error'}">
+                <div style="display:grid;gap:4px">
+                    ${fields.map((field) => {
+                        const value = row?.[field.key];
+                        if (value === undefined || value === null || value === '') return '';
+                        return `<span><strong>${escapeHtml(field.label)}:</strong> ${escapeHtml(value)}</span>`;
+                    }).join('')}
+                </div>
+            </div>
+        `).join('')}</div>`;
+    };
+
     let html = '';
     if (mode === 'preview') {
         html += `<div class="alloggiati-preview">
@@ -1844,13 +1868,84 @@ function renderAlloggiatiResults(container, data, mode) {
             data.details.forEach((d) => {
                 const ok = d.esito;
                 html += `<div class="alloggiati-record-item ${ok ? 'success' : 'error'}">
-                    <div>
+                    <div style="display:grid;gap:4px">
                         <span>${d.guestName}</span>
                         <span style="color:${ok ? 'var(--green)' : 'var(--red)'}"> - ${ok ? 'OK' : d.errorDesc + (d.errorDetail ? ': ' + d.errorDetail : '')}</span>
+                        ${!ok ? `
+                            <span style="font-size:12px;color:var(--text-secondary)">
+                                Nascita inviata: comune ${escapeHtml(d.recordBirthComune || '—')} · prov ${escapeHtml(d.recordBirthProvince || '—')} · stato ${escapeHtml(d.recordBirthCountry || '—')}
+                            </span>
+                        ` : ''}
                     </div>
                 </div>`;
             });
             html += '</div>';
+        }
+
+        if (data.diagnostics || data.diagnosticsError) {
+            html += '<details style="margin-top:12px"><summary style="cursor:pointer;font-weight:600">Diagnostica avanzata Alloggiati</summary><div style="margin-top:10px;display:grid;gap:12px">';
+
+            if (Array.isArray(data.diagnostics?.birthBlock) && data.diagnostics.birthBlock.length > 0) {
+                html += `<section>
+                    <div style="font-weight:600;margin-bottom:6px">Varianti blocco nascita</div>
+                    ${renderDiagnosticRows(data.diagnostics.birthBlock, [
+                        { key: 'label', label: 'Test' },
+                        { key: 'recBirthComune', label: 'Comune record' },
+                        { key: 'recBirthProvince', label: 'Provincia record' },
+                        { key: 'recBirthCountry', label: 'Stato record' },
+                        { key: 'errorDesc', label: 'Errore' },
+                        { key: 'errorDetail', label: 'Dettaglio' }
+                    ])}
+                </section>`;
+            }
+
+            if (Array.isArray(data.diagnostics?.failingGuestFields) && data.diagnostics.failingGuestFields.length > 0) {
+                html += `<section>
+                    <div style="font-weight:600;margin-bottom:6px">Varianti ospite fallito</div>
+                    ${renderDiagnosticRows(data.diagnostics.failingGuestFields, [
+                        { key: 'label', label: 'Test' },
+                        { key: 'birthCountry', label: 'Stato nascita' },
+                        { key: 'citizenship', label: 'Cittadinanza' },
+                        { key: 'docIssuedPlace', label: 'Luogo doc' },
+                        { key: 'errorDesc', label: 'Errore' },
+                        { key: 'errorDetail', label: 'Dettaglio' }
+                    ])}
+                </section>`;
+            }
+
+            if (data.diagnostics?.groupSequence && Array.isArray(data.diagnostics.groupSequence.rowResults) && data.diagnostics.groupSequence.rowResults.length > 0) {
+                html += `<section>
+                    <div style="font-weight:600;margin-bottom:6px">Sequenza gruppo testata</div>
+                    ${renderDiagnosticRows(data.diagnostics.groupSequence.rowResults, [
+                        { key: 'guestName', label: 'Ospite' },
+                        { key: 'guestType', label: 'Tipo' },
+                        { key: 'recBirthComune', label: 'Comune record' },
+                        { key: 'recBirthProvince', label: 'Provincia record' },
+                        { key: 'errorDesc', label: 'Errore' },
+                        { key: 'errorDetail', label: 'Dettaglio' }
+                    ])}
+                </section>`;
+            }
+
+            if (data.diagnostics?.leaderMemberPairs && Array.isArray(data.diagnostics.leaderMemberPairs.rows) && data.diagnostics.leaderMemberPairs.rows.length > 0) {
+                html += `<section>
+                    <div style="font-weight:600;margin-bottom:6px">Coppie leader + membro</div>
+                    ${renderDiagnosticRows(data.diagnostics.leaderMemberPairs.rows, [
+                        { key: 'guestName', label: 'Membro' },
+                        { key: 'guestType', label: 'Tipo' },
+                        { key: 'recBirthComune', label: 'Comune record' },
+                        { key: 'recBirthProvince', label: 'Provincia record' },
+                        { key: 'errorDesc', label: 'Errore' },
+                        { key: 'errorDetail', label: 'Dettaglio' }
+                    ])}
+                </section>`;
+            }
+
+            if (data.diagnosticsError) {
+                html += `<div style="color:var(--red);font-size:12px">${escapeHtml(data.diagnosticsError)}</div>`;
+            }
+
+            html += '</div></details>';
         }
     }
     container.innerHTML = html;
