@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 
 const GUEST_ENCRYPTION_PREFIX = 'enc$guest$v1';
 
-const GUEST_FIELD_MAP = [
+export const GUEST_FIELD_MAP = [
   ['first_name', 'firstName'],
   ['last_name', 'lastName'],
   ['email', 'email'],
@@ -110,3 +110,9 @@ export function decryptGuestRow(row) {
   return guest;
 }
 
+export function isGuestRowFullyEncrypted(row) {
+  return GUEST_FIELD_MAP.every(([dbField]) => {
+    const value = row?.[dbField];
+    return isEmptyValue(value) || isEncryptedGuestValue(value);
+  });
+}
