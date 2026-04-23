@@ -191,6 +191,24 @@ export default async function handler(req, res) {
       )
     `;
     await sql`ALTER TABLE menus ADD COLUMN IF NOT EXISTS owner_user_id TEXT`;
+    await sql`ALTER TABLE menus ADD COLUMN IF NOT EXISTS migrated_to_daily BOOLEAN DEFAULT FALSE`;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS daily_menus (
+        id TEXT PRIMARY KEY,
+        owner_user_id TEXT NOT NULL,
+        menu_date DATE NOT NULL,
+        meal_type TEXT NOT NULL,
+        primo TEXT DEFAULT '',
+        secondo TEXT DEFAULT '',
+        contorno TEXT DEFAULT '',
+        dessert TEXT DEFAULT '',
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(owner_user_id, menu_date, meal_type)
+      )
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS idx_daily_menus_owner_date ON daily_menus(owner_user_id, menu_date, meal_type)`;
 
     await sql`
       CREATE TABLE IF NOT EXISTS reservation_files (
@@ -281,6 +299,40 @@ export default async function handler(req, res) {
     await sql`UPDATE compliance_certs SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
     await sql`UPDATE compliance_docs SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
     await sql`UPDATE agenda_items SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
+
+    await sql`
+      INSERT INTO daily_menus (id, owner_user_id, menu_date, meal_type, primo, secondo, contorno, dessert)
+      SELECT ranked.id, ranked.owner_user_id, ranked.menu_date, ranked.meal_type, ranked.primo, ranked.secondo, ranked.contorno, ranked.dessert
+      FROM (
+        SELECT
+          m.id,
+          COALESCE(m.owner_user_id, r.owner_user_id, ${user.id}) AS owner_user_id,
+          m.menu_date,
+          m.meal_type,
+          COALESCE(m.primo, '') AS primo,
+          COALESCE(m.secondo, '') AS secondo,
+          COALESCE(m.contorno, '') AS contorno,
+          COALESCE(m.dessert, '') AS dessert,
+          ROW_NUMBER() OVER (
+            PARTITION BY COALESCE(m.owner_user_id, r.owner_user_id, ${user.id}), m.menu_date, m.meal_type
+            ORDER BY
+              (
+                CASE WHEN COALESCE(m.primo, '') <> '' THEN 1 ELSE 0 END +
+                CASE WHEN COALESCE(m.secondo, '') <> '' THEN 1 ELSE 0 END +
+                CASE WHEN COALESCE(m.contorno, '') <> '' THEN 1 ELSE 0 END +
+                CASE WHEN COALESCE(m.dessert, '') <> '' THEN 1 ELSE 0 END
+              ) DESC,
+              r.created_at DESC NULLS LAST,
+              m.id DESC
+          ) AS row_rank
+        FROM menus m
+        LEFT JOIN reservations r ON r.id = m.reservation_id
+        WHERE COALESCE(m.migrated_to_daily, FALSE) = FALSE
+      ) ranked
+      WHERE ranked.row_rank = 1
+      ON CONFLICT (owner_user_id, menu_date, meal_type) DO NOTHING
+    `;
+    await sql`UPDATE menus SET migrated_to_daily = TRUE WHERE COALESCE(migrated_to_daily, FALSE) = FALSE`;
 
     res.status(200).json({ message: 'Tables created successfully' });
   } catch (err) {

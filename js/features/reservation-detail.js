@@ -130,7 +130,7 @@
                 <div class="detail-menu-header">
                     <div class="detail-menu-title-row">
                         <div class="menu-title-meta">
-                            <span class="detail-info-label">Menu</span>
+                            <span class="detail-info-label">Menu condiviso</span>
                             <span class="meal-plan-badge meal-plan-${reservation.mealPlan || 'BB'}">${reservation.mealPlan || 'BB'}</span>
                         </div>
                         <div class="menu-title-actions">

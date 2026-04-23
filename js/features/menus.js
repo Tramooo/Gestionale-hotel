@@ -112,6 +112,7 @@
                         </div>`).join('')}
                 </div>
             </div>`;
+        const sharedMenuNote = '<div class="menu-bb-note">Menu condiviso con tutti i gruppi presenti nello stesso giorno.</div>';
 
         if (plan === 'BB') {
             container.innerHTML = `${intolHtml}<div class="menu-bb-note">Solo colazione — nessun menu da inserire</div>`;
@@ -122,7 +123,7 @@
         const menuMap = {};
         menus.forEach((menu) => { menuMap[`${menu.date}_${menu.mealType}`] = menu; });
 
-        let html = intolHtml;
+        let html = `${intolHtml}${sharedMenuNote}`;
         let lastDate = '';
         days.forEach(({ date, mealType }) => {
             if (date !== lastDate) {
@@ -316,6 +317,11 @@
         return entry;
     }
 
+    function syncMenuInputsId(inputs, menuId) {
+        if (!menuId) return;
+        inputs.forEach((item) => { item.dataset.mid = menuId; });
+    }
+
     async function saveMenuField(input) {
         const { API, apiPost } = requireDeps();
         const { resid, date, mealtype } = input.dataset;
@@ -324,8 +330,10 @@
         ));
         const entry = buildMenuEntryFromInputs(allInputs, resid, date, mealtype);
         try {
-            await apiPost(API.menus, entry);
-            upsertCachedMenu(entry);
+            const response = await apiPost(API.menus, entry);
+            const savedMenu = response?.menu || entry;
+            syncMenuInputsId(allInputs, savedMenu.id);
+            upsertCachedMenu({ ...entry, ...savedMenu });
             setMenuSaveStatus('saved', 'Ultime modifiche salvate');
             return true;
         } catch (err) {
@@ -356,8 +364,10 @@
                 const hasContent = [entry.primo, entry.secondo, entry.contorno, entry.dessert].some(Boolean);
                 const hasExistingId = group.some((input) => input.dataset.mid);
                 if (!hasContent && !hasExistingId) continue;
-                await apiPost(API.menus, entry);
-                upsertCachedMenu(entry);
+                const response = await apiPost(API.menus, entry);
+                const savedMenu = response?.menu || entry;
+                syncMenuInputsId(group, savedMenu.id);
+                upsertCachedMenu({ ...entry, ...savedMenu });
                 savedCount += 1;
             }
 
