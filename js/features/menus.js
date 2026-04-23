@@ -207,6 +207,51 @@
         }
     }
 
+    function reservationHasMeal(reservation, targetDate, targetMealType) {
+        if (!reservation || reservation.resType === 'individual' || reservation.status === 'cancelled') return false;
+        return getMealDays(reservation).some(({ date, mealType }) => date === targetDate && mealType === targetMealType);
+    }
+
+    function getSharedMealSummary(targetDate, targetMealType) {
+        const { getReservations } = requireDeps();
+        const participants = getReservations()
+            .filter((reservation) => reservationHasMeal(reservation, targetDate, targetMealType))
+            .sort((a, b) => (b.guestCount || 0) - (a.guestCount || 0) || (a.groupName || '').localeCompare(b.groupName || ''));
+
+        const totalGuests = participants.reduce((sum, reservation) => sum + (Number(reservation.guestCount) || 0), 0);
+        const intoleranceMap = new Map();
+
+        participants.forEach((reservation) => {
+            (reservation.intolerances || []).forEach((item) => {
+                const label = (item.note || '').trim();
+                const count = parseInt(item.count, 10) || 1;
+                if (!label) return;
+
+                const key = label.toLowerCase();
+                if (!intoleranceMap.has(key)) {
+                    intoleranceMap.set(key, { label, count: 0, groups: [] });
+                }
+
+                const entry = intoleranceMap.get(key);
+                entry.count += count;
+                const groupName = reservation.groupName || 'Gruppo senza nome';
+                const existingGroup = entry.groups.find((group) => group.groupName === groupName);
+                if (existingGroup) {
+                    existingGroup.count += count;
+                } else {
+                    entry.groups.push({ groupName, count });
+                }
+            });
+        });
+
+        return {
+            participants,
+            totalGuests,
+            intolerances: Array.from(intoleranceMap.values())
+                .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
+        };
+    }
+
     function printMenu(resId) {
         const {
             escapeHtml,
@@ -222,7 +267,7 @@
         const days = getMealDays(reservation);
         const menuMap = {};
         menus.forEach((menu) => { menuMap[`${menu.date}_${menu.mealType}`] = menu; });
-        const intolerances = reservation.intolerances || [];
+        const periodGroups = new Map();
 
         const planLabels = {
             BB: 'BB – Solo Colazione',
@@ -242,27 +287,52 @@
             const menu = menuMap[`${date}_${mealType}`] || {};
             const mealLabel = mealType === 'lunch' ? 'Pranzo' : 'Cena';
             const fields = [['Primo', menu.primo], ['Secondo', menu.secondo], ['Contorno', menu.contorno], ['Dessert', menu.dessert]];
-            const veggieRow = reservation.veggieBuffet ? '<tr><td class="print-field-label">Antipasto</td><td class="print-field-val print-veggie">Buffet di verdure</td></tr>' : '';
+            const { participants, totalGuests, intolerances } = getSharedMealSummary(date, mealType);
+            const hasVeggieBuffet = participants.some((item) => item.veggieBuffet);
+            const veggieRow = hasVeggieBuffet ? '<tr><td class="print-field-label">Antipasto</td><td class="print-field-val print-veggie">Buffet di verdure</td></tr>' : '';
+
+            participants.forEach((item) => periodGroups.set(item.id, item));
+
+            const groupsHtml = participants.length > 0
+                ? participants.map((item) => `${escapeHtml(item.groupName || 'Gruppo senza nome')} (${item.guestCount || 0})`).join(' · ')
+                : 'Nessun gruppo associato';
+
+            const intolerancesHtml = intolerances.length > 0
+                ? `<div class="print-service-intol">
+                    <div class="print-service-intol-title">Intolleranze</div>
+                    <ul class="print-service-intol-list">
+                        ${intolerances.map((item) => {
+                            const groupDetails = item.groups
+                                .map((group) => `${escapeHtml(group.groupName)}: ${group.count}`)
+                                .join(' · ');
+                            return `<li><strong>${item.count}</strong> × ${escapeHtml(item.label)} <span class="print-service-intol-groups">(${groupDetails})</span></li>`;
+                        }).join('')}
+                    </ul>
+                </div>`
+                : '<div class="print-service-intol print-service-intol-empty">Nessuna intolleranza segnalata</div>';
+
             daysHtml += `<div class="print-meal">
                 <div class="print-meal-type">${mealLabel}</div>
+                <div class="print-service-meta">
+                    <div class="print-service-total">Ospiti totali: <strong>${totalGuests}</strong></div>
+                    <div class="print-service-groups">${groupsHtml}</div>
+                </div>
                 <table class="print-meal-table">
                     ${veggieRow}
                     ${fields.map(([label, val]) => `<tr><td class="print-field-label">${label}</td><td class="print-field-val">${escapeHtml(val || '—')}</td></tr>`).join('')}
                 </table>
+                ${intolerancesHtml}
             </div>`;
         });
         if (lastDate) daysHtml += '</div>';
 
-        const intolHtml = intolerances.length > 0 ? `
-            <div class="print-intol">
-                <div class="print-section-title">Intolleranze / Esigenze Alimentari</div>
-                <ul class="print-intol-list">
-                    ${intolerances.map((it) => `<li><strong>${it.count}</strong> × ${escapeHtml(it.note)}</li>`).join('')}
-                </ul>
-            </div>` : '';
+        const periodGroupsHtml = Array.from(periodGroups.values())
+            .sort((a, b) => (b.guestCount || 0) - (a.guestCount || 0) || (a.groupName || '').localeCompare(b.groupName || ''))
+            .map((item) => `${escapeHtml(item.groupName || 'Gruppo senza nome')} (${item.guestCount || 0})`)
+            .join(' · ');
 
         const html = `<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8">
-        <title>Menu – ${escapeHtml(reservation.groupName)}</title>
+        <title>Menu condiviso – ${escapeHtml(reservation.groupName)}</title>
         <style>
             * { box-sizing: border-box; margin: 0; padding: 0; }
             body { font-family: 'Georgia', serif; color: #1a1a1a; background: #fff; padding: 40px; max-width: 860px; margin: 0 auto; font-size: 16px; line-height: 1.45; }
@@ -271,28 +341,36 @@
             .print-group { font-size: 32px; font-weight: bold; margin-bottom: 6px; }
             .print-dates { font-size: 18px; color: #555; margin-bottom: 4px; }
             .print-plan { display: inline-block; margin-top: 10px; font-size: 15px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; background: #f0f0f0; padding: 6px 16px; border-radius: 20px; color: #333; }
-            .print-intol { margin-bottom: 32px; padding: 18px 22px; background: #fff8f0; border-left: 4px solid #e8a020; border-radius: 4px; }
-            .print-section-title { font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #888; margin-bottom: 10px; }
-            .print-intol-list { padding-left: 18px; }
-            .print-intol-list li { font-size: 17px; margin-bottom: 6px; }
+            .print-shared-summary { margin-top: 18px; font-size: 15px; color: #555; }
+            .print-groups-line { margin-top: 10px; font-size: 15px; color: #333; }
             .print-day { margin-bottom: 28px; break-inside: avoid; }
             .print-day-header { font-size: 16px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #888; border-bottom: 1px solid #ddd; padding-bottom: 6px; margin-bottom: 12px; }
             .print-meal { margin-bottom: 18px; padding-left: 14px; border-left: 3px solid #1a1a1a; }
             .print-meal-type { font-size: 15px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #1a1a1a; margin-bottom: 8px; }
+            .print-service-meta { margin-bottom: 10px; padding: 10px 12px; background: #f7f7f7; border-radius: 6px; }
+            .print-service-total { font-size: 17px; color: #1a1a1a; margin-bottom: 4px; }
+            .print-service-groups { font-size: 14px; color: #555; }
             .print-meal-table { width: 100%; border-collapse: collapse; }
             .print-field-label { font-size: 15px; color: #888; width: 110px; padding: 4px 0; vertical-align: top; }
             .print-field-val { font-size: 18px; color: #1a1a1a; padding: 4px 0; }
             .print-veggie { color: #27ae60; font-style: italic; }
+            .print-service-intol { margin-top: 12px; padding: 12px 14px; background: #fff8f0; border-left: 4px solid #e8a020; border-radius: 4px; }
+            .print-service-intol-empty { color: #777; }
+            .print-service-intol-title { font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #888; margin-bottom: 8px; }
+            .print-service-intol-list { padding-left: 18px; }
+            .print-service-intol-list li { font-size: 16px; margin-bottom: 6px; }
+            .print-service-intol-groups { color: #666; font-size: 14px; }
             .print-footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #ddd; text-align: center; font-size: 13px; color: #aaa; }
             @page { margin: 0; }
             @media print { body { padding: 20px; } }
         </style>
         </head><body>
         <div class="print-header">
-            <div class="print-dates">${formatDateDisplay(reservation.checkin)} — ${formatDateDisplay(reservation.checkout)} &nbsp;·&nbsp; ${nightsBetween(reservation.checkin, reservation.checkout)} notti &nbsp;·&nbsp; ${reservation.guestCount || 0} ospiti</div>
+            <div class="print-dates">${formatDateDisplay(reservation.checkin)} — ${formatDateDisplay(reservation.checkout)} &nbsp;·&nbsp; ${nightsBetween(reservation.checkin, reservation.checkout)} notti</div>
             <div class="print-plan">${planLabels[plan] || plan}</div>
+            <div class="print-shared-summary">Menu condiviso tra i gruppi presenti negli stessi servizi del periodo selezionato.</div>
+            <div class="print-groups-line">${periodGroupsHtml || 'Nessun gruppo coinvolto nel periodo'}</div>
         </div>
-        ${intolHtml}
         ${daysHtml || '<p style="color:#888;text-align:center">Nessun menu da visualizzare</p>'}
         <div class="print-footer">Stampato il ${new Date().toLocaleDateString('it-IT')}</div>
         </body></html>`;
