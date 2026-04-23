@@ -335,40 +335,41 @@
         <title>Menu condiviso – ${escapeHtml(reservation.groupName)}</title>
         <style>
             * { box-sizing: border-box; margin: 0; padding: 0; }
-            body { font-family: 'Georgia', serif; color: #1a1a1a; background: #fff; padding: 40px; max-width: 860px; margin: 0 auto; font-size: 16px; line-height: 1.45; }
-            .print-header { text-align: center; margin-bottom: 36px; padding-bottom: 24px; border-bottom: 2px solid #1a1a1a; }
-            .print-hotel { font-size: 15px; letter-spacing: 0.15em; text-transform: uppercase; color: #666; margin-bottom: 8px; }
-            .print-group { font-size: 32px; font-weight: bold; margin-bottom: 6px; }
-            .print-dates { font-size: 18px; color: #555; margin-bottom: 4px; }
-            .print-plan { display: inline-block; margin-top: 10px; font-size: 15px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; background: #f0f0f0; padding: 6px 16px; border-radius: 20px; color: #333; }
-            .print-shared-summary { margin-top: 18px; font-size: 15px; color: #555; }
-            .print-groups-line { margin-top: 10px; font-size: 15px; color: #333; }
-            .print-day { margin-bottom: 28px; break-inside: avoid; }
-            .print-day-header { font-size: 16px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #888; border-bottom: 1px solid #ddd; padding-bottom: 6px; margin-bottom: 12px; }
-            .print-meal { margin-bottom: 18px; padding-left: 14px; border-left: 3px solid #1a1a1a; }
-            .print-meal-type { font-size: 15px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #1a1a1a; margin-bottom: 8px; }
-            .print-service-meta { margin-bottom: 10px; padding: 10px 12px; background: #f7f7f7; border-radius: 6px; }
-            .print-service-total { font-size: 17px; color: #1a1a1a; margin-bottom: 4px; }
-            .print-service-groups { font-size: 14px; color: #555; }
+            body { font-family: 'Georgia', serif; color: #1a1a1a; background: #fff; padding: 22px 24px; max-width: 860px; margin: 0 auto; font-size: 14px; line-height: 1.32; }
+            .print-header { text-align: center; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 2px solid #1a1a1a; }
+            .print-hotel { font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: #666; margin-bottom: 6px; }
+            .print-group { font-size: 26px; font-weight: bold; margin-bottom: 4px; }
+            .print-dates { font-size: 15px; color: #555; margin-bottom: 3px; }
+            .print-plan { display: inline-block; margin-top: 8px; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; background: #f0f0f0; padding: 5px 12px; border-radius: 14px; color: #333; }
+            .print-groups-line { margin-top: 8px; font-size: 13px; color: #333; line-height: 1.28; }
+            .print-day { margin-bottom: 18px; break-inside: avoid; page-break-inside: avoid; }
+            .print-day-header { font-size: 14px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #888; border-bottom: 1px solid #ddd; padding-bottom: 4px; margin-bottom: 8px; }
+            .print-meal { margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #1a1a1a; }
+            .print-meal-type { font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #1a1a1a; margin-bottom: 5px; }
+            .print-service-meta { margin-bottom: 7px; padding: 7px 9px; background: #f7f7f7; border-radius: 4px; }
+            .print-service-total { font-size: 14px; color: #1a1a1a; margin-bottom: 2px; }
+            .print-service-groups { font-size: 12px; color: #555; line-height: 1.25; }
             .print-meal-table { width: 100%; border-collapse: collapse; }
-            .print-field-label { font-size: 15px; color: #888; width: 110px; padding: 4px 0; vertical-align: top; }
-            .print-field-val { font-size: 18px; color: #1a1a1a; padding: 4px 0; }
+            .print-field-label { font-size: 13px; color: #888; width: 86px; padding: 2px 0; vertical-align: top; }
+            .print-field-val { font-size: 15px; color: #1a1a1a; padding: 2px 0; }
             .print-veggie { color: #27ae60; font-style: italic; }
-            .print-service-intol { margin-top: 12px; padding: 12px 14px; background: #fff8f0; border-left: 4px solid #e8a020; border-radius: 4px; }
+            .print-service-intol { margin-top: 8px; padding: 8px 10px; background: #fff8f0; border-left: 4px solid #e8a020; border-radius: 4px; }
             .print-service-intol-empty { color: #777; }
-            .print-service-intol-title { font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #888; margin-bottom: 8px; }
-            .print-service-intol-list { padding-left: 18px; }
-            .print-service-intol-list li { font-size: 16px; margin-bottom: 6px; }
-            .print-service-intol-groups { color: #666; font-size: 14px; }
-            .print-footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #ddd; text-align: center; font-size: 13px; color: #aaa; }
-            @page { margin: 0; }
-            @media print { body { padding: 20px; } }
+            .print-service-intol-title { font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #888; margin-bottom: 5px; }
+            .print-service-intol-list { padding-left: 16px; }
+            .print-service-intol-list li { font-size: 13px; margin-bottom: 3px; }
+            .print-service-intol-groups { color: #666; font-size: 12px; }
+            .print-footer { margin-top: 22px; padding-top: 10px; border-top: 1px solid #ddd; text-align: center; font-size: 11px; color: #aaa; }
+            @page { margin: 8mm 9mm; }
+            @media print {
+                body { padding: 0; font-size: 13.5px; }
+                .print-day { break-inside: avoid-page; }
+            }
         </style>
         </head><body>
         <div class="print-header">
             <div class="print-dates">${formatDateDisplay(reservation.checkin)} — ${formatDateDisplay(reservation.checkout)} &nbsp;·&nbsp; ${nightsBetween(reservation.checkin, reservation.checkout)} notti</div>
             <div class="print-plan">${planLabels[plan] || plan}</div>
-            <div class="print-shared-summary">Menu condiviso tra i gruppi presenti negli stessi servizi del periodo selezionato.</div>
             <div class="print-groups-line">${periodGroupsHtml || 'Nessun gruppo coinvolto nel periodo'}</div>
         </div>
         ${daysHtml || '<p style="color:#888;text-align:center">Nessun menu da visualizzare</p>'}
