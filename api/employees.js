@@ -20,6 +20,7 @@ export default async function handler(req, res) {
       const employees = await getEmployeesWithSafeOrdering();
       const workEntries = await sql`SELECT * FROM work_entries WHERE owner_user_id = ${user.id} ORDER BY work_date DESC`;
       const monthOverrides = await sql`SELECT * FROM employee_month_overrides WHERE owner_user_id = ${user.id} ORDER BY year_month DESC`;
+      const advances = await sql`SELECT * FROM employee_advances WHERE owner_user_id = ${user.id} ORDER BY advance_date DESC`;
       return res.status(200).json({
         employees: employees.map(e => ({
           id: e.id,
@@ -50,6 +51,15 @@ export default async function handler(req, res) {
           yearMonth: o.year_month,
           payType: o.pay_type,
           payRate: parseFloat(o.pay_rate) || 0,
+        })),
+        advances: advances.map(a => ({
+          id: a.id,
+          employeeId: a.employee_id,
+          advanceDate: a.advance_date ? new Date(a.advance_date).toISOString().split('T')[0] : null,
+          yearMonth: a.year_month,
+          amount: parseFloat(a.amount) || 0,
+          notes: a.notes || '',
+          createdAt: a.created_at || null,
         }))
       });
     }
@@ -72,6 +82,16 @@ export default async function handler(req, res) {
           INSERT INTO employee_month_overrides (id, owner_user_id, employee_id, year_month, pay_type, pay_rate)
           VALUES (${o.id}, ${user.id}, ${o.employeeId}, ${o.yearMonth}, ${o.payType}, ${o.payRate || 0})
           ON CONFLICT (employee_id, year_month) DO UPDATE SET pay_type=${o.payType}, pay_rate=${o.payRate || 0}, id=${o.id}, owner_user_id=${user.id}
+        `;
+        return res.status(201).json({ success: true });
+      }
+
+      if (type === 'advance') {
+        const a = req.body;
+        const yearMonth = a.yearMonth || String(a.advanceDate || '').substring(0, 7);
+        await sql`
+          INSERT INTO employee_advances (id, owner_user_id, employee_id, advance_date, year_month, amount, notes, created_at)
+          VALUES (${a.id}, ${user.id}, ${a.employeeId}, ${a.advanceDate}, ${yearMonth}, ${a.amount || 0}, ${a.notes || null}, ${a.createdAt || new Date().toISOString()})
         `;
         return res.status(201).json({ success: true });
       }
@@ -110,6 +130,17 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true });
       }
 
+      if (type === 'advance') {
+        const a = req.body;
+        const yearMonth = a.yearMonth || String(a.advanceDate || '').substring(0, 7);
+        await sql`
+          UPDATE employee_advances SET employee_id=${a.employeeId}, advance_date=${a.advanceDate},
+          year_month=${yearMonth}, amount=${a.amount || 0}, notes=${a.notes || null}
+          WHERE id=${a.id} AND owner_user_id = ${user.id}
+        `;
+        return res.status(200).json({ success: true });
+      }
+
       if (type === 'reorder') {
         const employees = Array.isArray(req.body?.employees) ? req.body.employees : [];
         await Promise.all(employees.map((employee, index) => sql`
@@ -136,6 +167,8 @@ export default async function handler(req, res) {
         await sql`DELETE FROM work_entries WHERE id = ${id} AND owner_user_id = ${user.id}`;
       } else if (type === 'monthOverride') {
         await sql`DELETE FROM employee_month_overrides WHERE id = ${id} AND owner_user_id = ${user.id}`;
+      } else if (type === 'advance') {
+        await sql`DELETE FROM employee_advances WHERE id = ${id} AND owner_user_id = ${user.id}`;
       } else {
         await sql`DELETE FROM employees WHERE id = ${id} AND owner_user_id = ${user.id}`;
       }

@@ -42,6 +42,18 @@
         return (payRate / 30) * daysWorked;
     }
 
+    function getEmployeeMonthAdvances(empId, yearMonth) {
+        const { getEmployeeAdvances } = requireDeps();
+        return getEmployeeAdvances()
+            .filter((advance) => advance.employeeId === empId && advance.yearMonth === yearMonth)
+            .sort((a, b) => String(b.advanceDate || '').localeCompare(String(a.advanceDate || '')));
+    }
+
+    function calcAdvanceTotal(empId, yearMonth) {
+        return getEmployeeMonthAdvances(empId, yearMonth)
+            .reduce((sum, advance) => sum + (parseFloat(advance.amount) || 0), 0);
+    }
+
     function empMonthNav(delta) {
         const { getEmpViewMonth, setEmpViewMonth } = requireDeps();
         const next = new Date(getEmpViewMonth());
@@ -94,13 +106,15 @@
             if (isToday) cls += ' emp-tbl-today';
             headerCells += `<th class="${cls}"><span class="emp-tbl-dow">${dayHeaders[dow]}</span><span class="emp-tbl-dnum">${d}</span></th>`;
         }
-        headerCells += `<th class="emp-tbl-total">${t('emp.totalCol')}</th><th class="emp-tbl-pay">${t('emp.estimatedPay')}</th>`;
+        headerCells += `<th class="emp-tbl-total">${t('emp.totalCol')}</th><th class="emp-tbl-pay">${t('emp.grossPay')}</th><th class="emp-tbl-advance">${t('emp.advances')}</th><th class="emp-tbl-net">${t('emp.netPay')}</th>`;
 
         let bodyRows = '';
         filtered.forEach((employee) => {
             const stats = getEmployeeMonthStats(employee.id, year, month);
             const effPay = getEmpMonthPay(employee, monthStr);
             const estimated = calcEstimatedPay(employee, stats.daysWorked, stats.totalHours, monthStr);
+            const advanceTotal = calcAdvanceTotal(employee.id, monthStr);
+            const netPay = Math.max(0, estimated - advanceTotal);
             const entryMap = {};
             stats.entries.forEach((entry) => { entryMap[entry.workDate] = entry; });
 
@@ -141,12 +155,14 @@
                 : stats.daysWorked + 'g';
             row += `<td class="emp-tbl-total">${totalDisplay}</td>`;
             row += `<td class="emp-tbl-pay">€${estimated.toFixed(0)}</td>`;
+            row += `<td class="emp-tbl-advance ${advanceTotal > 0 ? 'has-advance' : ''}" onclick="openEmployeeDetail('${employee.id}')">€${advanceTotal.toFixed(0)}</td>`;
+            row += `<td class="emp-tbl-net">€${netPay.toFixed(0)}</td>`;
             bodyRows += `<tr data-emp-row="${employee.id}">${row}</tr>`;
         });
 
         let colgroup = '<colgroup><col style="width:140px"><col style="width:40px">';
         for (let d = 1; d <= dim; d++) colgroup += '<col>';
-        colgroup += '<col style="width:56px"><col style="width:64px"></colgroup>';
+        colgroup += '<col style="width:56px"><col style="width:64px"><col style="width:64px"><col style="width:64px"></colgroup>';
 
         grid.innerHTML = `
             <div class="emp-table-wrap">
@@ -646,6 +662,9 @@
         const stats = getEmployeeMonthStats(empId, year, month);
         const effPay = getEmpMonthPay(emp, detailMonthStr);
         const estimated = calcEstimatedPay(emp, stats.daysWorked, stats.totalHours, detailMonthStr);
+        const advances = getEmployeeMonthAdvances(empId, detailMonthStr);
+        const advanceTotal = calcAdvanceTotal(empId, detailMonthStr);
+        const netPay = Math.max(0, estimated - advanceTotal);
 
         document.getElementById('empDetailName').textContent = `${emp.lastName} ${emp.firstName}`;
         const isOverridden = getMonthPayOverrides().some((entry) => entry.employeeId === empId && entry.yearMonth === detailMonthStr);
@@ -659,6 +678,8 @@
         const entryMap = {};
         stats.entries.forEach((entry) => { entryMap[entry.workDate] = entry; });
         const todayStr = formatDate(new Date());
+        const defaultAdvanceDate = todayStr.startsWith(detailMonthStr) ? todayStr : `${detailMonthStr}-01`;
+        const lastAdvanceDate = `${detailMonthStr}-${String(dim).padStart(2, '0')}`;
 
         let calCells = '';
         calCells += dayHeaders.map((day) => `<div class="emp-cal-header">${day}</div>`).join('');
@@ -687,6 +708,17 @@
             }
         }
 
+        const advanceRows = advances.map((advance) => `
+            <tr>
+                <td>${escapeHtml(advance.advanceDate || '')}</td>
+                <td>${escapeHtml(advance.notes || '-')}</td>
+                <td class="emp-advance-amount">€${(parseFloat(advance.amount) || 0).toFixed(2)}</td>
+                <td class="emp-advance-actions">
+                    <button type="button" class="btn btn-ghost btn-sm" onclick="deleteEmployeeAdvance('${advance.id}','${empId}')">${t('common.delete')}</button>
+                </td>
+            </tr>
+        `).join('');
+
         const body = document.getElementById('employeeDetailBody');
         body.innerHTML = `
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
@@ -710,9 +742,55 @@
                         <div class="label">${t('emp.totalHours')}</div>
                     </div>
                     <div class="emp-summary-card">
-                        <div class="value" style="color:var(--green)">&euro;${estimated.toFixed(2)}</div>
-                        <div class="label">${t('emp.estimatedPay')}</div>
+                        <div class="value">&euro;${estimated.toFixed(2)}</div>
+                        <div class="label">${t('emp.grossPay')}</div>
                     </div>
+                    <div class="emp-summary-card">
+                        <div class="value emp-advance-value">&euro;${advanceTotal.toFixed(2)}</div>
+                        <div class="label">${t('emp.advances')}</div>
+                    </div>
+                    <div class="emp-summary-card">
+                        <div class="value" style="color:var(--green)">&euro;${netPay.toFixed(2)}</div>
+                        <div class="label">${t('emp.netPay')}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="emp-detail-section">
+                <h4>${t('emp.advances')}</h4>
+                <form class="emp-advance-form" onsubmit="saveEmployeeAdvance(event)">
+                    <input type="hidden" id="employeeAdvanceEmployeeId" value="${empId}">
+                    <input type="hidden" id="employeeAdvanceYearMonth" value="${detailMonthStr}">
+                    <div class="emp-advance-fields">
+                        <label>
+                            <span>${t('emp.date')}</span>
+                            <input type="date" id="employeeAdvanceDate" value="${defaultAdvanceDate}" min="${detailMonthStr}-01" max="${lastAdvanceDate}" required>
+                        </label>
+                        <label>
+                            <span>${t('emp.advanceAmount')}</span>
+                            <input type="number" id="employeeAdvanceAmount" min="0.01" step="0.01" placeholder="0.00" required>
+                        </label>
+                        <label>
+                            <span>${t('res.notes')}</span>
+                            <input type="text" id="employeeAdvanceNotes" placeholder="${t('emp.advanceNotesPlaceholder')}">
+                        </label>
+                        <button type="submit" class="btn btn-secondary btn-sm">${t('emp.addAdvance')}</button>
+                    </div>
+                </form>
+                <div class="emp-advance-list">
+                    ${advances.length ? `
+                        <table class="emp-advance-table">
+                            <thead>
+                                <tr>
+                                    <th>${t('emp.date')}</th>
+                                    <th>${t('res.notes')}</th>
+                                    <th>${t('emp.advanceAmount')}</th>
+                                    <th>${t('emp.actions')}</th>
+                                </tr>
+                            </thead>
+                            <tbody>${advanceRows}</tbody>
+                        </table>
+                    ` : `<div class="emp-no-data">${t('emp.noAdvances')}</div>`}
                 </div>
             </div>
 
@@ -792,6 +870,77 @@
         }
         renderEmployees();
         openEmployeeDetail(empId);
+    }
+
+    async function saveEmployeeAdvance(event) {
+        const {
+            API,
+            apiPost,
+            generateId,
+            getEmployeeAdvances,
+            renderManagement,
+            setEmployeeAdvances,
+            showToast,
+            t
+        } = requireDeps();
+        event.preventDefault();
+
+        const empId = document.getElementById('employeeAdvanceEmployeeId').value;
+        const advanceDate = document.getElementById('employeeAdvanceDate').value;
+        const amount = parseFloat(document.getElementById('employeeAdvanceAmount').value) || 0;
+        if (!empId || !advanceDate || amount <= 0) return;
+
+        const data = {
+            id: generateId(),
+            employeeId: empId,
+            advanceDate,
+            yearMonth: document.getElementById('employeeAdvanceYearMonth').value || advanceDate.substring(0, 7),
+            amount,
+            notes: document.getElementById('employeeAdvanceNotes').value.trim(),
+            createdAt: new Date().toISOString()
+        };
+
+        try {
+            await apiPost(API.employees + '?type=advance', data);
+            setEmployeeAdvances([...getEmployeeAdvances(), data]);
+            showToast(t('toast.advanceSaved'));
+            renderEmployees();
+            renderManagement();
+            openEmployeeDetail(empId);
+        } catch (error) {
+            console.error('Employee advance save error:', error);
+            showToast(t('toast.advanceSaveFail'), 'error');
+        }
+    }
+
+    async function deleteEmployeeAdvance(advanceId, empId) {
+        const {
+            API,
+            getEmployeeAdvances,
+            renderManagement,
+            setEmployeeAdvances,
+            showConfirmDialog,
+            showToast,
+            t
+        } = requireDeps();
+        if (!advanceId || !await showConfirmDialog(t('confirm.deleteAdvance'), {
+            title: t('common.confirmation'),
+            confirmLabel: t('common.delete'),
+            cancelLabel: t('common.cancel'),
+            intent: 'danger'
+        })) return;
+
+        try {
+            await fetch(`${API.employees}?id=${advanceId}&type=advance`, { method: 'DELETE', credentials: 'include' });
+            setEmployeeAdvances(getEmployeeAdvances().filter((advance) => advance.id !== advanceId));
+            showToast(t('toast.advanceDeleted'));
+            renderEmployees();
+            renderManagement();
+            openEmployeeDetail(empId);
+        } catch (error) {
+            console.error('Employee advance delete error:', error);
+            showToast(t('toast.advanceDeleteFail'), 'error');
+        }
     }
 
     function closeWorkEntryModal() {
@@ -887,9 +1036,11 @@
 
     global.GroupStayEmployees = {
         calcEstimatedPay,
+        calcAdvanceTotal,
         closePayTypePopover,
         closeTimePopover,
         closeWorkEntryModal,
+        deleteEmployeeAdvance,
         deleteEmployee,
         deletePayTypeOverride,
         deleteTimePopover,
@@ -899,6 +1050,7 @@
         empMonthNav,
         empTableToggle,
         getDaysInMonth,
+        getEmployeeMonthAdvances,
         getEmployeeMonthStats,
         getEmpMonthPay,
         init(nextDeps) {
@@ -913,6 +1065,7 @@
         openTimePopover,
         renderEmployees,
         saveEmployee,
+        saveEmployeeAdvance,
         savePayTypeOverride,
         saveTimePopover,
         saveWorkEntry,

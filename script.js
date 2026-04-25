@@ -307,12 +307,14 @@ window.GroupStayEmployees.init({
     generateId,
     getEmployees: () => employees,
     getEmpViewMonth: () => empViewMonth,
+    getEmployeeAdvances: () => employeeAdvances,
     getMonthPayOverrides: () => monthPayOverrides,
     getWorkEntries: () => workEntries,
     openModal,
     renderManagement,
     setEmployees: (nextEmployees) => { employees = nextEmployees; },
     setEmpViewMonth: (nextMonth) => { empViewMonth = nextMonth; },
+    setEmployeeAdvances: (nextAdvances) => { employeeAdvances = nextAdvances; },
     setMonthPayOverrides: (nextOverrides) => { monthPayOverrides = nextOverrides; },
     setWorkEntries: (nextEntries) => { workEntries = nextEntries; },
     showConfirmDialog,
@@ -327,6 +329,7 @@ window.GroupStayManagement.init({
     getDaysInMonth,
     getEmployeeMonthStats,
     getEmployees: () => employees,
+    getEmployeeAdvances: () => employeeAdvances,
     getEmpMonthPay,
     getEmpViewMonth: () => empViewMonth,
     getMonthPayOverrides: () => monthPayOverrides,
@@ -388,7 +391,7 @@ function saveDataCache() {
         if (!currentUser?.id) return;
         localStorage.setItem(`${CACHE_KEY}:${currentUser.id}`, JSON.stringify({
             ts: Date.now(),
-            reservations, rooms, guests, employees, workEntries, complianceCerts, complianceDocs, agendaItems
+            reservations, rooms, guests, employees, workEntries, monthPayOverrides, employeeAdvances, complianceCerts, complianceDocs, agendaItems
         }));
     } catch (e) {} // ignore quota errors
 }
@@ -405,6 +408,8 @@ function loadDataCache() {
         guests         = cache.guests         || [];
         employees      = cache.employees      || [];
         workEntries    = cache.workEntries    || [];
+        monthPayOverrides = cache.monthPayOverrides || [];
+        employeeAdvances = cache.employeeAdvances || [];
         complianceCerts = cache.complianceCerts || [];
         complianceDocs  = cache.complianceDocs  || [];
         agendaItems     = cache.agendaItems     || [];
@@ -425,7 +430,7 @@ async function loadAllData(retryOnUnauthorized = true) {
             apiGet(API.reservations),
             apiGet(API.rooms),
             apiGet(API.guests),
-            apiGet(API.employees).catch(() => ({ employees: [], workEntries: [] })),
+            apiGet(API.employees).catch(() => ({ employees: [], workEntries: [], monthOverrides: [], advances: [] })),
             apiGet(API.agenda).catch(() => [])
         ]);
         reservations    = resData;
@@ -434,6 +439,7 @@ async function loadAllData(retryOnUnauthorized = true) {
         employees        = empData.employees      || [];
         workEntries      = empData.workEntries    || [];
         monthPayOverrides = empData.monthOverrides || [];
+        employeeAdvances = empData.advances || [];
         agendaItems     = agendaData;
         computeRoomStatuses();
         saveDataCache();
@@ -488,6 +494,7 @@ let assignmentData = []; // current working copy of room assignments
 let employees = [];
 let workEntries = [];
 let monthPayOverrides = [];
+let employeeAdvances = [];
 let complianceCerts = [];
 let complianceDocs = [];
 let agendaItems = [];
@@ -724,6 +731,7 @@ async function logoutUser() {
     employees = [];
     workEntries = [];
     monthPayOverrides = [];
+    employeeAdvances = [];
     complianceCerts = [];
     complianceDocs = [];
     agendaItems = [];
@@ -1197,6 +1205,13 @@ const TRANSLATIONS = {
     'emp.startTime': { en: 'Start', it: 'Inizio' },
     'emp.endTime': { en: 'End', it: 'Fine' },
     'emp.totalCol': { en: 'Total', it: 'Totale' },
+    'emp.grossPay': { en: 'Gross Pay', it: 'Lordo' },
+    'emp.advances': { en: 'Advances', it: 'Acconti' },
+    'emp.netPay': { en: 'Net Pay', it: 'Netto' },
+    'emp.advanceAmount': { en: 'Amount', it: 'Importo' },
+    'emp.addAdvance': { en: 'Add Advance', it: 'Aggiungi Acconto' },
+    'emp.noAdvances': { en: 'No advances recorded this month', it: 'Nessun acconto registrato questo mese' },
+    'emp.advanceNotesPlaceholder': { en: 'e.g. cash advance', it: 'es. acconto contanti' },
     'emp.save': { en: 'Save', it: 'Salva' },
     'emp.delete': { en: 'Delete', it: 'Elimina' },
     'emp.employee': { en: 'Employee', it: 'Dipendente' },
@@ -1209,8 +1224,13 @@ const TRANSLATIONS = {
     'toast.workSaveFail': { en: 'Failed to save work entry', it: 'Salvataggio giornata fallito' },
     'toast.workDeleted': { en: 'Work entry deleted', it: 'Giornata eliminata' },
     'toast.workDeleteFail': { en: 'Failed to delete work entry', it: 'Eliminazione giornata fallita' },
+    'toast.advanceSaved': { en: 'Advance saved', it: 'Acconto salvato' },
+    'toast.advanceSaveFail': { en: 'Failed to save advance', it: 'Salvataggio acconto fallito' },
+    'toast.advanceDeleted': { en: 'Advance deleted', it: 'Acconto eliminato' },
+    'toast.advanceDeleteFail': { en: 'Failed to delete advance', it: 'Eliminazione acconto fallita' },
     'confirm.deleteEmployee': { en: 'Delete this employee and all their work records?', it: 'Eliminare questo dipendente e tutte le sue presenze?' },
     'confirm.deleteWorkEntry': { en: 'Delete this work entry?', it: 'Eliminare questa giornata?' },
+    'confirm.deleteAdvance': { en: 'Delete this salary advance?', it: 'Eliminare questo acconto sullo stipendio?' },
     'assign.roomRequest': { en: 'Room request notes', it: 'Note richiesta camere' },
     'assign.roomRequestPlaceholder': { en: 'e.g. 10 double, 5 twin, 3 quad...', it: 'es. 10 doppie, 5 twin, 3 quadruple...' },
     'assign.print': { en: 'Print', it: 'Stampa' },
@@ -4044,6 +4064,8 @@ function getDaysInMonth(year, month) { return window.GroupStayEmployees.getDaysI
 function getEmployeeMonthStats(empId, year, month) { return window.GroupStayEmployees.getEmployeeMonthStats(empId, year, month); }
 function getEmpMonthPay(emp, yearMonth) { return window.GroupStayEmployees.getEmpMonthPay(emp, yearMonth); }
 function calcEstimatedPay(emp, daysWorked, totalHours, yearMonth) { return window.GroupStayEmployees.calcEstimatedPay(emp, daysWorked, totalHours, yearMonth); }
+function getEmployeeMonthAdvances(empId, yearMonth) { return window.GroupStayEmployees.getEmployeeMonthAdvances(empId, yearMonth); }
+function calcAdvanceTotal(empId, yearMonth) { return window.GroupStayEmployees.calcAdvanceTotal(empId, yearMonth); }
 
 function calcReservationRevenue(r) { return window.GroupStayManagement.calcReservationRevenue(r); }
 function renderManagement() { return window.GroupStayManagement.renderManagement(); }
@@ -4079,6 +4101,8 @@ function openNewWorkEntry(empId) { return window.GroupStayEmployees.openNewWorkE
 function openEditWorkEntry(workId) { return window.GroupStayEmployees.openEditWorkEntry(workId); }
 async function saveWorkEntry(e) { return window.GroupStayEmployees.saveWorkEntry(e); }
 async function deleteWorkEntry(workId, empId) { return window.GroupStayEmployees.deleteWorkEntry(workId, empId); }
+async function saveEmployeeAdvance(e) { return window.GroupStayEmployees.saveEmployeeAdvance(e); }
+async function deleteEmployeeAdvance(advanceId, empId) { return window.GroupStayEmployees.deleteEmployeeAdvance(advanceId, empId); }
 
 // =============================================
 // INIT

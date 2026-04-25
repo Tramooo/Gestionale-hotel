@@ -31,6 +31,7 @@
             getEmployeeMonthStats,
             getEmpMonthPay,
             calcEstimatedPay,
+            getEmployeeAdvances,
             nightsBetween,
             renderEmployees,
             t
@@ -104,41 +105,54 @@
         if (breakdownEl) {
             const empCosts = [];
             let totalMonthCost = 0;
+            let totalAdvances = 0;
             const breakdownMonthStr = `${empYear}-${String(empMonth + 1).padStart(2, '0')}`;
             employees.forEach((employee) => {
                 const stats = getEmployeeMonthStats(employee.id, empYear, empMonth);
                 const cost = calcEstimatedPay(employee, stats.daysWorked, stats.totalHours, breakdownMonthStr);
+                const advances = getEmployeeAdvances()
+                    .filter((advance) => advance.employeeId === employee.id && advance.yearMonth === breakdownMonthStr)
+                    .reduce((sum, advance) => sum + (parseFloat(advance.amount) || 0), 0);
                 totalMonthCost += cost;
-                if (cost > 0 || stats.daysWorked > 0) empCosts.push({ employee, cost, stats });
+                totalAdvances += advances;
+                if (cost > 0 || advances > 0 || stats.daysWorked > 0) empCosts.push({ employee, cost, advances, stats });
             });
 
             if (empCosts.length > 0) {
                 breakdownEl.style.display = '';
                 const monthNames = t('months.full');
                 const monthLabel = `${monthNames[empMonth]} ${empYear}`;
-                const rows = empCosts.map(({ employee, cost, stats }) => {
+                const rows = empCosts.map(({ employee, cost, advances, stats }) => {
                     const effPay = getEmpMonthPay(employee, breakdownMonthStr);
                     const detail = effPay.payType === 'hourly'
                         ? `${stats.totalHours % 1 === 0 ? stats.totalHours : stats.totalHours.toFixed(1)}h × €${effPay.payRate.toFixed(2)}/h`
                         : `${stats.daysWorked}g / 30 × €${effPay.payRate.toFixed(0)}`;
+                    const net = Math.max(0, cost - advances);
                     return `<tr>
                         <td style="padding:8px 12px;font-weight:500">${escapeHtml(employee.lastName)} ${escapeHtml(employee.firstName)}</td>
                         <td style="padding:8px 12px;color:var(--text-secondary);font-size:13px">${detail}</td>
                         <td style="padding:8px 12px;text-align:right;font-weight:600;font-variant-numeric:tabular-nums">€${Math.round(cost).toLocaleString()}</td>
+                        <td style="padding:8px 12px;text-align:right;color:var(--orange);font-weight:600;font-variant-numeric:tabular-nums">€${Math.round(advances).toLocaleString()}</td>
+                        <td style="padding:8px 12px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums">€${Math.round(net).toLocaleString()}</td>
                     </tr>`;
                 }).join('');
+                const totalNet = Math.max(0, totalMonthCost - totalAdvances);
                 breakdownEl.innerHTML = `
                     <div style="padding:12px 12px 4px;font-weight:600;font-size:14px">Costo dipendenti — ${monthLabel}</div>
                     <table style="width:100%;border-collapse:collapse">
                         <thead><tr>
                             <th style="padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--text-secondary);border-bottom:1px solid var(--border-light)">Dipendente</th>
                             <th style="padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--text-secondary);border-bottom:1px solid var(--border-light)">Dettaglio</th>
-                            <th style="padding:10px 12px;text-align:right;font-size:11px;text-transform:uppercase;color:var(--text-secondary);border-bottom:1px solid var(--border-light)">Costo</th>
+                            <th style="padding:10px 12px;text-align:right;font-size:11px;text-transform:uppercase;color:var(--text-secondary);border-bottom:1px solid var(--border-light)">Lordo</th>
+                            <th style="padding:10px 12px;text-align:right;font-size:11px;text-transform:uppercase;color:var(--text-secondary);border-bottom:1px solid var(--border-light)">Acconti</th>
+                            <th style="padding:10px 12px;text-align:right;font-size:11px;text-transform:uppercase;color:var(--text-secondary);border-bottom:1px solid var(--border-light)">Netto</th>
                         </tr></thead>
                         <tbody>${rows}
                             <tr style="border-top:2px solid var(--border-light)">
                                 <td colspan="2" style="padding:10px 12px;font-weight:700">Totale mese</td>
                                 <td style="padding:10px 12px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums">€${Math.round(totalMonthCost).toLocaleString()}</td>
+                                <td style="padding:10px 12px;text-align:right;color:var(--orange);font-weight:700;font-variant-numeric:tabular-nums">€${Math.round(totalAdvances).toLocaleString()}</td>
+                                <td style="padding:10px 12px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums">€${Math.round(totalNet).toLocaleString()}</td>
                             </tr>
                         </tbody>
                     </table>`;

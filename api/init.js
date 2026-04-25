@@ -167,6 +167,19 @@ export default async function handler(req, res) {
     `;
     await sql`ALTER TABLE employee_month_overrides ADD COLUMN IF NOT EXISTS owner_user_id TEXT`;
 
+    await sql`
+      CREATE TABLE IF NOT EXISTS employee_advances (
+        id TEXT PRIMARY KEY,
+        employee_id TEXT REFERENCES employees(id) ON DELETE CASCADE,
+        advance_date DATE NOT NULL,
+        year_month TEXT NOT NULL,
+        amount NUMERIC DEFAULT 0,
+        notes TEXT,
+        created_at TEXT
+      )
+    `;
+    await sql`ALTER TABLE employee_advances ADD COLUMN IF NOT EXISTS owner_user_id TEXT`;
+
     await sql`ALTER TABLE reservations ADD COLUMN IF NOT EXISTS room_notes TEXT`;
     await sql`ALTER TABLE reservations ADD COLUMN IF NOT EXISTS price_per_person NUMERIC DEFAULT 0`;
     await sql`ALTER TABLE reservations ADD COLUMN IF NOT EXISTS gratuity NUMERIC DEFAULT 0`;

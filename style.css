@@ -5536,6 +5536,10 @@ select.cell-input option {
     color: var(--text-primary);
 }
 
+.emp-summary-card .emp-advance-value {
+    color: var(--orange);
+}
+
 .emp-summary-card .label {
     font-size: 11px;
     color: var(--text-secondary);
@@ -5549,6 +5553,78 @@ select.cell-input option {
     padding: 32px 16px;
     color: var(--text-secondary);
     font-size: 13px;
+}
+
+.emp-advance-form {
+    margin-bottom: 12px;
+}
+
+.emp-advance-fields {
+    display: grid;
+    grid-template-columns: minmax(140px, 180px) minmax(120px, 160px) minmax(180px, 1fr) auto;
+    gap: 10px;
+    align-items: end;
+}
+
+.emp-advance-fields label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.emp-advance-fields input {
+    width: 100%;
+    height: 36px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 13px;
+    padding: 0 10px;
+}
+
+.emp-advance-list {
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: var(--bg-secondary);
+}
+
+.emp-advance-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.emp-advance-table th {
+    text-align: left;
+    padding: 9px 10px;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.emp-advance-table td {
+    padding: 9px 10px;
+    border-top: 1px solid var(--border-light);
+}
+
+.emp-advance-amount {
+    text-align: right;
+    color: var(--orange);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.emp-advance-actions {
+    text-align: right;
+    width: 96px;
 }
 
 /* Employee Calendar Grid */
@@ -5627,6 +5703,23 @@ select.cell-input option {
 }
 
 @media (max-width: 768px) {
+    .emp-advance-fields {
+        grid-template-columns: 1fr;
+    }
+
+    .emp-advance-fields .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .emp-advance-table {
+        min-width: 520px;
+    }
+
+    .emp-advance-list {
+        overflow-x: auto;
+    }
+
     .emp-cal-cell {
         min-height: 36px;
     }
@@ -5687,7 +5780,9 @@ select.cell-input option {
 }
 
 .emp-table thead th.emp-tbl-total,
-.emp-table thead th.emp-tbl-pay {
+.emp-table thead th.emp-tbl-pay,
+.emp-table thead th.emp-tbl-advance,
+.emp-table thead th.emp-tbl-net {
     padding: 10px 4px 8px;
 }
 
@@ -5747,6 +5842,22 @@ select.cell-input option {
 
 .emp-table tbody td.emp-tbl-name:hover .emp-tbl-empname {
     color: var(--accent);
+}
+
+.emp-table tbody td.emp-tbl-advance {
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.emp-table tbody td.emp-tbl-advance.has-advance {
+    color: var(--orange);
+}
+
+.emp-table tbody td.emp-tbl-net {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
 }
 
 .emp-table tbody tr.emp-row-dragging td {
