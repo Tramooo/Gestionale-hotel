@@ -581,8 +581,33 @@
         document.getElementById('employeeAdvanceDate').value = advanceDate;
         document.getElementById('employeeAdvanceModalTitle').textContent = t('emp.addAdvance');
         document.getElementById('employeeAdvanceContext').textContent = `${emp.lastName} ${emp.firstName} · ${monthNames[month]} ${year}`;
+        renderEmployeeAdvanceModalList(empId, yearMonth);
         openModal('employeeAdvanceModal');
         setTimeout(() => document.getElementById('employeeAdvanceAmount')?.focus(), 0);
+    }
+
+    function renderEmployeeAdvanceModalList(empId, yearMonth) {
+        const { escapeHtml, t } = requireDeps();
+        const list = document.getElementById('employeeAdvanceModalList');
+        if (!list) return;
+        const advances = getEmployeeMonthAdvances(empId, yearMonth);
+        if (advances.length === 0) {
+            list.innerHTML = `<div class="employee-advance-empty">${t('emp.noAdvances')}</div>`;
+            return;
+        }
+
+        list.innerHTML = `
+            <div class="employee-advance-list-title">${t('emp.registeredAdvances')}</div>
+            ${advances.map((advance) => `
+                <div class="employee-advance-list-row">
+                    <div class="employee-advance-list-copy">
+                        <strong>€${(parseFloat(advance.amount) || 0).toFixed(2)}</strong>
+                        <span>${escapeHtml(advance.advanceDate || '')} · ${escapeHtml(advance.notes || t('emp.noReason'))}</span>
+                    </div>
+                    <button type="button" class="btn btn-ghost btn-sm employee-advance-delete" onclick="deleteEmployeeAdvance('${advance.id}','${empId}')">${t('common.delete')}</button>
+                </div>
+            `).join('')}
+        `;
     }
 
     async function saveEmployee(event) {
@@ -944,7 +969,12 @@
             showToast(t('toast.advanceDeleted'));
             renderEmployees();
             renderManagement();
-            openEmployeeDetail(empId);
+            if (document.getElementById('employeeAdvanceModal')?.classList.contains('open')) {
+                const yearMonth = document.getElementById('employeeAdvanceYearMonth')?.value;
+                if (yearMonth) renderEmployeeAdvanceModalList(empId, yearMonth);
+            } else if (document.getElementById('employeeDetailModal')?.classList.contains('open')) {
+                openEmployeeDetail(empId);
+            }
         } catch (error) {
             console.error('Employee advance delete error:', error);
             showToast(t('toast.advanceDeleteFail'), 'error');

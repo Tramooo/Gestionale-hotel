@@ -5646,6 +5646,54 @@ select.cell-input option {
     font-weight: 500;
 }
 
+.employee-advance-modal-list {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border-light);
+}
+
+.employee-advance-list-title {
+    margin-bottom: 8px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.employee-advance-list-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 0;
+    border-top: 1px solid var(--border-light);
+}
+
+.employee-advance-list-title + .employee-advance-list-row {
+    border-top: 0;
+}
+
+.employee-advance-list-copy {
+    min-width: 0;
+}
+
+.employee-advance-list-copy strong {
+    display: block;
+    color: var(--text-primary);
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+}
+
+.employee-advance-list-copy span,
+.employee-advance-empty {
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+
+.employee-advance-delete {
+    color: var(--red);
+    flex-shrink: 0;
+}
+
 /* Employee Calendar Grid */
 .emp-cal-grid {
     display: grid;

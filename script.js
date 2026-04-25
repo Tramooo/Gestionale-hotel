@@ -1212,6 +1212,8 @@ const TRANSLATIONS = {
     'emp.advanceReason': { en: 'Reason', it: 'Motivazione' },
     'emp.addAdvance': { en: 'Add Advance', it: 'Aggiungi Acconto' },
     'emp.noAdvances': { en: 'No advances recorded this month', it: 'Nessun acconto registrato questo mese' },
+    'emp.registeredAdvances': { en: 'Registered advances', it: 'Acconti registrati' },
+    'emp.noReason': { en: 'No reason', it: 'Nessuna motivazione' },
     'emp.advanceNotesPlaceholder': { en: 'e.g. cash advance', it: 'es. acconto contanti' },
     'emp.advanceReasonPlaceholder': { en: 'Optional', it: 'Facoltativa' },
     'emp.save': { en: 'Save', it: 'Salva' },
