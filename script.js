@@ -1032,10 +1032,6 @@ const TRANSLATIONS = {
 
     // Settings
     'settings.title': { en: 'Settings', it: 'Impostazioni' },
-    'settings.theme': { en: 'Theme', it: 'Tema' },
-    'settings.light': { en: 'Light', it: 'Chiaro' },
-    'settings.dark': { en: 'Dark', it: 'Scuro' },
-    'settings.auto': { en: 'Auto', it: 'Auto' },
     'settings.language': { en: 'Language', it: 'Lingua' },
     'settings.calColumnWidth': { en: 'Calendar Column Width', it: 'Larghezza Colonna Calendario' },
     'settings.calRowHeight': { en: 'Calendar Row Height', it: 'Altezza Riga Calendario' },
@@ -2912,45 +2908,6 @@ function openFilePreview(key) { return window.GroupStayCompliance.openFilePrevie
 function closeFilePreview() { return window.GroupStayCompliance.closeFilePreview(); }
 function exportCompliancePDF() { return window.GroupStayCompliance.exportCompliancePDF(); }
 
-// =============================================
-// THEME
-// =============================================
-
-function getTheme() {
-    return localStorage.getItem('gs_theme') || 'auto';
-}
-
-function applyTheme(theme) {
-    if (theme === 'dark') {
-        document.documentElement.setAttribute('data-theme', 'dark');
-    } else if (theme === 'light') {
-        document.documentElement.setAttribute('data-theme', 'light');
-    } else {
-        document.documentElement.removeAttribute('data-theme');
-    }
-    updateThemeToggle(theme);
-}
-
-function updateThemeToggle(theme) {
-    const btn = document.getElementById('themeToggle');
-    if (!btn) return;
-    const isDark = theme === 'dark' || (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    btn.classList.toggle('is-dark', isDark);
-}
-
-function setTheme(theme) {
-    localStorage.setItem('gs_theme', theme);
-    applyTheme(theme);
-    updateThemeButtons();
-}
-
-function updateThemeButtons() {
-    const current = getTheme();
-    document.querySelectorAll('.settings-toggle-btn[data-theme-val]').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.themeVal === current);
-    });
-}
-
 // Calendar size settings
 let PLANNER_ROW_HEIGHT = parseInt(localStorage.getItem('gs_row_height')) || 34;
 
@@ -2986,7 +2943,6 @@ function initSettingsModal() {
     if (colW) { colW.value = savedCW; document.getElementById('settingColWidthVal').textContent = savedCW + 'px'; }
     if (rowH) { rowH.value = savedRH; document.getElementById('settingRowHeightVal').textContent = savedRH + 'px'; }
 
-    updateThemeButtons();
 }
 
 // ---- CSV Import (Scidoo) ----
@@ -4123,9 +4079,6 @@ function openNewWorkEntry(empId) { return window.GroupStayEmployees.openNewWorkE
 function openEditWorkEntry(workId) { return window.GroupStayEmployees.openEditWorkEntry(workId); }
 async function saveWorkEntry(e) { return window.GroupStayEmployees.saveWorkEntry(e); }
 async function deleteWorkEntry(workId, empId) { return window.GroupStayEmployees.deleteWorkEntry(workId, empId); }
-
-// Apply saved theme immediately
-applyTheme(getTheme());
 
 // =============================================
 // INIT
