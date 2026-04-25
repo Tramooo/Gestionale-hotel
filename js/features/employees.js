@@ -155,7 +155,7 @@
                 : stats.daysWorked + 'g';
             row += `<td class="emp-tbl-total">${totalDisplay}</td>`;
             row += `<td class="emp-tbl-pay">€${estimated.toFixed(0)}</td>`;
-            row += `<td class="emp-tbl-advance ${advanceTotal > 0 ? 'has-advance' : ''}" onclick="openEmployeeDetail('${employee.id}')">€${advanceTotal.toFixed(0)}</td>`;
+            row += `<td class="emp-tbl-advance ${advanceTotal > 0 ? 'has-advance' : ''}" onclick="openEmployeeAdvanceModal('${employee.id}')">€${advanceTotal.toFixed(0)}</td>`;
             row += `<td class="emp-tbl-net">€${netPay.toFixed(0)}</td>`;
             bodyRows += `<tr data-emp-row="${employee.id}">${row}</tr>`;
         });
@@ -563,6 +563,28 @@
         label.textContent = (payType === 'hourly' ? t('emp.hourlyPay') : t('emp.monthlyPay')) + ' (€)';
     }
 
+    function openEmployeeAdvanceModal(empId) {
+        const { formatDate, getEmpViewMonth, getEmployees, openModal, t } = requireDeps();
+        const emp = getEmployees().find((employee) => employee.id === empId);
+        if (!emp) return;
+
+        const year = getEmpViewMonth().getFullYear();
+        const month = getEmpViewMonth().getMonth();
+        const yearMonth = `${year}-${String(month + 1).padStart(2, '0')}`;
+        const todayStr = formatDate(new Date());
+        const advanceDate = todayStr.startsWith(yearMonth) ? todayStr : `${yearMonth}-01`;
+        const monthNames = t('months.full');
+
+        document.getElementById('employeeAdvanceForm')?.reset();
+        document.getElementById('employeeAdvanceEmployeeId').value = empId;
+        document.getElementById('employeeAdvanceYearMonth').value = yearMonth;
+        document.getElementById('employeeAdvanceDate').value = advanceDate;
+        document.getElementById('employeeAdvanceModalTitle').textContent = t('emp.addAdvance');
+        document.getElementById('employeeAdvanceContext').textContent = `${emp.lastName} ${emp.firstName} · ${monthNames[month]} ${year}`;
+        openModal('employeeAdvanceModal');
+        setTimeout(() => document.getElementById('employeeAdvanceAmount')?.focus(), 0);
+    }
+
     async function saveEmployee(event) {
         const {
             API,
@@ -678,8 +700,6 @@
         const entryMap = {};
         stats.entries.forEach((entry) => { entryMap[entry.workDate] = entry; });
         const todayStr = formatDate(new Date());
-        const defaultAdvanceDate = todayStr.startsWith(detailMonthStr) ? todayStr : `${detailMonthStr}-01`;
-        const lastAdvanceDate = `${detailMonthStr}-${String(dim).padStart(2, '0')}`;
 
         let calCells = '';
         calCells += dayHeaders.map((day) => `<div class="emp-cal-header">${day}</div>`).join('');
@@ -757,26 +777,10 @@
             </div>
 
             <div class="emp-detail-section">
-                <h4>${t('emp.advances')}</h4>
-                <form class="emp-advance-form" onsubmit="saveEmployeeAdvance(event)">
-                    <input type="hidden" id="employeeAdvanceEmployeeId" value="${empId}">
-                    <input type="hidden" id="employeeAdvanceYearMonth" value="${detailMonthStr}">
-                    <div class="emp-advance-fields">
-                        <label>
-                            <span>${t('emp.date')}</span>
-                            <input type="date" id="employeeAdvanceDate" value="${defaultAdvanceDate}" min="${detailMonthStr}-01" max="${lastAdvanceDate}" required>
-                        </label>
-                        <label>
-                            <span>${t('emp.advanceAmount')}</span>
-                            <input type="number" id="employeeAdvanceAmount" min="0.01" step="0.01" placeholder="0.00" required>
-                        </label>
-                        <label>
-                            <span>${t('res.notes')}</span>
-                            <input type="text" id="employeeAdvanceNotes" placeholder="${t('emp.advanceNotesPlaceholder')}">
-                        </label>
-                        <button type="submit" class="btn btn-secondary btn-sm">${t('emp.addAdvance')}</button>
-                    </div>
-                </form>
+                <div class="emp-section-heading-row">
+                    <h4>${t('emp.advances')}</h4>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="openEmployeeAdvanceModal('${empId}')">${t('emp.addAdvance')}</button>
+                </div>
                 <div class="emp-advance-list">
                     ${advances.length ? `
                         <table class="emp-advance-table">
@@ -876,6 +880,7 @@
         const {
             API,
             apiPost,
+            closeModal,
             generateId,
             getEmployeeAdvances,
             renderManagement,
@@ -904,9 +909,12 @@
             await apiPost(API.employees + '?type=advance', data);
             setEmployeeAdvances([...getEmployeeAdvances(), data]);
             showToast(t('toast.advanceSaved'));
+            closeModal('employeeAdvanceModal');
             renderEmployees();
             renderManagement();
-            openEmployeeDetail(empId);
+            if (document.getElementById('employeeDetailModal')?.classList.contains('open')) {
+                openEmployeeDetail(empId);
+            }
         } catch (error) {
             console.error('Employee advance save error:', error);
             showToast(t('toast.advanceSaveFail'), 'error');
@@ -1059,6 +1067,7 @@
         openEditEmployee,
         openEditWorkEntry,
         openEmployeeDetail,
+        openEmployeeAdvanceModal,
         openNewEmployeeModal,
         openNewWorkEntry,
         openPayTypePopover,

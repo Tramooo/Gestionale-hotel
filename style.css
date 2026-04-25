@@ -5489,6 +5489,18 @@ select.cell-input option {
     margin-bottom: 10px;
 }
 
+.emp-section-heading-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.emp-section-heading-row h4 {
+    margin-bottom: 0;
+}
+
 .emp-work-table {
     width: 100%;
     border-collapse: collapse;
@@ -5625,6 +5637,13 @@ select.cell-input option {
 .emp-advance-actions {
     text-align: right;
     width: 96px;
+}
+
+.employee-advance-context {
+    margin: 0 0 14px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
 }
 
 /* Employee Calendar Grid */

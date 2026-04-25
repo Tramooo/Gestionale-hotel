@@ -1209,9 +1209,11 @@ const TRANSLATIONS = {
     'emp.advances': { en: 'Advances', it: 'Acconti' },
     'emp.netPay': { en: 'Net Pay', it: 'Netto' },
     'emp.advanceAmount': { en: 'Amount', it: 'Importo' },
+    'emp.advanceReason': { en: 'Reason', it: 'Motivazione' },
     'emp.addAdvance': { en: 'Add Advance', it: 'Aggiungi Acconto' },
     'emp.noAdvances': { en: 'No advances recorded this month', it: 'Nessun acconto registrato questo mese' },
     'emp.advanceNotesPlaceholder': { en: 'e.g. cash advance', it: 'es. acconto contanti' },
+    'emp.advanceReasonPlaceholder': { en: 'Optional', it: 'Facoltativa' },
     'emp.save': { en: 'Save', it: 'Salva' },
     'emp.delete': { en: 'Delete', it: 'Elimina' },
     'emp.employee': { en: 'Employee', it: 'Dipendente' },
@@ -4101,6 +4103,7 @@ function openNewWorkEntry(empId) { return window.GroupStayEmployees.openNewWorkE
 function openEditWorkEntry(workId) { return window.GroupStayEmployees.openEditWorkEntry(workId); }
 async function saveWorkEntry(e) { return window.GroupStayEmployees.saveWorkEntry(e); }
 async function deleteWorkEntry(workId, empId) { return window.GroupStayEmployees.deleteWorkEntry(workId, empId); }
+function openEmployeeAdvanceModal(empId) { return window.GroupStayEmployees.openEmployeeAdvanceModal(empId); }
 async function saveEmployeeAdvance(e) { return window.GroupStayEmployees.saveEmployeeAdvance(e); }
 async function deleteEmployeeAdvance(advanceId, empId) { return window.GroupStayEmployees.deleteEmployeeAdvance(advanceId, empId); }
 
