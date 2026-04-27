@@ -1340,12 +1340,12 @@ let managementPinEnabled = false;
 
 async function loadManagementPinSettings() {
     try {
-        const data = await apiGet(API.settings);
+        const data = await apiGet(API.auth);
         managementPinEnabled = Boolean(data.managementPinEnabled);
 
         const legacyPin = localStorage.getItem('gs_emp_pin');
         if (legacyPin && !managementPinEnabled && /^\d{4}$/.test(legacyPin)) {
-            await apiPost(`${API.settings}?action=setManagementPin`, { pin: legacyPin });
+            await apiPost(`${API.auth}?action=setManagementPin`, { pin: legacyPin });
             managementPinEnabled = true;
         }
         localStorage.removeItem('gs_emp_pin');
@@ -1447,7 +1447,7 @@ async function submitPin() {
     const pin = input.value.trim();
 
     try {
-        const result = await apiPost(`${API.settings}?action=verifyManagementPin`, { pin });
+        const result = await apiPost(`${API.auth}?action=verifyManagementPin`, { pin });
         if (!result.verified) throw new Error('wrong-pin');
         empPinUnlocked = true; // temporary flag, cleared after navigation
         closePinModal();
@@ -1468,7 +1468,7 @@ async function saveEmpPin() {
         return;
     }
     try {
-        const result = await apiPost(`${API.settings}?action=setManagementPin`, { pin: val });
+        const result = await apiPost(`${API.auth}?action=setManagementPin`, { pin: val });
         managementPinEnabled = Boolean(result.managementPinEnabled);
         localStorage.removeItem('gs_emp_pin');
         empPinUnlocked = false;
@@ -1481,7 +1481,7 @@ async function saveEmpPin() {
 
 async function removeEmpPin() {
     try {
-        const result = await apiPost(`${API.settings}?action=removeManagementPin`, {});
+        const result = await apiPost(`${API.auth}?action=removeManagementPin`, {});
         managementPinEnabled = Boolean(result.managementPinEnabled);
         localStorage.removeItem('gs_emp_pin');
         empPinUnlocked = false;

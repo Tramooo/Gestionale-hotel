@@ -11,8 +11,7 @@
         files: '/api/files',
         menus: '/api/menus',
         compliance: '/api/compliance',
-        agenda: '/api/agenda',
-        settings: '/api/settings'
+        agenda: '/api/agenda'
     };
 
     const CERT_TYPES = {

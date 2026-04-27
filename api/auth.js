@@ -11,6 +11,10 @@ function sanitizeUser(row) {
   };
 }
 
+function validatePin(pin) {
+  return /^\d{4}$/.test(String(pin || ''));
+}
+
 export default async function handler(req, res) {
   try {
     await ensureAuthTables();
@@ -19,7 +23,13 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
       const user = await getAuthenticatedUser(req);
       if (!user) return res.status(401).json({ error: 'Unauthorized' });
-      return res.status(200).json({ user });
+      const rows = await sql`
+        SELECT management_pin_hash
+        FROM users
+        WHERE id = ${user.id}
+        LIMIT 1
+      `;
+      return res.status(200).json({ user, managementPinEnabled: Boolean(rows[0]?.management_pin_hash) });
     }
 
     if (req.method !== 'POST') {
@@ -31,6 +41,44 @@ export default async function handler(req, res) {
     if (action === 'logout') {
       await destroySession(req, res);
       return res.status(200).json({ success: true });
+    }
+
+    if (action === 'setManagementPin' || action === 'removeManagementPin' || action === 'verifyManagementPin') {
+      const user = await getAuthenticatedUser(req);
+      if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+      if (action === 'setManagementPin') {
+        const pin = String(req.body?.pin || '').trim();
+        if (!validatePin(pin)) return res.status(400).json({ error: 'Il PIN deve essere di 4 cifre' });
+
+        await sql`
+          UPDATE users
+          SET management_pin_hash = ${hashPassword(pin)}
+          WHERE id = ${user.id}
+        `;
+        return res.status(200).json({ managementPinEnabled: true });
+      }
+
+      if (action === 'removeManagementPin') {
+        await sql`
+          UPDATE users
+          SET management_pin_hash = NULL
+          WHERE id = ${user.id}
+        `;
+        return res.status(200).json({ managementPinEnabled: false });
+      }
+
+      const pin = String(req.body?.pin || '').trim();
+      if (!validatePin(pin)) return res.status(400).json({ verified: false });
+
+      const rows = await sql`
+        SELECT management_pin_hash
+        FROM users
+        WHERE id = ${user.id}
+        LIMIT 1
+      `;
+      const storedHash = rows[0]?.management_pin_hash || '';
+      return res.status(200).json({ verified: Boolean(storedHash && verifyPassword(pin, storedHash)) });
     }
 
     if (action === 'register') {
