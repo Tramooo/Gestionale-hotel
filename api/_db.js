@@ -16,6 +16,7 @@ export async function ensureAuthTables() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS management_pin_hash TEXT`;
 
   await sql`
     CREATE TABLE IF NOT EXISTS auth_sessions (

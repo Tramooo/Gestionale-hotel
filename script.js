@@ -1336,6 +1336,24 @@ function getInitials(name) {
 // ---- NAVIGATION ----
 
 let empPinUnlocked = false;
+let managementPinEnabled = false;
+
+async function loadManagementPinSettings() {
+    try {
+        const data = await apiGet(API.settings);
+        managementPinEnabled = Boolean(data.managementPinEnabled);
+
+        const legacyPin = localStorage.getItem('gs_emp_pin');
+        if (legacyPin && !managementPinEnabled && /^\d{4}$/.test(legacyPin)) {
+            await apiPost(`${API.settings}?action=setManagementPin`, { pin: legacyPin });
+            managementPinEnabled = true;
+        }
+        localStorage.removeItem('gs_emp_pin');
+    } catch (error) {
+        console.error('Failed to load management PIN settings:', error);
+        managementPinEnabled = true;
+    }
+}
 
 function isMobileViewport() {
     return window.matchMedia('(max-width: 768px)').matches;
@@ -1373,12 +1391,9 @@ function navigateTo(page) {
     }
 
     // Check PIN protection for management page (ask every time)
-    if (page === 'management' && !empPinUnlocked) {
-        const pin = localStorage.getItem('gs_emp_pin');
-        if (pin) {
-            openPinModal();
-            return;
-        }
+    if (page === 'management' && managementPinEnabled && !empPinUnlocked) {
+        openPinModal();
+        return;
     }
 
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -1426,41 +1441,55 @@ function closePinModal() {
     document.getElementById('pinModal').classList.remove('open');
 }
 
-function submitPin() {
+async function submitPin() {
     const input = document.getElementById('pinInput');
     const error = document.getElementById('pinError');
-    const stored = localStorage.getItem('gs_emp_pin');
+    const pin = input.value.trim();
 
-    if (input.value === stored) {
+    try {
+        const result = await apiPost(`${API.settings}?action=verifyManagementPin`, { pin });
+        if (!result.verified) throw new Error('wrong-pin');
         empPinUnlocked = true; // temporary flag, cleared after navigation
         closePinModal();
         navigateTo('management');
         empPinUnlocked = false;
-    } else {
+    } catch (error) {
         error.style.display = 'block';
         input.value = '';
         input.focus();
     }
 }
 
-function saveEmpPin() {
+async function saveEmpPin() {
     const input = document.getElementById('settingEmpPin');
     const val = input.value.trim();
     if (!/^\d{4}$/.test(val)) {
         showToast(t('settings.empPinInvalid'), 'error');
         return;
     }
-    localStorage.setItem('gs_emp_pin', val);
-    empPinUnlocked = false;
-    input.value = '';
-    showToast(t('settings.empPinSaved'), 'success');
+    try {
+        const result = await apiPost(`${API.settings}?action=setManagementPin`, { pin: val });
+        managementPinEnabled = Boolean(result.managementPinEnabled);
+        localStorage.removeItem('gs_emp_pin');
+        empPinUnlocked = false;
+        input.value = '';
+        showToast(t('settings.empPinSaved'), 'success');
+    } catch (error) {
+        showToast(error.message || t('toast.dbError'), 'error');
+    }
 }
 
-function removeEmpPin() {
-    localStorage.removeItem('gs_emp_pin');
-    empPinUnlocked = false;
-    document.getElementById('settingEmpPin').value = '';
-    showToast(t('settings.empPinRemoved'), 'success');
+async function removeEmpPin() {
+    try {
+        const result = await apiPost(`${API.settings}?action=removeManagementPin`, {});
+        managementPinEnabled = Boolean(result.managementPinEnabled);
+        localStorage.removeItem('gs_emp_pin');
+        empPinUnlocked = false;
+        document.getElementById('settingEmpPin').value = '';
+        showToast(t('settings.empPinRemoved'), 'success');
+    } catch (error) {
+        showToast(error.message || t('toast.dbError'), 'error');
+    }
 }
 
 // Setup nav listeners
@@ -4140,6 +4169,8 @@ async function startApplication(forceRestart = false) {
         setAuthDebug('Avvio applicazione...\nTraduzioni applicate.');
         updateProfileHeader();
         setAuthDebug('Avvio applicazione...\nProfilo aggiornato.');
+        await loadManagementPinSettings();
+        setAuthDebug('Avvio applicazione...\nProtezione PIN caricata.');
         document.querySelectorAll('[data-lang-val]').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.langVal === currentLang);
             btn.addEventListener('click', () => setLanguage(btn.dataset.langVal));
