@@ -1220,6 +1220,7 @@ const TRANSLATIONS = {
     'emp.delete': { en: 'Delete', it: 'Elimina' },
     'emp.employee': { en: 'Employee', it: 'Dipendente' },
     'emp.type': { en: 'Type', it: 'Tipo' },
+    'emp.saveAttendance': { en: 'Save attendance', it: 'Salva presenze' },
     'toast.empSaved': { en: 'Employee saved', it: 'Dipendente salvato' },
     'toast.empSaveFail': { en: 'Failed to save employee', it: 'Salvataggio dipendente fallito' },
     'toast.empDeleted': { en: 'Employee deleted', it: 'Dipendente eliminato' },
@@ -1228,6 +1229,9 @@ const TRANSLATIONS = {
     'toast.workSaveFail': { en: 'Failed to save work entry', it: 'Salvataggio giornata fallito' },
     'toast.workDeleted': { en: 'Work entry deleted', it: 'Giornata eliminata' },
     'toast.workDeleteFail': { en: 'Failed to delete work entry', it: 'Eliminazione giornata fallita' },
+    'toast.attendanceSaved': { en: 'Attendance saved', it: 'Presenze salvate' },
+    'toast.attendanceSaveFail': { en: 'Failed to save attendance', it: 'Salvataggio presenze fallito' },
+    'toast.noAttendanceToSave': { en: 'No attendance to save this month', it: 'Nessuna presenza da salvare questo mese' },
     'toast.advanceSaved': { en: 'Advance saved', it: 'Acconto salvato' },
     'toast.advanceSaveFail': { en: 'Failed to save advance', it: 'Salvataggio acconto fallito' },
     'toast.advanceDeleted': { en: 'Advance deleted', it: 'Acconto eliminato' },
@@ -4125,6 +4129,7 @@ function openNewEmployeeModal() { return window.GroupStayEmployees.openNewEmploy
 function openEditEmployee(id) { return window.GroupStayEmployees.openEditEmployee(id); }
 function togglePayRateLabel() { return window.GroupStayEmployees.togglePayRateLabel(); }
 async function saveEmployee(e) { return window.GroupStayEmployees.saveEmployee(e); }
+async function saveEmployeeAttendanceMonth() { return window.GroupStayEmployees.saveEmployeeAttendanceMonth(); }
 async function deleteEmployee() { return window.GroupStayEmployees.deleteEmployee(); }
 function openEmployeeDetail(empId) { return window.GroupStayEmployees.openEmployeeDetail(empId); }
 async function empCalDayClick(empId, dateStr) { return window.GroupStayEmployees.empCalDayClick(empId, dateStr); }

@@ -1053,6 +1053,34 @@
         }
     }
 
+    async function saveEmployeeAttendanceMonth() {
+        const {
+            API,
+            apiPut,
+            getEmpViewMonth,
+            getWorkEntries,
+            showToast,
+            t
+        } = requireDeps();
+        const viewMonth = getEmpViewMonth();
+        const monthStr = `${viewMonth.getFullYear()}-${String(viewMonth.getMonth() + 1).padStart(2, '0')}`;
+        const entries = getWorkEntries().filter((entry) => entry.workDate && entry.workDate.startsWith(monthStr));
+
+        if (entries.length === 0) {
+            showToast(t('toast.noAttendanceToSave'));
+            return;
+        }
+
+        try {
+            await Promise.all(entries.map((entry) => apiPut(API.employees + '?type=work', entry)));
+            showToast(t('toast.attendanceSaved'));
+            renderEmployees();
+        } catch (error) {
+            console.error('Attendance save error:', error);
+            showToast(t('toast.attendanceSaveFail'), 'error');
+        }
+    }
+
     async function deleteWorkEntry(workId, empId) {
         const { API, getWorkEntries, setWorkEntries, showConfirmDialog, showToast, t } = requireDeps();
         if (!await showConfirmDialog(t('confirm.deleteWorkEntry'), {
@@ -1105,6 +1133,7 @@
         renderEmployees,
         saveEmployee,
         saveEmployeeAdvance,
+        saveEmployeeAttendanceMonth,
         savePayTypeOverride,
         saveTimePopover,
         saveWorkEntry,
