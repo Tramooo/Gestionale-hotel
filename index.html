@@ -221,6 +221,13 @@
                     </span>
                     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
                 </button>
+                <button class="mobile-more-action" type="button" onclick="closeModal('mobileMoreModal'); navigateTo('guests')">
+                    <span class="mobile-more-action-copy">
+                        <strong data-i18n="guests.title">Ospiti</strong>
+                        <span>Schedine, camere e dati alloggiati</span>
+                    </span>
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
                 <button class="mobile-more-action" type="button" onclick="closeModal('mobileMoreModal'); openModal('settingsModal')">
                     <span class="mobile-more-action-copy">
                         <strong data-i18n="nav.settings">Impostazioni</strong>
@@ -421,7 +428,7 @@
                     <h1 class="page-title" data-i18n="res.pageTitle">Prenotazioni</h1>
                     <p class="page-subtitle" data-i18n="res.pageSubtitle">Gestisci gruppi e prenotazioni individuali</p>
                 </div>
-                <div style="display:flex;gap:10px">
+                <div class="page-actions reservation-actions">
                     <button class="btn btn-secondary" onclick="openNewReservationModal()">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                         <span data-i18n="res.newGroup">Nuovo Gruppo</span>
@@ -613,7 +620,7 @@
 
             <!-- Struttura tab -->
             <div id="compTabStruttura" class="comp-tab-content" style="display:none">
-                <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+                <div class="section-action-row">
                     <button class="btn btn-primary" onclick="openCompDocModal(null)">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                         Aggiungi Documento
@@ -632,7 +639,7 @@
             </header>
 
             <!-- Revenue cards -->
-            <div class="stats-grid" style="margin-bottom:16px">
+            <div class="stats-grid management-stats">
                 <div class="stat-card">
                     <div class="stat-icon purple">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
@@ -684,19 +691,19 @@
 
             <!-- Employees -->
             <div id="mgmt-tab-employees">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-                    <h2 style="font-size:18px;font-weight:600;margin:0" data-i18n="emp.title">Dipendenti</h2>
+                <div class="section-header-row">
+                    <h2 class="section-title" data-i18n="emp.title">Dipendenti</h2>
                     <button class="btn btn-primary" onclick="openNewEmployeeModal()">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                         <span data-i18n="emp.addEmployee">Aggiungi Dipendente</span>
                     </button>
                 </div>
-                <div class="filters-bar" style="flex-wrap:wrap;gap:12px">
+                <div class="filters-bar employee-filters">
                     <div class="search-box">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                         <input type="text" data-i18n-placeholder="emp.searchEmployees" placeholder="Cerca dipendenti..." id="searchEmployees" oninput="renderEmployees()">
                     </div>
-                    <div style="display:flex;align-items:center;gap:8px">
+                    <div class="month-switcher">
                         <button class="btn btn-ghost btn-sm" onclick="empMonthNav(-1)">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="15 18 9 12 15 6"/></svg>
                         </button>

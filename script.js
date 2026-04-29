@@ -347,16 +347,16 @@ window.GroupStayPlanner.init({
     formatDateDisplay,
     getCalendarDate: () => calendarDate,
     getGuests: () => guests,
-    getPlannerDayWidth: () => PLANNER_DAY_WIDTH,
-    getPlannerExtendChunk: () => PLANNER_EXTEND_CHUNK,
+    getPlannerDayWidth: () => getResponsivePlannerDayWidth(),
+    getPlannerExtendChunk: () => getResponsivePlannerExtendChunk(),
     getPlannerExtendThreshold: () => PLANNER_EXTEND_THRESHOLD,
     getPlannerGridEl: () => plannerGridEl,
     getPlannerHeaderEl: () => plannerHeaderEl,
-    getPlannerInitialFuture: () => PLANNER_INITIAL_FUTURE,
-    getPlannerInitialPast: () => PLANNER_INITIAL_PAST,
+    getPlannerInitialFuture: () => getResponsivePlannerInitialFuture(),
+    getPlannerInitialPast: () => getResponsivePlannerInitialPast(),
     getPlannerIsExtending: () => plannerIsExtending,
     getPlannerRoomsEl: () => plannerRoomsEl,
-    getPlannerRowHeight: () => PLANNER_ROW_HEIGHT,
+    getPlannerRowHeight: () => getResponsivePlannerRowHeight(),
     getPlannerStartDate: () => plannerStartDate,
     getPlannerTotalDays: () => plannerTotalDays,
     getReservations: () => reservations,
@@ -380,7 +380,7 @@ window.GroupStayPlanner.init({
 window.GroupStayPlannerDrag.init({
     dayIndexToDate,
     formatDate,
-    getPlannerDayWidth: () => PLANNER_DAY_WIDTH,
+    getPlannerDayWidth: () => getResponsivePlannerDayWidth(),
     getPlannerGridEl: () => plannerGridEl,
     getPlannerTotalDays: () => plannerTotalDays,
     openBookingTypeChooser
@@ -1364,7 +1364,7 @@ function isMobileViewport() {
 }
 
 function resolveActiveNavPage(page) {
-    if (isMobileViewport() && ['management', 'compliance'].includes(page)) {
+    if (isMobileViewport() && ['management', 'compliance', 'guests'].includes(page)) {
         return 'more';
     }
     return page;
@@ -2797,6 +2797,26 @@ let plannerGridEl = null;   // .p-grid-panel (master scroller)
 let plannerHeaderEl = null; // .p-header-panel
 let plannerRoomsEl = null;  // .p-rooms-panel
 let plannerIsExtending = false;
+
+function getResponsivePlannerDayWidth() {
+    return isMobileViewport() ? Math.max(44, PLANNER_DAY_WIDTH) : PLANNER_DAY_WIDTH;
+}
+
+function getResponsivePlannerRowHeight() {
+    return isMobileViewport() ? Math.max(42, PLANNER_ROW_HEIGHT) : PLANNER_ROW_HEIGHT;
+}
+
+function getResponsivePlannerInitialPast() {
+    return isMobileViewport() ? 45 : PLANNER_INITIAL_PAST;
+}
+
+function getResponsivePlannerInitialFuture() {
+    return isMobileViewport() ? 180 : PLANNER_INITIAL_FUTURE;
+}
+
+function getResponsivePlannerExtendChunk() {
+    return isMobileViewport() ? 45 : PLANNER_EXTEND_CHUNK;
+}
 
 function dateToDayIndex(d) { return window.GroupStayPlanner.dateToDayIndex(d); }
 function dayIndexToDate(i) { return window.GroupStayPlanner.dayIndexToDate(i); }
