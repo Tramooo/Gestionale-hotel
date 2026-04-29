@@ -2799,11 +2799,11 @@ let plannerRoomsEl = null;  // .p-rooms-panel
 let plannerIsExtending = false;
 
 function getResponsivePlannerDayWidth() {
-    return isMobileViewport() ? Math.max(44, PLANNER_DAY_WIDTH) : PLANNER_DAY_WIDTH;
+    return PLANNER_DAY_WIDTH;
 }
 
 function getResponsivePlannerRowHeight() {
-    return isMobileViewport() ? Math.max(42, PLANNER_ROW_HEIGHT) : PLANNER_ROW_HEIGHT;
+    return PLANNER_ROW_HEIGHT;
 }
 
 function getResponsivePlannerInitialPast() {
