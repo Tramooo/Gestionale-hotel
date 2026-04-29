@@ -1,0 +1,1053 @@
+/* =============================================
+   MODALS
+   ============================================= */
+
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: fadeInOverlay 0.2s ease;
+}
+
+.modal-overlay.open {
+    display: flex;
+}
+
+@keyframes fadeInOverlay {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-xl);
+    width: 100%;
+    max-width: 560px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: var(--shadow-xl);
+    border: 1px solid var(--border-light);
+    animation: slideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.modal-large {
+    max-width: 800px;
+}
+
+.modal-sm {
+    max-width: 400px;
+}
+
+/* Booking type chooser */
+.chooser-date-label {
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+    padding: 8px 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+}
+
+.chooser-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.chooser-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 24px 16px;
+    border: 2px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    background: var(--bg-primary);
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, transform 0.15s;
+    text-align: center;
+}
+
+.chooser-option:hover {
+    border-color: var(--accent);
+    background: var(--accent-light);
+    transform: translateY(-2px);
+}
+
+.chooser-option:active {
+    transform: scale(0.98);
+}
+
+.chooser-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--bg-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+    transition: background 0.15s;
+}
+
+.chooser-option:hover .chooser-icon {
+    background: var(--bg-secondary);
+}
+
+.chooser-label {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.chooser-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.modal-fullscreen {
+    max-width: 95vw;
+    width: 1100px;
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-fullscreen .modal-body {
+    flex: 1;
+    overflow: auto;
+}
+
+/* Room Assignment Spreadsheet */
+.assignment-layout {
+    display: flex;
+    height: 100%;
+    overflow: hidden;
+}
+.assignment-sidebar {
+    width: 200px;
+    min-width: 200px;
+    padding: 14px;
+    border-right: 1px solid var(--border);
+    background: var(--bg-secondary);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.assignment-sidebar textarea {
+    flex: 1;
+    resize: none;
+    font-size: 13px;
+    padding: 8px 10px;
+    min-height: 80px;
+}
+.assignment-room-notes-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+.assignment-main {
+    flex: 1;
+    overflow: auto;
+    min-width: 0;
+}
+.assignment-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--bg-primary);
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.assignment-stats {
+    display: flex;
+    gap: 20px;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.assignment-stats strong {
+    color: var(--text-primary);
+}
+
+.assignment-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.assignment-table thead {
+    position: sticky;
+    top: 49px;
+    z-index: 1;
+    background: var(--bg-secondary);
+}
+
+.assignment-table th {
+    padding: 8px 10px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--border);
+}
+
+.assignment-table td {
+    padding: 2px 4px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+}
+
+.col-room { width: 70px; padding-left: 12px !important; }
+.col-type { width: 110px; }
+.col-usage { width: 130px; }
+.col-group { width: 140px; }
+.col-occ { width: 60px; }
+.col-notes { min-width: 120px; }
+
+.floor-header-row td {
+    background: var(--bg-tertiary, #1a1a2e);
+    font-weight: 700;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    padding: 8px 12px !important;
+}
+
+.assignment-row:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.assignment-row.assigned {
+    background: rgba(99, 102, 241, 0.06);
+}
+
+.assignment-row.assigned:hover {
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.cell-input {
+    width: 100%;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 6px 8px;
+    font-size: 13px;
+    color: var(--text-primary);
+    font-family: inherit;
+    transition: border-color 0.15s;
+}
+
+.cell-input:hover {
+    border-color: var(--border);
+}
+
+.cell-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: var(--bg-secondary);
+}
+
+.cell-number {
+    width: 50px;
+    text-align: center;
+}
+
+select.cell-input {
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    padding-right: 20px;
+    background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+}
+
+select.cell-input option {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+/* Dynamic column headers */
+.col-dynamic {
+    min-width: 120px;
+}
+
+.col-header-wrap {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.col-header-input {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 4px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    font-family: inherit;
+    width: 100%;
+    min-width: 60px;
+}
+
+.col-header-input:hover {
+    border-color: var(--border);
+}
+
+.col-header-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.col-remove-btn {
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+    border-radius: 4px;
+    opacity: 0;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+
+.col-header-wrap:hover .col-remove-btn {
+    opacity: 1;
+}
+
+.col-remove-btn:hover {
+    color: var(--red);
+    background: var(--red-light);
+}
+
+.col-add {
+    width: 40px;
+    text-align: center;
+}
+
+.col-add-btn {
+    background: none;
+    border: 1px dashed var(--border);
+    color: var(--text-tertiary);
+    font-size: 18px;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+}
+
+.col-add-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-light);
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(16px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border-light);
+    position: sticky;
+    top: 0;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    z-index: 1;
+    box-shadow: 0 1px 0 var(--border-light);
+}
+
+.modal-header h2 {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.modal-close {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: var(--bg-tertiary);
+    border-radius: 50%;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    transition: all var(--transition);
+    flex-shrink: 0;
+}
+
+.modal-close:hover {
+    background: var(--border);
+    color: var(--text-primary);
+    transform: scale(1.05);
+}
+
+.modal-close:active {
+    transform: scale(0.95);
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-light);
+}
+
+.dialog-modal {
+    max-width: 440px;
+}
+
+.dialog-modal-body {
+    padding: 28px;
+}
+
+.dialog-modal-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    background: var(--orange-light);
+    color: var(--orange);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 18px;
+}
+
+.dialog-modal[data-mode="prompt"] .dialog-modal-icon {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.dialog-modal[data-intent="danger"] .dialog-modal-icon {
+    background: color-mix(in srgb, var(--red) 12%, white);
+    color: var(--red);
+}
+
+.dialog-modal[data-intent="danger"] #customDialogOk {
+    background: var(--red);
+}
+
+.dialog-modal[data-intent="danger"] #customDialogOk:hover:not(:disabled) {
+    background: #E0352B;
+    box-shadow: 0 4px 12px rgba(255,59,48,0.22);
+}
+
+.dialog-modal-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.dialog-modal-message {
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.dialog-modal-input-wrap {
+    display: block;
+    margin-top: 16px;
+}
+
+.dialog-modal-input {
+    width: 100%;
+}
+
+.dialog-modal-actions {
+    margin-top: 22px;
+}
+
+/* =============================================
+   FORMS
+   ============================================= */
+
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.form-group.full {
+    grid-column: 1 / -1;
+}
+
+.form-group label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+/* Mini Calendar Picker */
+.mini-cal-wrapper {
+    position: relative;
+}
+
+.mini-cal-input {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    font-size: 15px;
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    cursor: pointer;
+    transition: border-color var(--transition);
+}
+
+.mini-cal-input:hover {
+    border-color: var(--accent);
+}
+
+.mini-cal-dropdown {
+    display: none;
+    position: fixed;
+    z-index: 10000;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    width: 280px;
+}
+
+.mini-cal-dropdown.open {
+    display: block;
+}
+
+.mini-cal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.mini-cal-nav {
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: var(--accent);
+    cursor: pointer;
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    line-height: 1;
+}
+
+.mini-cal-nav:hover {
+    background: var(--bg-primary);
+}
+
+.mini-cal-days-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+
+.mini-cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+}
+
+.mini-cal-day {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    background: none;
+    color: var(--text-primary);
+    transition: background var(--transition);
+}
+
+.mini-cal-day:hover {
+    background: var(--bg-primary);
+}
+
+.mini-cal-day.today {
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.mini-cal-day.selected {
+    background: var(--accent);
+    color: white;
+    font-weight: 700;
+}
+
+.mini-cal-day.other-month {
+    color: var(--text-tertiary);
+}
+
+.mini-cal-day.past {
+    color: var(--text-tertiary);
+    opacity: 0.5;
+    cursor: default;
+}
+
+.room-select-all-label {
+    font-size: 12px;
+    font-weight: 500;
+    display: flex !important;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+}
+
+/* Reservation modal: two-column layout */
+#reservationModal .modal {
+    max-width: 960px;
+    max-height: 95vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+#reservationModal .modal-body {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+#reservationModal form {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+}
+
+.res-form-layout {
+    display: flex;
+    gap: 0;
+    flex: 1;
+    overflow: hidden;
+}
+
+.res-form-left {
+    flex: 1;
+    padding-right: 24px;
+    min-width: 0;
+    overflow-y: auto;
+}
+
+.res-form-right {
+    width: 300px;
+    flex-shrink: 0;
+    border-left: 1px solid var(--border-light);
+    padding-left: 20px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.room-list-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.room-list-scroll {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.room-list-count {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-light);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    text-align: center;
+}
+
+.room-check-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background var(--transition);
+    user-select: none;
+}
+
+.room-check-item:hover {
+    background: var(--bg-primary);
+}
+
+.room-check-item.checked {
+    background: rgba(0, 122, 255, 0.08);
+}
+
+.room-check-item.occupied {
+    opacity: 0.5;
+    cursor: not-allowed;
+    position: relative;
+}
+
+.room-check-item.occupied:hover {
+    background: transparent;
+}
+
+.room-check-item.occupied input[type="checkbox"] {
+    cursor: not-allowed;
+}
+
+.room-check-occupied {
+    margin-left: auto;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--red);
+    background: var(--red-light);
+    padding: 2px 8px;
+    border-radius: 100px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.room-check-item input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.room-check-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.room-check-number {
+    font-weight: 600;
+    font-size: 14px;
+    line-height: 1.2;
+}
+
+.room-check-type {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    text-transform: capitalize;
+}
+
+.room-check-floor-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-tertiary);
+    padding: 10px 10px 4px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.room-check-floor-header:first-child {
+    padding-top: 4px;
+}
+
+.room-check-floor-header input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+
+@media (max-width: 768px) {
+    .res-form-layout {
+        flex-direction: column;
+    }
+    .res-form-left {
+        padding-right: 0;
+    }
+    .res-form-right {
+        width: 100%;
+        border-left: none;
+        border-top: 1px solid var(--border-light);
+        padding-left: 0;
+        padding-top: 16px;
+        margin-top: 16px;
+        max-height: 200px;
+    }
+    #reservationModal .modal {
+        max-width: 100%;
+    }
+}
+
+#guestSearchInput {
+    width: 100%;
+    padding: 10px 14px 10px 38px;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    transition: border-color var(--transition);
+    outline: none;
+}
+
+#guestSearchInput:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,122,255,0.12);
+}
+
+#guestSearchInput::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.7;
+}
+
+.guest-search-wrap {
+    position: relative;
+    margin-bottom: 12px;
+}
+
+.guest-search-wrap svg {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+    pointer-events: none;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    padding: 10px 14px;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    font-size: 15px;
+    font-family: inherit;
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    transition: border-color var(--transition), box-shadow var(--transition);
+    outline: none;
+}
+
+.form-group input:hover,
+.form-group select:hover,
+.form-group textarea:hover {
+    border-color: var(--border);
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,122,255,0.1);
+}
+
+.form-group textarea {
+    resize: vertical;
+}
+
+.form-group input[type="date"],
+.form-group input[type="time"],
+.form-group input[type="number"],
+.form-group select {
+    min-height: 44px;
+}
+
+/* =============================================
+   DETAIL VIEW
+   ============================================= */
+
+.detail-toolbar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-light);
+    margin-bottom: 20px;
+}
+
+.detail-toolbar .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.res-calc-total {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent);
+    padding: 8px 0;
+}
+
+.res-calc-detail {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text-secondary);
+}
+
+.detail-delete-btn {
+    margin-left: auto;
+    color: var(--red) !important;
+}
+.detail-delete-btn:hover {
+    background: var(--red-light) !important;
+}
+
+.detail-info-card {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+
+.detail-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 20px;
+}
+
+.detail-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.detail-info-item.detail-info-price {
+    grid-column: span 2;
+}
+
+.detail-info-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.detail-info-value {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.detail-notes-section {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.detail-notes-section textarea {
+    resize: vertical;
+    min-height: 90px;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    font-size: 14px;
+    line-height: 1.6;
+    font-family: inherit;
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.detail-notes-section textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.12);
+}
+
+.detail-notes-section textarea::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.6;
+}
+
+.detail-notes-section .btn {
+    align-self: flex-end;
+}

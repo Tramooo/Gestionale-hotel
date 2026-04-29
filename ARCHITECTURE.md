@@ -8,7 +8,10 @@ The frontend has moved from a single-file setup toward a layered structure witho
   App shell, static page markup, modal markup, page containers, script loading order.
 
 - `style.css`
-  Shared design tokens, layout rules, component styles, print styles.
+  Short pointer file. The actual styles are split under `css/` and loaded by `index.html` in cascade order.
+
+- `css/`
+  Layered stylesheets, grouped by area: foundation, dashboard/cards, data lists, calendar, modals/forms, compliance, activity/responsive rules, employee/auth views, refresh overrides, dashboard overrides, and mobile-specific rules.
 
 - `script.js`
   Remaining application glue:
