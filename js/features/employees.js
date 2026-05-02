@@ -55,11 +55,12 @@
     }
 
     function empMonthNav(delta) {
-        const { getEmpViewMonth, setEmpViewMonth } = requireDeps();
+        const { getEmpViewMonth, renderManagement, setEmpViewMonth } = requireDeps();
         const next = new Date(getEmpViewMonth());
         next.setMonth(next.getMonth() + delta);
         setEmpViewMonth(next);
-        renderEmployees();
+        if (typeof renderManagement === 'function') renderManagement();
+        else renderEmployees();
     }
 
     function renderEmployees() {

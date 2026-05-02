@@ -5,7 +5,7 @@
   "type": "module",
   "main": "script.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --test",
     "migrate:guest-encryption": "node scripts/migrate-guest-encryption.mjs"
   },
   "keywords": [],
