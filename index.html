@@ -1181,7 +1181,7 @@
                         </div>
                         <div class="form-group">
                             <label data-i18n="rooms.floor">Piano</label>
-                            <input type="number" id="roomFloor" min="0" value="1">
+                            <select id="roomFloor"></select>
                         </div>
                         <div class="form-group">
                             <label data-i18n="rooms.type">Tipo</label>
@@ -1422,6 +1422,22 @@
                     </div>
                 </div>
 
+                <div class="settings-section">
+                    <label class="settings-label" data-i18n="settings.roomFloors">Piani camere</label>
+                    <p style="font-size:12px;color:var(--text-secondary);margin:0 0 10px" data-i18n="settings.roomFloorsDesc">Imposta l'intervallo dei piani disponibili nel modulo camere.</p>
+                    <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end">
+                        <div class="form-group" style="margin:0">
+                            <label for="settingFloorStart" data-i18n="settings.floorStart">Piano iniziale</label>
+                            <input type="number" id="settingFloorStart" value="1">
+                        </div>
+                        <div class="form-group" style="margin:0">
+                            <label for="settingFloorEnd" data-i18n="settings.floorEnd">Piano finale</label>
+                            <input type="number" id="settingFloorEnd" value="5">
+                        </div>
+                        <button class="btn btn-secondary" type="button" onclick="saveRoomFloorSettings()" data-i18n="common.save">Salva</button>
+                    </div>
+                </div>
+
                 <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
 
                 <div class="settings-section">
@@ -1560,6 +1576,7 @@
     <script src="js/core/config.js"></script>
     <script src="js/core/api-client.js"></script>
     <script src="js/core/utils.js"></script>
+    <script src="js/core/floors.js"></script>
     <script src="js/ui/datepicker.js"></script>
     <script src="js/ui/feedback.js"></script>
     <script src="js/features/rooms.js"></script>

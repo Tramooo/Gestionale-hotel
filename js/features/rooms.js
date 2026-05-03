@@ -49,6 +49,16 @@
             : t('common.delete');
     }
 
+    function populateRoomFloorOptions(selectedFloor) {
+        const { getFloorOptions, getRoomFloorRange } = requireDeps();
+        const floorField = document.getElementById('roomFloor');
+        if (!floorField) return;
+
+        const options = getFloorOptions(getRoomFloorRange(), selectedFloor);
+        floorField.innerHTML = options.map((floor) => `<option value="${floor}">${floor}</option>`).join('');
+        floorField.value = String(selectedFloor ?? options[0] ?? 1);
+    }
+
     function renderRooms() {
         const {
             computeRoomStatuses,
@@ -113,6 +123,7 @@
         document.getElementById('roomModalTitle').textContent = t('rooms.addRoom');
         document.getElementById('roomForm').reset();
         document.getElementById('roomId').value = '';
+        populateRoomFloorOptions();
         setRoomStatusFieldValue('available');
         setRoomMaintenanceNoteValue('');
         bindRoomStatusControl();
@@ -129,7 +140,7 @@
         document.getElementById('roomModalTitle').textContent = `${t('common.edit')} ${t('rooms.room')}`;
         document.getElementById('roomId').value = room.id;
         document.getElementById('roomNumber').value = room.number;
-        document.getElementById('roomFloor').value = room.floor;
+        populateRoomFloorOptions(room.floor);
         document.getElementById('roomType').value = room.type;
         document.getElementById('roomCapacity').value = room.capacity;
         setRoomStatusFieldValue(room.status);
@@ -185,6 +196,7 @@
             apiPut,
             closeModal,
             generateId,
+            getRoomFloorRange,
             getRooms,
             onRoomsChanged,
             renderDashboard,
@@ -199,7 +211,7 @@
         const maintenanceNote = (document.getElementById('roomMaintenanceNote').value || '').trim();
         const data = {
             number: document.getElementById('roomNumber').value.trim(),
-            floor: parseInt(document.getElementById('roomFloor').value) || 1,
+            floor: parseInt(document.getElementById('roomFloor').value) || getRoomFloorRange().start || 1,
             type: document.getElementById('roomType').value,
             capacity: parseInt(document.getElementById('roomCapacity').value) || 1,
             status: selectedStatus,

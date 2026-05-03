@@ -40,6 +40,13 @@ const {
     nightsBetween
 } = window.GroupStayUtils;
 
+const {
+    getFloorOptions,
+    inferFloorRange,
+    normalizeFloorRange,
+    parseFloorRange
+} = window.GroupStayFloors;
+
 const formatDateDisplay = (dateStr) => window.GroupStayUtils.formatDateDisplay(dateStr, currentLang);
 
 window.GroupStayDatePicker.init({
@@ -75,7 +82,9 @@ window.GroupStayRooms.init({
     computeRoomStatuses,
     generateId,
     getCurrentRoomFilter: () => currentRoomFilter,
+    getFloorOptions,
     getGuests: () => guests,
+    getRoomFloorRange,
     getRooms: () => rooms,
     onRoomsChanged: () => window.GroupStayRooms.renderRooms(),
     openModal,
@@ -414,6 +423,7 @@ function loadDataCache() {
         complianceDocs  = cache.complianceDocs  || [];
         agendaItems     = cache.agendaItems     || [];
         computeRoomStatuses();
+        syncRoomFloorSettingsInputs();
         return true;
     } catch (e) { return false; }
 }
@@ -442,6 +452,7 @@ async function loadAllData(retryOnUnauthorized = true) {
         employeeAdvances = empData.advances || [];
         agendaItems     = agendaData;
         computeRoomStatuses();
+        syncRoomFloorSettingsInputs();
         saveDataCache();
         setAuthDebug('Bootstrap completato.');
         return true;
@@ -1043,6 +1054,11 @@ const TRANSLATIONS = {
     'settings.language': { en: 'Language', it: 'Lingua' },
     'settings.calColumnWidth': { en: 'Calendar Column Width', it: 'Larghezza Colonna Calendario' },
     'settings.calRowHeight': { en: 'Calendar Row Height', it: 'Altezza Riga Calendario' },
+    'settings.roomFloors': { en: 'Room floors', it: 'Piani camere' },
+    'settings.roomFloorsDesc': { en: 'Set the floor range available in the room form.', it: 'Imposta l\'intervallo dei piani disponibili nel modulo camere.' },
+    'settings.floorStart': { en: 'First floor', it: 'Piano iniziale' },
+    'settings.floorEnd': { en: 'Last floor', it: 'Piano finale' },
+    'settings.roomFloorsSaved': { en: 'Room floor range saved', it: 'Intervallo piani camere salvato' },
     'settings.importScidoo': { en: 'Import Reservations from Scidoo', it: 'Importa Prenotazioni da Scidoo' },
     'settings.importScidooDesc': { en: 'Upload a CSV exported from Scidoo. You\'ll map columns before importing.', it: 'Carica un CSV esportato da Scidoo. Mapperai le colonne prima dell\'importazione.' },
     'settings.chooseCsv': { en: 'Choose CSV File', it: 'Scegli File CSV' },
@@ -2987,6 +3003,42 @@ function exportCompliancePDF() { return window.GroupStayCompliance.exportComplia
 
 // Calendar size settings
 let PLANNER_ROW_HEIGHT = parseInt(localStorage.getItem('gs_row_height')) || 34;
+const ROOM_FLOOR_RANGE_KEY = 'gs_room_floor_range';
+
+function getRoomFloorRangeStorageKey() {
+    return currentUser?.id ? `${ROOM_FLOOR_RANGE_KEY}:${currentUser.id}` : ROOM_FLOOR_RANGE_KEY;
+}
+
+function getRoomFloorRange() {
+    const fallback = inferFloorRange(rooms);
+    return parseFloorRange(localStorage.getItem(getRoomFloorRangeStorageKey()), fallback);
+}
+
+function setRoomFloorRange(start, end) {
+    const range = normalizeFloorRange(start, end, getRoomFloorRange());
+    localStorage.setItem(getRoomFloorRangeStorageKey(), JSON.stringify(range));
+    return range;
+}
+
+function syncRoomFloorSettingsInputs() {
+    const floorStart = document.getElementById('settingFloorStart');
+    const floorEnd = document.getElementById('settingFloorEnd');
+    if (!floorStart || !floorEnd) return;
+
+    const range = getRoomFloorRange();
+    floorStart.value = range.start;
+    floorEnd.value = range.end;
+}
+
+function saveRoomFloorSettings() {
+    const floorStart = document.getElementById('settingFloorStart');
+    const floorEnd = document.getElementById('settingFloorEnd');
+    if (!floorStart || !floorEnd) return;
+
+    setRoomFloorRange(floorStart.value, floorEnd.value);
+    syncRoomFloorSettingsInputs();
+    showToast(t('settings.roomFloorsSaved'), 'success');
+}
 
 function updateCalendarSize() {
     const colW = document.getElementById('settingColWidth');
@@ -3019,6 +3071,7 @@ function initSettingsModal() {
     const rowH = document.getElementById('settingRowHeight');
     if (colW) { colW.value = savedCW; document.getElementById('settingColWidthVal').textContent = savedCW + 'px'; }
     if (rowH) { rowH.value = savedRH; document.getElementById('settingRowHeightVal').textContent = savedRH + 'px'; }
+    syncRoomFloorSettingsInputs();
 
 }
 
