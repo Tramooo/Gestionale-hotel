@@ -205,7 +205,7 @@ window.GroupStayReservationDetail.init({
     loadReservationMenus,
     nightsBetween,
     openModal,
-    renderLinkedReservationMail: (reservationId) => window.GroupStayMail.renderLinkedReservationMail(reservationId),
+    renderLinkedReservationMail: (reservationId) => window.GroupStayMail?.renderLinkedReservationMail?.(reservationId) || '',
     showToast,
     t
 });

@@ -157,7 +157,7 @@
                 <div class="detail-files-header">
                     <span class="detail-info-label">${t('mail.linkedTitle')}</span>
                 </div>
-                <div class="mail-linked-list">
+                <div class="mail-linked-list" data-reservation-id="${escapeHtml(reservation.id)}">
                     ${renderLinkedReservationMail(reservation.id)}
                 </div>
             </div>` : ''}

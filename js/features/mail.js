@@ -132,6 +132,18 @@
         }).join('');
     }
 
+    function refreshLinkedReservationMailLists(reservationIds) {
+        const ids = new Set((reservationIds || []).filter(Boolean));
+        if (ids.size === 0 || typeof document.querySelectorAll !== 'function') return;
+
+        document.querySelectorAll('.mail-linked-list[data-reservation-id]').forEach((list) => {
+            const reservationId = list.dataset?.reservationId || '';
+            if (ids.has(reservationId)) {
+                list.innerHTML = renderLinkedReservationMail(reservationId);
+            }
+        });
+    }
+
     async function loadMailMessages() {
         const { API, apiGet, setMailMessages, showToast, t } = requireDeps();
         try {
@@ -210,16 +222,18 @@
     async function updateMailMessage(id, payload) {
         const { API, apiPost, getMailMessages, setMailMessages, showToast, t } = requireDeps();
         try {
+            const messages = getMailMessages();
+            const previous = messages.find((message) => message.id === id);
             const response = await apiPost(`${API.reservations}?action=updateMailMessage`, { id, ...payload });
             const updated = response.message;
             if (!updated?.id) throw new Error(t('mail.updateFail'));
 
-            const messages = getMailMessages();
             const nextMessages = messages.some((message) => message.id === updated.id)
                 ? messages.map((message) => message.id === updated.id ? updated : message)
                 : [updated, ...messages];
             setMailMessages(nextMessages);
             renderMailPage();
+            refreshLinkedReservationMailLists([previous?.reservationId, updated.reservationId]);
             if (openDetailId === updated.id) openMailDetail(updated.id);
             showToast(t('mail.updated'), 'success');
         } catch (error) {

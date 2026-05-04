@@ -18,14 +18,16 @@ function createElement() {
     };
 }
 
-function loadMailFeature() {
+function loadMailFeature(options = {}) {
     const elements = new Map();
+    const linkedLists = options.linkedLists || [];
     const document = {
         getElementById(id) {
             if (!elements.has(id)) elements.set(id, createElement());
             return elements.get(id);
         },
-        querySelectorAll() {
+        querySelectorAll(selector) {
+            if (selector === '.mail-linked-list[data-reservation-id]') return linkedLists;
             return [];
         }
     };
@@ -139,6 +141,53 @@ test('renderLinkedReservationMail returns compact rows for linked reservation me
     assert.match(html, /Mario Rossi/);
     assert.match(html, /openMailDetail\('mail-1'\)/);
     assert.doesNotMatch(html, /Altra richiesta/);
+});
+
+test('markMailHandled refreshes visible linked reservation mail lists for old and new reservations', async () => {
+    const res1List = createElement();
+    res1List.dataset.reservationId = 'res-1';
+    const res2List = createElement();
+    res2List.dataset.reservationId = 'res-2';
+    const { elements, mail } = loadMailFeature({ linkedLists: [res1List, res2List] });
+    let messages = [{
+        id: 'mail-1',
+        fromName: 'Mario Rossi',
+        fromEmail: 'mario@example.it',
+        subject: 'Gruppo maggio',
+        sentAt: '2026-05-03T12:00:00.000Z',
+        pmsStatus: 'assigned',
+        reservationId: 'res-1'
+    }];
+    mail.init(baseDeps({
+        apiPost(_url, payload) {
+            return {
+                message: {
+                    ...messages.find((message) => message.id === payload.id),
+                    ...payload,
+                    subject: 'Gruppo aggiornato'
+                }
+            };
+        },
+        getMailAccount() {
+            return { configured: true };
+        },
+        getMailMessages() {
+            return messages;
+        },
+        setMailMessages(nextMessages) {
+            messages = nextMessages;
+        }
+    }));
+    elements.set('mailReservationSelect', { ...createElement(), value: 'res-2' });
+    res1List.innerHTML = mail.renderLinkedReservationMail('res-1');
+    res2List.innerHTML = mail.renderLinkedReservationMail('res-2');
+
+    await mail.markMailHandled('mail-1');
+
+    assert.doesNotMatch(res1List.innerHTML, /Gruppo maggio/);
+    assert.match(res1List.innerHTML, /mail\.noLinkedMail/);
+    assert.match(res2List.innerHTML, /Gruppo aggiornato/);
+    assert.match(res2List.innerHTML, /mail\.status\.handled/);
 });
 
 test('index loads mail feature before the main script', () => {
