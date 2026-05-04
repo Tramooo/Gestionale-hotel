@@ -1,5 +1,11 @@
 import { requireAuth } from './_auth.js';
 import { getSQL } from './_db.js';
+import {
+  getMailMessage,
+  listMailMessages,
+  syncMailMessages,
+  updateMailMessage
+} from './_mail.js';
 
 export default async function handler(req, res) {
   const user = await requireAuth(req, res);
@@ -8,6 +14,21 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
+      const action = req.query.action || '';
+      if (action === 'mailList') {
+        const messages = await listMailMessages(sql, user.id, {
+          status: req.query.status || 'all',
+          reservationId: req.query.reservationId || '',
+          search: String(req.query.search || '').trim()
+        });
+        return res.status(200).json({ messages });
+      }
+
+      if (action === 'mailDetail') {
+        const message = await getMailMessage(sql, user.id, req.query.id);
+        return res.status(200).json({ message });
+      }
+
       const rows = await sql`SELECT * FROM reservations WHERE owner_user_id = ${user.id} ORDER BY created_at DESC`;
       const toDateStr = (d) => d ? new Date(d).toISOString().split('T')[0] : null;
       const reservations = rows.map(r => ({
@@ -38,6 +59,17 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
+      const action = req.query.action || req.body?.action || '';
+      if (action === 'syncMail') {
+        const result = await syncMailMessages(sql, user.id);
+        return res.status(200).json(result);
+      }
+
+      if (action === 'updateMailMessage') {
+        const message = await updateMailMessage(sql, user.id, req.body || {});
+        return res.status(200).json({ message });
+      }
+
       const r = req.body;
       const roomIds = JSON.stringify(r.roomIds || []);
       const expiration = r.expiration || null;

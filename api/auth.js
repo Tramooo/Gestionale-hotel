@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { createSession, destroySession, getAuthenticatedUser, hashPassword, verifyPassword } from './_auth.js';
 import { ensureAuthTables, getSQL } from './_db.js';
+import { getSanitizedMailAccount, saveMailAccount, testMailConnection } from './_mail.js';
 
 function sanitizeUser(row) {
   return {
@@ -29,7 +30,12 @@ export default async function handler(req, res) {
         WHERE id = ${user.id}
         LIMIT 1
       `;
-      return res.status(200).json({ user, managementPinEnabled: Boolean(rows[0]?.management_pin_hash) });
+      const mailAccount = await getSanitizedMailAccount(sql, user.id);
+      return res.status(200).json({
+        user,
+        managementPinEnabled: Boolean(rows[0]?.management_pin_hash),
+        mailAccount
+      });
     }
 
     if (req.method !== 'POST') {
@@ -79,6 +85,19 @@ export default async function handler(req, res) {
       `;
       const storedHash = rows[0]?.management_pin_hash || '';
       return res.status(200).json({ verified: Boolean(storedHash && verifyPassword(pin, storedHash)) });
+    }
+
+    if (action === 'saveMailSettings' || action === 'testMailConnection') {
+      const user = await getAuthenticatedUser(req);
+      if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+      if (action === 'saveMailSettings') {
+        const mailAccount = await saveMailAccount(sql, user.id, req.body || {});
+        return res.status(200).json({ mailAccount });
+      }
+
+      const mailAccount = await testMailConnection(sql, user.id);
+      return res.status(200).json({ mailAccount, success: true });
     }
 
     if (action === 'register') {
