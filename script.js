@@ -799,7 +799,9 @@ const TRANSLATIONS = {
 
     // Mail
     'mail.title': { en: 'Mail', it: 'Mail' },
+    'mail.subtitle': { en: 'Requests and conversations linked to groups', it: 'Richieste e conversazioni collegate ai gruppi' },
     'mail.sync': { en: 'Sync mail', it: 'Aggiorna mail' },
+    'mail.search': { en: 'Search mail...', it: 'Cerca mail...' },
     'mail.lastSync': { en: 'Last sync:', it: 'Ultima sincronizzazione:' },
     'mail.neverSynced': { en: 'Never synced', it: 'Mai sincronizzata' },
     'mail.configurePrompt': { en: 'Configure your Aruba mailbox to start syncing mail.', it: 'Configura la casella Aruba per iniziare a sincronizzare le mail.' },
@@ -830,7 +832,19 @@ const TRANSLATIONS = {
     'mail.loadFail': { en: 'Unable to load mail', it: 'Impossibile caricare le mail' },
     'mail.syncDone': { en: 'Mail synchronized', it: 'Mail sincronizzate' },
     'mail.syncFailedCount': { en: 'Messages skipped:', it: 'Messaggi saltati:' },
+    'mail.syncPartial': { en: 'Mail synchronized with skipped messages', it: 'Mail sincronizzate con messaggi saltati' },
     'mail.syncFail': { en: 'Unable to synchronize mail', it: 'Impossibile sincronizzare le mail' },
+    'mail.settingsTitle': { en: 'Aruba mailbox', it: 'Casella mail Aruba' },
+    'mail.settingsDesc': { en: 'Configure the IMAP mailbox used to read requests and conversations.', it: 'Configura la casella IMAP usata per leggere richieste e conversazioni.' },
+    'mail.settingEmail': { en: 'Email', it: 'Email' },
+    'mail.settingUsername': { en: 'Username', it: 'Username' },
+    'mail.settingPassword': { en: 'Password', it: 'Password' },
+    'mail.settingHost': { en: 'IMAP host', it: 'Host IMAP' },
+    'mail.settingPort': { en: 'Port', it: 'Porta' },
+    'mail.settingSecure': { en: 'Secure connection', it: 'Connessione sicura' },
+    'mail.settingSecureHint': { en: 'Use SSL/TLS', it: 'Usa SSL/TLS' },
+    'mail.testConnection': { en: 'Test connection', it: 'Test connessione' },
+    'mail.saveSettings': { en: 'Save mail', it: 'Salva mail' },
     'mail.settingsSaved': { en: 'Mailbox settings saved', it: 'Impostazioni casella salvate' },
     'mail.settingsSaveFail': { en: 'Unable to save mailbox settings', it: 'Impossibile salvare le impostazioni della casella' },
     'mail.connectionOk': { en: 'Connection successful', it: 'Connessione riuscita' },
@@ -1455,7 +1469,7 @@ function isMobileViewport() {
 }
 
 function resolveActiveNavPage(page) {
-    if (isMobileViewport() && ['management', 'compliance', 'guests'].includes(page)) {
+    if (isMobileViewport() && ['management', 'compliance', 'guests', 'mail'].includes(page)) {
         return 'more';
     }
     return page;

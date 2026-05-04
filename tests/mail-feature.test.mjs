@@ -104,3 +104,13 @@ test('renderMailPage lists a message with sender subject and linked reservation'
     assert.match(elements.get('mailList').innerHTML, /Mario Rossi/);
     assert.match(elements.get('mailList').innerHTML, /Gruppo Verdi/);
 });
+
+test('index loads mail feature before the main script', () => {
+    const html = fs.readFileSync('index.html', 'utf8');
+    const mailFeatureIndex = html.indexOf('js/features/mail.js');
+    const mainScriptIndex = html.indexOf('script.js');
+
+    assert.notEqual(mailFeatureIndex, -1);
+    assert.notEqual(mainScriptIndex, -1);
+    assert.ok(mailFeatureIndex < mainScriptIndex);
+});
