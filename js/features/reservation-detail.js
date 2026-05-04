@@ -17,6 +17,7 @@
             loadReservationMenus,
             nightsBetween,
             openModal,
+            renderLinkedReservationMail,
             t
         } = requireDeps();
 
@@ -148,6 +149,16 @@
                 </div>
                 <div id="menuContainer" class="menu-container">
                     <div class="menu-loading">Caricamento menu...</div>
+                </div>
+            </div>` : ''}
+
+            ${reservation.resType !== 'individual' ? `
+            <div class="detail-files-section">
+                <div class="detail-files-header">
+                    <span class="detail-info-label">${t('mail.linkedTitle')}</span>
+                </div>
+                <div class="mail-linked-list">
+                    ${renderLinkedReservationMail(reservation.id)}
                 </div>
             </div>` : ''}
 

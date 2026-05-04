@@ -205,6 +205,7 @@ window.GroupStayReservationDetail.init({
     loadReservationMenus,
     nightsBetween,
     openModal,
+    renderLinkedReservationMail: (reservationId) => window.GroupStayMail.renderLinkedReservationMail(reservationId),
     showToast,
     t
 });
@@ -807,6 +808,8 @@ const TRANSLATIONS = {
     'mail.configurePrompt': { en: 'Configure your Aruba mailbox to start syncing mail.', it: 'Configura la casella Aruba per iniziare a sincronizzare le mail.' },
     'mail.openSettings': { en: 'Open settings', it: 'Apri impostazioni' },
     'mail.empty': { en: 'No mail found', it: 'Nessuna mail trovata' },
+    'mail.linkedTitle': { en: 'Linked mail', it: 'Mail collegate' },
+    'mail.noLinkedMail': { en: 'No linked mail', it: 'Nessuna mail collegata' },
     'mail.unknownSender': { en: 'Unknown sender', it: 'Mittente sconosciuto' },
     'mail.filter.all': { en: 'All', it: 'Tutte' },
     'mail.filter.unassigned': { en: 'Unassigned', it: 'Non assegnate' },

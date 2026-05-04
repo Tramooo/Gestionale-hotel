@@ -14,6 +14,10 @@
         return escapeHtml(String(value ?? ''));
     }
 
+    function safeAttr(value) {
+        return safeHtml(value).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
     function messageStatus(message) {
         if (message?.pmsStatus) return message.pmsStatus;
         return message?.reservationId ? 'assigned' : 'unassigned';
@@ -99,6 +103,30 @@
                         <span class="mail-status mail-status-${safeHtml(status)}">${safeHtml(statusLabel(status))}</span>
                         ${linkedName ? `<span class="mail-linked-res">${safeHtml(linkedName)}</span>` : ''}
                     </span>
+                </button>
+            `;
+        }).join('');
+    }
+
+    function renderLinkedReservationMail(reservationId) {
+        const { formatDateDisplay, getMailMessages, t } = requireDeps();
+        const messages = getMailMessages().filter((message) => message.reservationId === reservationId);
+
+        if (messages.length === 0) {
+            return `<div class="files-empty">${safeHtml(t('mail.noLinkedMail'))}</div>`;
+        }
+
+        return messages.map((message) => {
+            const sender = message.fromName || message.fromEmail || t('mail.unknownSender');
+            const status = messageStatus(message);
+
+            return `
+                <button class="mail-linked-row" type="button" onclick="openMailDetail('${safeAttr(message.id)}')">
+                    <span>
+                        <strong>${safeHtml(message.subject || '')}</strong>
+                        <small>${safeHtml(sender)} &middot; ${safeHtml(formatDateDisplay(message.sentAt))}</small>
+                    </span>
+                    <span class="mail-status mail-status-${safeAttr(status)}">${safeHtml(statusLabel(status))}</span>
                 </button>
             `;
         }).join('');
@@ -300,6 +328,7 @@
         loadMailMessages,
         markMailHandled,
         openMailDetail,
+        renderLinkedReservationMail,
         renderMailPage,
         saveMailSettings,
         setMailFilter,

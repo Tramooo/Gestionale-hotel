@@ -105,6 +105,42 @@ test('renderMailPage lists a message with sender subject and linked reservation'
     assert.match(elements.get('mailList').innerHTML, /Gruppo Verdi/);
 });
 
+test('renderLinkedReservationMail returns compact rows for linked reservation messages', () => {
+    const { mail } = loadMailFeature();
+    mail.init(baseDeps({
+        getMailMessages() {
+            return [
+                {
+                    id: 'mail-1',
+                    fromName: 'Mario Rossi',
+                    fromEmail: 'mario@example.it',
+                    subject: 'Gruppo maggio',
+                    sentAt: '2026-05-03T12:00:00.000Z',
+                    pmsStatus: 'assigned',
+                    reservationId: 'res-1'
+                },
+                {
+                    id: 'mail-2',
+                    fromName: 'Luisa Bianchi',
+                    fromEmail: 'luisa@example.it',
+                    subject: 'Altra richiesta',
+                    sentAt: '2026-05-02T12:00:00.000Z',
+                    pmsStatus: 'unassigned',
+                    reservationId: 'res-2'
+                }
+            ];
+        }
+    }));
+
+    const html = mail.renderLinkedReservationMail('res-1');
+
+    assert.match(html, /mail-linked-row/);
+    assert.match(html, /Gruppo maggio/);
+    assert.match(html, /Mario Rossi/);
+    assert.match(html, /openMailDetail\('mail-1'\)/);
+    assert.doesNotMatch(html, /Altra richiesta/);
+});
+
 test('index loads mail feature before the main script', () => {
     const html = fs.readFileSync('index.html', 'utf8');
     const mailFeatureIndex = html.indexOf('js/features/mail.js');
