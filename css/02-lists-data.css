@@ -506,6 +506,13 @@
     color: var(--text-secondary);
 }
 
+#mailDetailTitle {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    white-space: normal;
+}
+
 .mail-detail-meta {
     display: grid;
     gap: 8px;
