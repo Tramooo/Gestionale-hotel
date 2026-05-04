@@ -1,4 +1,6 @@
 export const MAIL_STATUSES = new Set(['unassigned', 'assigned', 'handled', 'archived']);
+const ARUBA_IMAP_HOST = 'imaps.aruba.it';
+const ARUBA_IMAP_PORT = 993;
 
 function cleanString(value) {
   return String(value ?? '').trim();
@@ -26,7 +28,7 @@ function toIsoString(value) {
 
 function normalizePort(value) {
   if (value === undefined || value === null || value === '') {
-    return 993;
+    return ARUBA_IMAP_PORT;
   }
 
   const portText = String(value).trim();
@@ -45,6 +47,8 @@ function normalizePort(value) {
 export function normalizeMailAccountInput(input = {}) {
   const email = cleanLowerString(input.email);
   const username = cleanString(input.username);
+  const host = cleanLowerString(input.host) || ARUBA_IMAP_HOST;
+  const port = normalizePort(input.port);
 
   if (!email) {
     throw new Error('Mail account email is required.');
@@ -54,13 +58,25 @@ export function normalizeMailAccountInput(input = {}) {
     throw new Error('Mail account username is required.');
   }
 
+  if (host !== ARUBA_IMAP_HOST) {
+    throw new Error(`Only Aruba IMAP host ${ARUBA_IMAP_HOST} is supported.`);
+  }
+
+  if (port !== ARUBA_IMAP_PORT) {
+    throw new Error(`Only Aruba IMAP port ${ARUBA_IMAP_PORT} is supported.`);
+  }
+
+  if (input.secure === false) {
+    throw new Error('TLS secure IMAP connection is required.');
+  }
+
   return {
     email,
     username,
     password: input.password == null ? '' : String(input.password),
-    host: cleanLowerString(input.host || 'imaps.aruba.it'),
-    port: normalizePort(input.port),
-    secure: input.secure !== false,
+    host,
+    port,
+    secure: true,
   };
 }
 

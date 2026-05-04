@@ -129,13 +129,13 @@ test('normalizeMailAccountInput prepares Aruba IMAP account settings', () => {
   );
 });
 
-test('normalizeMailAccountInput allows blank password and explicit insecure mode', () => {
+test('normalizeMailAccountInput allows blank password and default Aruba TLS settings', () => {
   assert.deepEqual(
     normalizeMailAccountInput({
       email: 'desk@example.com',
       username: 'DeskUser',
       password: '   ',
-      secure: false,
+      host: ' ',
     }),
     {
       email: 'desk@example.com',
@@ -143,8 +143,37 @@ test('normalizeMailAccountInput allows blank password and explicit insecure mode
       password: '   ',
       host: 'imaps.aruba.it',
       port: 993,
-      secure: false,
+      secure: true,
     },
+  );
+});
+
+test('normalizeMailAccountInput rejects non-Aruba IMAP settings', () => {
+  assert.throws(
+    () => normalizeMailAccountInput({
+      email: 'front@example.com',
+      username: 'front@example.com',
+      host: 'imap.example.com',
+    }),
+    /imaps\.aruba\.it/i,
+  );
+
+  assert.throws(
+    () => normalizeMailAccountInput({
+      email: 'front@example.com',
+      username: 'front@example.com',
+      port: 143,
+    }),
+    /993/,
+  );
+
+  assert.throws(
+    () => normalizeMailAccountInput({
+      email: 'front@example.com',
+      username: 'front@example.com',
+      secure: false,
+    }),
+    /TLS|secure/i,
   );
 });
 
