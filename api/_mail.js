@@ -238,19 +238,19 @@ export async function listMailMessages(
         ${cleanReservationId}::text AS reservation_id,
         ${searchPattern}::text AS search
     )
-    SELECT mail_messages.*
-    FROM mail_messages, filters
-    WHERE owner_user_id = filters.owner_user_id
-      AND (filters.status = 'all' OR pms_status = filters.status)
-      AND (filters.reservation_id = '' OR reservation_id = filters.reservation_id)
+    SELECT m.*
+    FROM mail_messages m, filters f
+    WHERE m.owner_user_id = f.owner_user_id
+      AND (f.status = 'all' OR m.pms_status = f.status)
+      AND (f.reservation_id = '' OR m.reservation_id = f.reservation_id)
       AND (
-        filters.search = ''
-        OR subject ILIKE filters.search
-        OR from_name ILIKE filters.search
-        OR from_email ILIKE filters.search
-        OR preview_text ILIKE filters.search
+        f.search = ''
+        OR m.subject ILIKE f.search
+        OR m.from_name ILIKE f.search
+        OR m.from_email ILIKE f.search
+        OR m.preview_text ILIKE f.search
       )
-    ORDER BY sent_at DESC NULLS LAST, created_at DESC
+    ORDER BY m.sent_at DESC NULLS LAST, m.created_at DESC
     LIMIT 250
   `;
 

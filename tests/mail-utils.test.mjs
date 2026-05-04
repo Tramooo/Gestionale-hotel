@@ -462,6 +462,9 @@ test('listMailMessages maps scoped message rows with filters', async () => {
   assert.equal(messages[0].reservationId, 'res_1');
   assert.equal(messages[0].pmsStatus, 'assigned');
   assert.deepEqual(sql.state.calls[0].values, ['user_1', 'assigned', 'res_1', '%camera%']);
+  assert.match(sql.state.calls[0].text, /FROM mail_messages m, filters f/);
+  assert.match(sql.state.calls[0].text, /m\.owner_user_id = f\.owner_user_id/);
+  assert.match(sql.state.calls[0].text, /m\.reservation_id = f\.reservation_id/);
 });
 
 test('updateMailMessage validates group reservation ownership and computes status', async () => {
