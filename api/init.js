@@ -281,6 +281,49 @@ export default async function handler(req, res) {
     await sql`CREATE INDEX IF NOT EXISTS idx_agenda_items_owner_date ON agenda_items(owner_user_id, agenda_date, agenda_time, created_at)`;
 
     await sql`
+      CREATE TABLE IF NOT EXISTS mail_accounts (
+        owner_user_id TEXT PRIMARY KEY,
+        imap_email TEXT NOT NULL,
+        imap_username TEXT NOT NULL,
+        imap_host TEXT NOT NULL DEFAULT 'imaps.aruba.it',
+        imap_port INTEGER NOT NULL DEFAULT 993,
+        imap_secure BOOLEAN NOT NULL DEFAULT TRUE,
+        encrypted_password TEXT NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW(),
+        last_tested_at TIMESTAMPTZ,
+        last_sync_at TIMESTAMPTZ
+      )
+    `;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS mail_messages (
+        id TEXT PRIMARY KEY,
+        owner_user_id TEXT NOT NULL,
+        provider_uid TEXT NOT NULL,
+        message_id TEXT DEFAULT '',
+        mailbox TEXT NOT NULL DEFAULT 'INBOX',
+        from_name TEXT DEFAULT '',
+        from_email TEXT DEFAULT '',
+        to_text TEXT DEFAULT '',
+        subject TEXT DEFAULT '',
+        sent_at TIMESTAMPTZ,
+        preview_text TEXT DEFAULT '',
+        body_text TEXT DEFAULT '',
+        body_html TEXT DEFAULT '',
+        has_attachments BOOLEAN NOT NULL DEFAULT FALSE,
+        reservation_id TEXT REFERENCES reservations(id) ON DELETE SET NULL,
+        pms_status TEXT NOT NULL DEFAULT 'unassigned',
+        synced_at TIMESTAMPTZ DEFAULT NOW(),
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `;
+    await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_mail_messages_owner_provider_uid ON mail_messages(owner_user_id, provider_uid)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_mail_messages_owner_sent_at ON mail_messages(owner_user_id, sent_at DESC)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_mail_messages_owner_reservation ON mail_messages(owner_user_id, reservation_id)`;
+
+    await sql`
       CREATE TABLE IF NOT EXISTS alloggiati_submissions (
         id TEXT PRIMARY KEY,
         owner_user_id TEXT NOT NULL,
