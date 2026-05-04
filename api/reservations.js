@@ -1,6 +1,7 @@
 import { requireAuth } from './_auth.js';
 import { getSQL } from './_db.js';
 import {
+  ensureMailTables,
   getMailMessage,
   listMailMessages,
   syncMailMessages,
@@ -16,6 +17,7 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
       const action = req.query.action || '';
       if (action === 'mailList') {
+        await ensureMailTables(sql);
         const messages = await listMailMessages(sql, user.id, {
           status: req.query.status || 'all',
           reservationId: req.query.reservationId || '',
@@ -25,6 +27,7 @@ export default async function handler(req, res) {
       }
 
       if (action === 'mailDetail') {
+        await ensureMailTables(sql);
         const message = await getMailMessage(sql, user.id, req.query.id);
         return res.status(200).json({ message });
       }
@@ -61,11 +64,13 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
       const action = req.query.action || req.body?.action || '';
       if (action === 'syncMail') {
+        await ensureMailTables(sql);
         const result = await syncMailMessages(sql, user.id);
         return res.status(200).json(result);
       }
 
       if (action === 'updateMailMessage') {
+        await ensureMailTables(sql);
         const message = await updateMailMessage(sql, user.id, req.body || {});
         return res.status(200).json({ message });
       }

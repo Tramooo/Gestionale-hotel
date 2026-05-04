@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { createSession, destroySession, getAuthenticatedUser, hashPassword, verifyPassword } from './_auth.js';
 import { ensureAuthTables, getSQL } from './_db.js';
-import { getSanitizedMailAccount, saveMailAccount, testMailConnection } from './_mail.js';
+import { ensureMailTables, getSanitizedMailAccount, saveMailAccount, testMailConnection } from './_mail.js';
 
 function sanitizeUser(row) {
   return {
@@ -30,6 +30,7 @@ export default async function handler(req, res) {
         WHERE id = ${user.id}
         LIMIT 1
       `;
+      await ensureMailTables(sql);
       const mailAccount = await getSanitizedMailAccount(sql, user.id);
       return res.status(200).json({
         user,
@@ -90,6 +91,7 @@ export default async function handler(req, res) {
     if (action === 'saveMailSettings' || action === 'testMailConnection') {
       const user = await getAuthenticatedUser(req);
       if (!user) return res.status(401).json({ error: 'Unauthorized' });
+      await ensureMailTables(sql);
 
       if (action === 'saveMailSettings') {
         const mailAccount = await saveMailAccount(sql, user.id, req.body || {});

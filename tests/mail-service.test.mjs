@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   MAX_RAW_MESSAGE_BYTES,
   createMailService,
+  ensureMailTables,
 } from '../api/_mail.js';
 import { encryptSecret } from '../api/_mail-crypto.js';
 
@@ -196,4 +197,22 @@ test('syncMailMessages skips oversized raw messages before parsing', async () =>
   assert.deepEqual(result.failedUids, [30]);
   assert.equal(sql.state.messages.length, 0);
   assert.equal(sql.state.syncUpdated, true);
+});
+
+test('ensureMailTables creates mail tables and indexes idempotently', async () => {
+  const calls = [];
+  const sql = async (strings) => {
+    calls.push(normalizeSqlText(strings));
+    return [];
+  };
+
+  await ensureMailTables(sql);
+
+  assert.ok(calls.some((text) => text.startsWith('CREATE TABLE IF NOT EXISTS mail_accounts')));
+  assert.ok(calls.some((text) => text.startsWith('CREATE TABLE IF NOT EXISTS mail_messages')));
+  assert.ok(calls.find((text) => text.startsWith('CREATE TABLE IF NOT EXISTS mail_messages')).includes('reservation_id TEXT,'));
+  assert.ok(calls.some((text) => text.includes("to_regclass('reservations') IS NOT NULL")));
+  assert.ok(calls.includes('CREATE UNIQUE INDEX IF NOT EXISTS idx_mail_messages_owner_provider_uid ON mail_messages(owner_user_id, provider_uid)'));
+  assert.ok(calls.includes('CREATE INDEX IF NOT EXISTS idx_mail_messages_owner_sent_at ON mail_messages(owner_user_id, sent_at DESC)'));
+  assert.ok(calls.includes('CREATE INDEX IF NOT EXISTS idx_mail_messages_owner_reservation ON mail_messages(owner_user_id, reservation_id)'));
 });
