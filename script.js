@@ -209,6 +209,24 @@ window.GroupStayReservationDetail.init({
     t
 });
 
+if (window.GroupStayMail) {
+    window.GroupStayMail.init({
+        API,
+        apiGet,
+        apiPost,
+        escapeHtml,
+        formatDateDisplay,
+        getMailAccount: () => mailAccount,
+        getMailMessages: () => mailMessages,
+        getReservations: () => reservations,
+        openModal,
+        setMailAccount: (nextAccount) => { mailAccount = nextAccount || { configured: false }; },
+        setMailMessages: (nextMessages) => { mailMessages = nextMessages || []; },
+        showToast,
+        t
+    });
+}
+
 window.GroupStayGuests.init({
     API,
     apiDelete,
@@ -451,6 +469,15 @@ async function loadAllData(retryOnUnauthorized = true) {
         monthPayOverrides = empData.monthOverrides || [];
         employeeAdvances = empData.advances || [];
         agendaItems     = agendaData;
+        const authData = await apiGet(API.auth).catch(() => ({}));
+        mailAccount = authData.mailAccount || { configured: false };
+        if (mailAccount.configured) {
+            const mailData = await apiGet(`${API.reservations}?action=mailList`).catch(() => ({ messages: [] }));
+            mailMessages = mailData.messages || [];
+        } else {
+            mailMessages = [];
+        }
+        syncMailSettingsInputs(mailAccount);
         computeRoomStatuses();
         syncRoomFloorSettingsInputs();
         saveDataCache();
@@ -509,6 +536,8 @@ let employeeAdvances = [];
 let complianceCerts = [];
 let complianceDocs = [];
 let agendaItems = [];
+let mailAccount = { configured: false };
+let mailMessages = [];
 let _compCertFileData = '';
 let _compCertFileName = '';
 let _compDocFileData = '';
@@ -648,6 +677,8 @@ async function fetchSession() {
     try {
         const data = await apiGet(API.auth);
         currentUser = data.user;
+        mailAccount = data.mailAccount || { configured: false };
+        syncMailSettingsInputs(mailAccount);
         updateProfileHeader();
         return currentUser;
     } catch (error) {
@@ -746,6 +777,8 @@ async function logoutUser() {
     complianceCerts = [];
     complianceDocs = [];
     agendaItems = [];
+    mailAccount = { configured: false };
+    mailMessages = [];
     clearAuthErrors();
     switchAuthMode('login');
     document.getElementById('loginForm')?.reset();
@@ -762,6 +795,46 @@ const TRANSLATIONS = {
     'nav.settings': { en: 'Settings', it: 'Impostazioni' },
     'nav.receptionManager': { en: 'Reception Manager', it: 'Responsabile Reception' },
     'nav.admin': { en: 'Admin', it: 'Amministratore' },
+    'nav.mail': { en: 'Mail', it: 'Mail' },
+
+    // Mail
+    'mail.title': { en: 'Mail', it: 'Mail' },
+    'mail.sync': { en: 'Sync mail', it: 'Aggiorna mail' },
+    'mail.lastSync': { en: 'Last sync:', it: 'Ultima sincronizzazione:' },
+    'mail.neverSynced': { en: 'Never synced', it: 'Mai sincronizzata' },
+    'mail.configurePrompt': { en: 'Configure your Aruba mailbox to start syncing mail.', it: 'Configura la casella Aruba per iniziare a sincronizzare le mail.' },
+    'mail.openSettings': { en: 'Open settings', it: 'Apri impostazioni' },
+    'mail.empty': { en: 'No mail found', it: 'Nessuna mail trovata' },
+    'mail.unknownSender': { en: 'Unknown sender', it: 'Mittente sconosciuto' },
+    'mail.filter.all': { en: 'All', it: 'Tutte' },
+    'mail.filter.unassigned': { en: 'Unassigned', it: 'Non assegnate' },
+    'mail.filter.assigned': { en: 'Assigned', it: 'Assegnate' },
+    'mail.filter.handled': { en: 'Handled', it: 'Gestite' },
+    'mail.filter.archived': { en: 'Archived', it: 'Archiviate' },
+    'mail.status.unassigned': { en: 'Unassigned', it: 'Non assegnata' },
+    'mail.status.assigned': { en: 'Assigned', it: 'Assegnata' },
+    'mail.status.handled': { en: 'Handled', it: 'Gestita' },
+    'mail.status.archived': { en: 'Archived', it: 'Archiviata' },
+    'mail.detailTitle': { en: 'Mail detail', it: 'Dettaglio mail' },
+    'mail.from': { en: 'From', it: 'Da' },
+    'mail.to': { en: 'To', it: 'A' },
+    'mail.date': { en: 'Date', it: 'Data' },
+    'mail.attachments': { en: 'Attachments', it: 'Allegati' },
+    'mail.attachmentsPresent': { en: 'Present but not saved in PMS', it: 'Presenti ma non salvati nel PMS' },
+    'mail.noReservation': { en: 'No reservation', it: 'Nessuna prenotazione' },
+    'mail.assign': { en: 'Assign', it: 'Assegna' },
+    'mail.markHandled': { en: 'Mark handled', it: 'Segna gestita' },
+    'mail.archive': { en: 'Archive in PMS', it: 'Archivia nel PMS' },
+    'mail.updated': { en: 'Mail updated', it: 'Mail aggiornata' },
+    'mail.updateFail': { en: 'Unable to update mail', it: 'Impossibile aggiornare la mail' },
+    'mail.loadFail': { en: 'Unable to load mail', it: 'Impossibile caricare le mail' },
+    'mail.syncDone': { en: 'Mail synchronized', it: 'Mail sincronizzate' },
+    'mail.syncFailedCount': { en: 'Messages skipped:', it: 'Messaggi saltati:' },
+    'mail.syncFail': { en: 'Unable to synchronize mail', it: 'Impossibile sincronizzare le mail' },
+    'mail.settingsSaved': { en: 'Mailbox settings saved', it: 'Impostazioni casella salvate' },
+    'mail.settingsSaveFail': { en: 'Unable to save mailbox settings', it: 'Impossibile salvare le impostazioni della casella' },
+    'mail.connectionOk': { en: 'Connection successful', it: 'Connessione riuscita' },
+    'mail.connectionFail': { en: 'Connection failed', it: 'Connessione non riuscita' },
 
     // Dashboard
     'dash.title': { en: 'Dashboard', it: 'Dashboard' },
@@ -1362,6 +1435,8 @@ async function loadManagementPinSettings() {
     try {
         const data = await apiGet(API.auth);
         managementPinEnabled = Boolean(data.managementPinEnabled);
+        mailAccount = data.mailAccount || { configured: false };
+        syncMailSettingsInputs(mailAccount);
 
         const legacyPin = localStorage.getItem('gs_emp_pin');
         if (legacyPin && !managementPinEnabled && /^\d{4}$/.test(legacyPin)) {
@@ -1441,6 +1516,7 @@ function navigateTo(page) {
         case 'guests': renderGuests(); break;
         case 'management': renderManagement(); break;
         case 'compliance': renderCompliance(); break;
+        case 'mail': renderMailPage(); break;
     }
 
     const mainContent = document.getElementById('mainContent');
@@ -1525,6 +1601,22 @@ document.querySelectorAll('.nav-item, .tab-item').forEach(item => {
 // =============================================
 
 function renderDashboard() { return window.GroupStayDashboard.renderDashboard(); }
+
+// =============================================
+// MAIL
+// =============================================
+
+function renderMailPage() { return window.GroupStayMail?.renderMailPage?.(); }
+function syncMail() { return window.GroupStayMail?.syncMail?.(); }
+function openMailDetail(id) { return window.GroupStayMail?.openMailDetail?.(id); }
+function setMailFilter(filter) { return window.GroupStayMail?.setMailFilter?.(filter); }
+function filterMail() { return window.GroupStayMail?.filterMail?.(); }
+function assignMailToReservation(id) { return window.GroupStayMail?.assignMailToReservation?.(id); }
+function markMailHandled(id) { return window.GroupStayMail?.markMailHandled?.(id); }
+function archiveMail(id) { return window.GroupStayMail?.archiveMail?.(id); }
+function saveMailSettings() { return window.GroupStayMail?.saveMailSettings?.(); }
+function testMailConnection() { return window.GroupStayMail?.testMailConnection?.(); }
+function syncMailSettingsInputs(account) { return window.GroupStayMail?.syncMailSettingsInputs?.(account); }
 
 // =============================================
 // RESERVATIONS
@@ -4263,6 +4355,9 @@ async function startApplication(forceRestart = false) {
             if (bootPage === 'calendar') {
                 renderCalendar();
                 setAuthDebug('Calendario disegnato.');
+            } else if (bootPage === 'mail') {
+                renderMailPage();
+                setAuthDebug('Mail disegnata.');
             } else {
                 renderDashboard();
                 setAuthDebug('Dashboard disegnata.');
@@ -4275,6 +4370,7 @@ async function startApplication(forceRestart = false) {
                 const page = current ? current.dataset.page : 'dashboard';
                 if (page === 'dashboard') renderDashboard();
                 else if (page === 'calendar') renderCalendar();
+                else if (page === 'mail') renderMailPage();
             });
         } else {
             setAuthDebug('Nessuna cache, carico da server...');
@@ -4290,6 +4386,9 @@ async function startApplication(forceRestart = false) {
             if (bootPage === 'calendar') {
                 renderCalendar();
                 setAuthDebug('Calendario disegnato.');
+            } else if (bootPage === 'mail') {
+                renderMailPage();
+                setAuthDebug('Mail disegnata.');
             } else {
                 renderDashboard();
                 setAuthDebug('Dashboard disegnata.');
