@@ -142,7 +142,7 @@ test('syncMailMessages opens INBOX readOnly, sanitizes body HTML, and logs out',
   assert.deepEqual(client.actions, [
     ['connect'],
     ['mailboxOpen', 'INBOX', { readOnly: true }],
-    ['fetch', '1:2', { uid: true, source: true }],
+    ['fetch', '1:2', { uid: true, source: { start: 0, maxLength: MAX_RAW_MESSAGE_BYTES + 1 } }],
     ['logout'],
   ]);
   assert.equal(client.config.host, 'imaps.aruba.it');

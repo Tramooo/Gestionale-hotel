@@ -237,7 +237,10 @@ export function createMailService({
         const start = Math.max(1, totalMessages - FETCH_LIMIT + 1);
         const range = `${start}:${totalMessages}`;
 
-        for await (const fetched of client.fetch(range, { uid: true, source: true })) {
+        for await (const fetched of client.fetch(range, {
+          uid: true,
+          source: { start: 0, maxLength: MAX_RAW_MESSAGE_BYTES + 1 },
+        })) {
           const uid = fetched?.uid ?? '';
 
           try {

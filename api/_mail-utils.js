@@ -133,7 +133,7 @@ export function normalizeParsedMail({ uid, mailbox = 'INBOX', parsed = {} } = {}
     toText: parsed.to?.text ?? '',
     subject,
     sentAt: toIsoString(parsed.date),
-    previewText: buildMailPreview(parsed.text || parsed.html || ''),
+    previewText: buildMailPreview(parsed.text || ''),
     bodyText: parsed.text ?? '',
     bodyHtml: parsed.html ?? '',
     hasAttachments: attachments.length > 0,

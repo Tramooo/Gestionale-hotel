@@ -312,6 +312,19 @@ test('normalizeParsedMail returns empty sentAt for invalid dates', () => {
   );
 });
 
+test('normalizeParsedMail does not use raw HTML for preview fallback', () => {
+  const normalized = normalizeParsedMail({
+    uid: 45,
+    parsed: {
+      html: '<script>alert(1)</script><p>Hello</p>',
+    },
+  });
+
+  assert.equal(normalized.previewText, '');
+  assert.equal(normalized.previewText.includes('<script>'), false);
+  assert.equal(normalized.previewText.includes('<p>'), false);
+});
+
 test('buildMailPreview collapses whitespace and clips at a word boundary', () => {
   assert.equal(buildMailPreview(' Uno  due\n tre ', 9), 'Uno due...');
 });
