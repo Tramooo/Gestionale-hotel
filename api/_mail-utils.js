@@ -14,6 +14,10 @@ function toIsoString(value) {
   }
 
   if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) {
+      return '';
+    }
+
     return value.toISOString();
   }
 
@@ -40,7 +44,7 @@ function normalizePort(value) {
 
 export function normalizeMailAccountInput(input = {}) {
   const email = cleanLowerString(input.email);
-  const username = cleanLowerString(input.username);
+  const username = cleanString(input.username);
 
   if (!email) {
     throw new Error('Mail account email is required.');
@@ -53,7 +57,7 @@ export function normalizeMailAccountInput(input = {}) {
   return {
     email,
     username,
-    password: cleanString(input.password),
+    password: input.password == null ? '' : String(input.password),
     host: cleanLowerString(input.host || 'imaps.aruba.it'),
     port: normalizePort(input.port),
     secure: input.secure !== false,

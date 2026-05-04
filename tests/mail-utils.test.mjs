@@ -21,8 +21,8 @@ test('normalizeMailAccountInput prepares Aruba IMAP account settings', () => {
     }),
     {
       email: 'reception@example.com',
-      username: 'reception@example.com',
-      password: 'secret',
+      username: 'Reception@Example.COM',
+      password: '  secret  ',
       host: 'imaps.aruba.it',
       port: 993,
       secure: true,
@@ -34,18 +34,29 @@ test('normalizeMailAccountInput allows blank password and explicit insecure mode
   assert.deepEqual(
     normalizeMailAccountInput({
       email: 'desk@example.com',
-      username: 'desk@example.com',
+      username: 'DeskUser',
       password: '   ',
       secure: false,
     }),
     {
       email: 'desk@example.com',
-      username: 'desk@example.com',
-      password: '',
+      username: 'DeskUser',
+      password: '   ',
       host: 'imaps.aruba.it',
       port: 993,
       secure: false,
     },
+  );
+});
+
+test('normalizeMailAccountInput preserves password whitespace exactly', () => {
+  assert.equal(
+    normalizeMailAccountInput({
+      email: 'desk@example.com',
+      username: 'DeskUser',
+      password: '  p a s s  ',
+    }).password,
+    '  p a s s  ',
   );
 });
 
@@ -158,6 +169,18 @@ test('normalizeParsedMail uses a subject fallback when subject is blank', () => 
       },
     }).subject,
     '(Senza oggetto)',
+  );
+});
+
+test('normalizeParsedMail returns empty sentAt for invalid dates', () => {
+  assert.equal(
+    normalizeParsedMail({
+      uid: 44,
+      parsed: {
+        date: new Date('not-a-date'),
+      },
+    }).sentAt,
+    '',
   );
 });
 
