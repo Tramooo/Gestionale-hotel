@@ -8,12 +8,6 @@ function cleanLowerString(value) {
   return cleanString(value).toLowerCase();
 }
 
-function assignIfPresent(target, key, value) {
-  if (value !== undefined) {
-    target[key] = value;
-  }
-}
-
 function toIsoString(value) {
   if (!value) {
     return '';
@@ -26,30 +20,61 @@ function toIsoString(value) {
   return String(value);
 }
 
+function normalizePort(value) {
+  if (value === undefined || value === null || value === '') {
+    return 993;
+  }
+
+  const portText = String(value).trim();
+  if (!/^\d+$/.test(portText)) {
+    throw new Error('Invalid IMAP port.');
+  }
+
+  const port = Number(portText);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error('Invalid IMAP port.');
+  }
+
+  return port;
+}
+
 export function normalizeMailAccountInput(input = {}) {
-  const port = Number.parseInt(input.port ?? 993, 10);
+  const email = cleanLowerString(input.email);
+  const username = cleanLowerString(input.username);
+
+  if (!email) {
+    throw new Error('Mail account email is required.');
+  }
+
+  if (!username) {
+    throw new Error('Mail account username is required.');
+  }
 
   return {
-    email: cleanLowerString(input.email),
-    username: cleanLowerString(input.username ?? input.email),
+    email,
+    username,
     password: cleanString(input.password),
     host: cleanLowerString(input.host || 'imaps.aruba.it'),
-    port: Number.isFinite(port) ? port : 993,
+    port: normalizePort(input.port),
+    secure: input.secure !== false,
   };
 }
 
-export function sanitizeMailAccount(account = {}) {
-  const sanitized = {};
+export function sanitizeMailAccount(row) {
+  if (!row) {
+    return { configured: false };
+  }
 
-  assignIfPresent(sanitized, 'id', account.id);
-  assignIfPresent(sanitized, 'email', account.email);
-  assignIfPresent(sanitized, 'username', account.username);
-  assignIfPresent(sanitized, 'host', account.host);
-  assignIfPresent(sanitized, 'port', account.port);
-  assignIfPresent(sanitized, 'createdAt', account.createdAt ?? account.created_at);
-  assignIfPresent(sanitized, 'updatedAt', account.updatedAt ?? account.updated_at);
-
-  return sanitized;
+  return {
+    configured: true,
+    email: row.imap_email,
+    username: row.imap_username,
+    host: row.imap_host,
+    port: row.imap_port,
+    secure: row.imap_secure !== false,
+    lastTestedAt: row.last_tested_at,
+    lastSyncAt: row.last_sync_at,
+  };
 }
 
 export function computeMailStatus(reservationId, requestedStatus) {
@@ -77,38 +102,42 @@ export function buildMailPreview(value = '', maxLength = 160) {
 export function normalizeParsedMail({ uid, mailbox = 'INBOX', parsed = {} } = {}) {
   const sender = parsed.from?.value?.[0] ?? {};
   const attachments = Array.isArray(parsed.attachments) ? parsed.attachments : [];
+  const subject = cleanString(parsed.subject) || '(Senza oggetto)';
 
   return {
-    providerUid: String(uid ?? ''),
-    mailbox,
+    providerUid: `${mailbox}:${uid}`,
     messageId: parsed.messageId ?? '',
+    mailbox,
     fromName: cleanString(sender.name),
     fromEmail: cleanLowerString(sender.address),
     toText: parsed.to?.text ?? '',
-    subject: cleanString(parsed.subject),
+    subject,
+    sentAt: toIsoString(parsed.date),
     previewText: buildMailPreview(parsed.text || parsed.html || ''),
-    receivedAt: toIsoString(parsed.date),
+    bodyText: parsed.text ?? '',
+    bodyHtml: parsed.html ?? '',
     hasAttachments: attachments.length > 0,
-    text: parsed.text ?? '',
-    html: parsed.html ?? '',
   };
 }
 
 export function mapMailRow(row = {}) {
   return {
     id: row.id,
-    accountId: row.accountId ?? row.account_id,
     providerUid: row.providerUid ?? row.provider_uid,
-    mailbox: row.mailbox,
     messageId: row.messageId ?? row.message_id,
+    mailbox: row.mailbox,
     fromName: row.fromName ?? row.from_name,
     fromEmail: row.fromEmail ?? row.from_email,
+    toText: row.toText ?? row.to_text,
     subject: row.subject,
+    sentAt: row.sentAt ?? row.sent_at,
     previewText: row.previewText ?? row.preview_text,
-    receivedAt: row.receivedAt ?? row.received_at,
+    bodyText: row.bodyText ?? row.body_text,
+    bodyHtml: row.bodyHtml ?? row.body_html,
     hasAttachments: row.hasAttachments ?? row.has_attachments,
     reservationId: row.reservationId ?? row.reservation_id ?? '',
-    status: row.status,
+    pmsStatus: row.pmsStatus ?? row.pms_status,
+    syncedAt: row.syncedAt ?? row.synced_at,
     createdAt: row.createdAt ?? row.created_at,
     updatedAt: row.updatedAt ?? row.updated_at,
   };

@@ -25,17 +25,64 @@ test('normalizeMailAccountInput prepares Aruba IMAP account settings', () => {
       password: 'secret',
       host: 'imaps.aruba.it',
       port: 993,
+      secure: true,
     },
   );
+});
+
+test('normalizeMailAccountInput allows blank password and explicit insecure mode', () => {
+  assert.deepEqual(
+    normalizeMailAccountInput({
+      email: 'desk@example.com',
+      username: 'desk@example.com',
+      password: '   ',
+      secure: false,
+    }),
+    {
+      email: 'desk@example.com',
+      username: 'desk@example.com',
+      password: '',
+      host: 'imaps.aruba.it',
+      port: 993,
+      secure: false,
+    },
+  );
+});
+
+test('normalizeMailAccountInput rejects blank email and username', () => {
+  assert.throws(
+    () => normalizeMailAccountInput({ email: ' ', username: 'front@example.com' }),
+    /email/i,
+  );
+  assert.throws(
+    () => normalizeMailAccountInput({ email: 'front@example.com', username: ' ' }),
+    /username/i,
+  );
+});
+
+test('normalizeMailAccountInput rejects invalid ports', () => {
+  for (const port of ['993abc', '0', '70000']) {
+    assert.throws(
+      () => normalizeMailAccountInput({
+        email: 'front@example.com',
+        username: 'front@example.com',
+        port,
+      }),
+      /port/i,
+    );
+  }
 });
 
 test('sanitizeMailAccount returns frontend-safe account data', () => {
   const sanitized = sanitizeMailAccount({
     id: 'mail_1',
-    email: 'front@example.com',
-    username: 'front@example.com',
-    host: 'imaps.aruba.it',
-    port: 993,
+    imap_email: 'front@example.com',
+    imap_username: 'front@example.com',
+    imap_host: 'imaps.aruba.it',
+    imap_port: 993,
+    imap_secure: true,
+    last_tested_at: '2026-05-04T10:00:00.000Z',
+    last_sync_at: '2026-05-04T10:05:00.000Z',
     encryptedPassword: 'v1:secret',
     encrypted_password: 'v1:secret',
     created_at: '2026-05-04T10:00:00.000Z',
@@ -43,14 +90,19 @@ test('sanitizeMailAccount returns frontend-safe account data', () => {
   });
 
   assert.deepEqual(sanitized, {
-    id: 'mail_1',
+    configured: true,
     email: 'front@example.com',
     username: 'front@example.com',
     host: 'imaps.aruba.it',
     port: 993,
-    createdAt: '2026-05-04T10:00:00.000Z',
-    updatedAt: '2026-05-04T10:05:00.000Z',
+    secure: true,
+    lastTestedAt: '2026-05-04T10:00:00.000Z',
+    lastSyncAt: '2026-05-04T10:05:00.000Z',
   });
+  assert.deepEqual(sanitizeMailAccount(null), { configured: false });
+  assert.equal('id' in sanitized, false);
+  assert.equal('createdAt' in sanitized, false);
+  assert.equal('updatedAt' in sanitized, false);
   assert.equal('encryptedPassword' in sanitized, false);
   assert.equal('encrypted_password' in sanitized, false);
 });
@@ -67,7 +119,7 @@ test('normalizeParsedMail maps parsed message fields', () => {
   assert.deepEqual(
     normalizeParsedMail({
       uid: 42,
-      mailbox: 'Archive',
+      mailbox: 'INBOX',
       parsed: {
         messageId: '<message@example.com>',
         from: { value: [{ name: 'Mario Rossi', address: 'Mario@Example.COM' }] },
@@ -80,19 +132,32 @@ test('normalizeParsedMail maps parsed message fields', () => {
       },
     }),
     {
-      providerUid: '42',
-      mailbox: 'Archive',
+      providerUid: 'INBOX:42',
+      mailbox: 'INBOX',
       messageId: '<message@example.com>',
       fromName: 'Mario Rossi',
       fromEmail: 'mario@example.com',
       toText: 'hotel@example.com',
       subject: 'Prenotazione',
+      sentAt: '2026-05-04T09:30:00.000Z',
       previewText: 'Buongiorno, vorrei una camera.',
-      receivedAt: '2026-05-04T09:30:00.000Z',
+      bodyText: 'Buongiorno,\nvorrei una camera.',
+      bodyHtml: '<p>Buongiorno</p>',
       hasAttachments: true,
-      text: 'Buongiorno,\nvorrei una camera.',
-      html: '<p>Buongiorno</p>',
     },
+  );
+});
+
+test('normalizeParsedMail uses a subject fallback when subject is blank', () => {
+  assert.equal(
+    normalizeParsedMail({
+      uid: 43,
+      parsed: {
+        subject: ' ',
+        from: { value: [] },
+      },
+    }).subject,
+    '(Senza oggetto)',
   );
 });
 
@@ -110,29 +175,36 @@ test('mapMailRow converts database fields to frontend fields', () => {
       message_id: '<id@example.com>',
       from_name: 'Luisa',
       from_email: 'luisa@example.com',
+      to_text: 'hotel@example.com',
       subject: 'Info',
+      sent_at: '2026-05-04T07:59:00.000Z',
       preview_text: 'Hello',
-      received_at: '2026-05-04T08:00:00.000Z',
+      body_text: 'Hello body',
+      body_html: '<p>Hello body</p>',
       has_attachments: false,
       reservation_id: null,
-      status: 'assigned',
+      pms_status: 'assigned',
+      synced_at: '2026-05-04T08:00:00.000Z',
       created_at: '2026-05-04T08:01:00.000Z',
       updated_at: '2026-05-04T08:02:00.000Z',
     }),
     {
       id: 'msg_1',
-      accountId: 'acct_1',
       providerUid: '99',
       mailbox: 'INBOX',
       messageId: '<id@example.com>',
       fromName: 'Luisa',
       fromEmail: 'luisa@example.com',
+      toText: 'hotel@example.com',
       subject: 'Info',
+      sentAt: '2026-05-04T07:59:00.000Z',
       previewText: 'Hello',
-      receivedAt: '2026-05-04T08:00:00.000Z',
+      bodyText: 'Hello body',
+      bodyHtml: '<p>Hello body</p>',
       hasAttachments: false,
       reservationId: '',
-      status: 'assigned',
+      pmsStatus: 'assigned',
+      syncedAt: '2026-05-04T08:00:00.000Z',
       createdAt: '2026-05-04T08:01:00.000Z',
       updatedAt: '2026-05-04T08:02:00.000Z',
     },
