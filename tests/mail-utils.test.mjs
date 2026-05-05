@@ -148,6 +148,26 @@ test('normalizeMailAccountInput allows blank password and default Aruba TLS sett
   );
 });
 
+test('normalizeMailAccountInput accepts Aruba free mailbox IMAP host', () => {
+  assert.deepEqual(
+    normalizeMailAccountInput({
+      email: 'desk@aruba.it',
+      username: 'desk@aruba.it',
+      password: 'secret',
+      host: 'imap.aruba.it',
+      port: '993',
+    }),
+    {
+      email: 'desk@aruba.it',
+      username: 'desk@aruba.it',
+      password: 'secret',
+      host: 'imap.aruba.it',
+      port: 993,
+      secure: true,
+    },
+  );
+});
+
 test('normalizeMailAccountInput rejects non-Aruba IMAP settings', () => {
   assert.throws(
     () => normalizeMailAccountInput({

@@ -12,7 +12,6 @@ import {
 
 const MAILBOX = 'INBOX';
 const FETCH_LIMIT = 200;
-const ARUBA_IMAP_HOST = 'imaps.aruba.it';
 const ARUBA_IMAP_PORT = 993;
 
 export const MAX_RAW_MESSAGE_BYTES = 5 * 1024 * 1024;
@@ -130,9 +129,9 @@ function sanitizeMessagePayload(message) {
 
 function createClient(ClientClass, account) {
   return new ClientClass({
-    host: ARUBA_IMAP_HOST,
-    port: ARUBA_IMAP_PORT,
-    secure: true,
+    host: account.imap_host,
+    port: account.imap_port || ARUBA_IMAP_PORT,
+    secure: account.imap_secure !== false,
     auth: {
       user: account.imap_username,
       pass: decryptSecret(account.encrypted_password),

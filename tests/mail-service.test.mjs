@@ -157,6 +157,19 @@ test('syncMailMessages opens INBOX readOnly, sanitizes body HTML, and logs out',
   assert.equal(sql.state.syncUpdated, true);
 });
 
+test('syncMailMessages uses the saved Aruba IMAP host', async () => {
+  const ClientClass = makeClientClass([{ uid: 10, source: Buffer.from('ok') }]);
+  const service = createMailService({ ClientClass, parser });
+  const sql = createSyncSql();
+  sql.state.account.imap_host = 'imap.aruba.it';
+
+  await service.syncMailMessages(sql, 'user_1');
+
+  assert.equal(ClientClass.instances[0].config.host, 'imap.aruba.it');
+  assert.equal(ClientClass.instances[0].config.port, 993);
+  assert.equal(ClientClass.instances[0].config.secure, true);
+});
+
 test('syncMailMessages continues after parser failure and reports failed UID', async () => {
   const ClientClass = makeClientClass([
     { uid: 20, source: Buffer.from('bad') },

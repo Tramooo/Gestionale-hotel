@@ -1,5 +1,6 @@
 export const MAIL_STATUSES = new Set(['unassigned', 'assigned', 'handled', 'archived']);
 const ARUBA_IMAP_HOST = 'imaps.aruba.it';
+const ARUBA_FREE_IMAP_HOST = 'imap.aruba.it';
 const ARUBA_IMAP_PORT = 993;
 
 function cleanString(value) {
@@ -58,8 +59,8 @@ export function normalizeMailAccountInput(input = {}) {
     throw new Error('Mail account username is required.');
   }
 
-  if (host !== ARUBA_IMAP_HOST) {
-    throw new Error(`Only Aruba IMAP host ${ARUBA_IMAP_HOST} is supported.`);
+  if (host !== ARUBA_IMAP_HOST && host !== ARUBA_FREE_IMAP_HOST) {
+    throw new Error(`Only Aruba IMAP hosts ${ARUBA_IMAP_HOST} and ${ARUBA_FREE_IMAP_HOST} are supported.`);
   }
 
   if (port !== ARUBA_IMAP_PORT) {
