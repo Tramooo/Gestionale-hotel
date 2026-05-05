@@ -1519,7 +1519,7 @@
                             <label for="mailSettingEmail" data-i18n="mail.settingEmail">Email</label>
                             <input type="email" id="mailSettingEmail" autocomplete="email" placeholder="booking@example.it">
                         </div>
-                        <div class="form-group" style="margin:0">
+                        <div class="form-group settings-username-field" hidden>
                             <label for="mailSettingUsername" data-i18n="mail.settingUsername">Username</label>
                             <input type="text" id="mailSettingUsername" autocomplete="username" placeholder="booking@example.it">
                         </div>
@@ -1542,6 +1542,10 @@
                                 <span data-i18n="mail.settingSecureHint">Usa SSL/TLS</span>
                             </label>
                         </div>
+                        <label class="settings-username-toggle" for="mailSettingUseCustomUsername">
+                            <input type="checkbox" id="mailSettingUseCustomUsername" onchange="toggleMailUsernameField()">
+                            <span data-i18n="mail.customUsername">Username IMAP diverso dall'email</span>
+                        </label>
                     </div>
                     <div class="settings-mail-actions">
                         <button class="btn btn-secondary" type="button" onclick="testMailConnection()" data-i18n="mail.testConnection">Test connessione</button>
@@ -1666,6 +1670,7 @@
     <script src="js/core/api-client.js"></script>
     <script src="js/core/utils.js"></script>
     <script src="js/core/floors.js"></script>
+    <script src="js/core/bootstrap.js"></script>
     <script src="js/ui/datepicker.js"></script>
     <script src="js/ui/feedback.js"></script>
     <script src="js/features/rooms.js"></script>

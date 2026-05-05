@@ -12,6 +12,7 @@ const {
     CACHE_KEY,
     CACHE_TTL
 } = window.GroupStayConfig;
+const { markInitComplete, shouldRunInit } = window.GroupStayBootstrap || {};
 
 const {
     apiGet,
@@ -447,20 +448,44 @@ function loadDataCache() {
     } catch (e) { return false; }
 }
 
+function getBootstrapStorage() {
+    try {
+        return window.localStorage;
+    } catch (error) {
+        return null;
+    }
+}
+
+async function ensureBootstrapSchema() {
+    const storage = getBootstrapStorage();
+    const userId = currentUser?.id;
+    if (typeof shouldRunInit === 'function' && !shouldRunInit({ storage, userId })) {
+        return;
+    }
+
+    await apiPost(API.init, {});
+
+    if (typeof markInitComplete === 'function') {
+        markInitComplete({ storage, userId });
+    }
+}
+
 async function loadAllData(retryOnUnauthorized = true) {
     try {
         setAuthDebug('Bootstrap: preparo il database...');
-        // Keep schema migrations idempotent and run them on each load
-        // so freshly added columns are available even in an existing session.
-        try { await apiPost(API.init, {}); } catch (e) {}
+        try { await ensureBootstrapSchema(); } catch (e) {}
 
         setAuthDebug('Bootstrap: carico dati principali...');
-        const [resData, roomData, guestData, empData, agendaData] = await Promise.all([
+        const mailDataPromise = mailAccount?.configured
+            ? apiGet(`${API.reservations}?action=mailList`).catch(() => ({ messages: [] }))
+            : Promise.resolve({ messages: [] });
+        const [resData, roomData, guestData, empData, agendaData, mailData] = await Promise.all([
             apiGet(API.reservations),
             apiGet(API.rooms),
             apiGet(API.guests),
             apiGet(API.employees).catch(() => ({ employees: [], workEntries: [], monthOverrides: [], advances: [] })),
-            apiGet(API.agenda).catch(() => [])
+            apiGet(API.agenda).catch(() => []),
+            mailDataPromise
         ]);
         reservations    = resData;
         rooms           = roomData;
@@ -470,14 +495,7 @@ async function loadAllData(retryOnUnauthorized = true) {
         monthPayOverrides = empData.monthOverrides || [];
         employeeAdvances = empData.advances || [];
         agendaItems     = agendaData;
-        const authData = await apiGet(API.auth).catch(() => ({}));
-        mailAccount = authData.mailAccount || { configured: false };
-        if (mailAccount.configured) {
-            const mailData = await apiGet(`${API.reservations}?action=mailList`).catch(() => ({ messages: [] }));
-            mailMessages = mailData.messages || [];
-        } else {
-            mailMessages = [];
-        }
+        mailMessages = mailAccount?.configured ? (mailData.messages || []) : [];
         syncMailSettingsInputs(mailAccount);
         computeRoomStatuses();
         syncRoomFloorSettingsInputs();
@@ -545,6 +563,7 @@ let _compDocFileData = '';
 let _compDocFileName = '';
 let empViewMonth = new Date(); // currently viewed month for employee pay
 let currentUser = null;
+let authStateLoaded = false;
 let currentAuthMode = 'login';
 const REMEMBERED_LOGIN_KEY = 'gs_remembered_login';
 
@@ -664,6 +683,15 @@ function updateProfileHeader() {
     if (avatarEl) avatarEl.textContent = getInitials(displayName);
 }
 
+function applyAuthState(data = {}) {
+    currentUser = data.user || currentUser;
+    managementPinEnabled = Boolean(data.managementPinEnabled);
+    mailAccount = data.mailAccount || { configured: false };
+    authStateLoaded = Boolean(currentUser);
+    syncMailSettingsInputs(mailAccount);
+    updateProfileHeader();
+}
+
 function switchAuthMode(mode) {
     currentAuthMode = mode === 'register' ? 'register' : 'login';
     const isRegister = currentAuthMode === 'register';
@@ -677,13 +705,11 @@ function switchAuthMode(mode) {
 async function fetchSession() {
     try {
         const data = await apiGet(API.auth);
-        currentUser = data.user;
-        mailAccount = data.mailAccount || { configured: false };
-        syncMailSettingsInputs(mailAccount);
-        updateProfileHeader();
+        applyAuthState(data);
         return currentUser;
     } catch (error) {
         currentUser = null;
+        authStateLoaded = false;
         setAuthDebug(`Sessione non letta: ${formatErrorMessage(error)}`);
         return null;
     }
@@ -712,6 +738,7 @@ async function submitLogin(event) {
         primeSessionToken?.(data.sessionToken);
         saveRememberedLogin(email, password, shouldRemember);
         currentUser = data.user;
+        authStateLoaded = false;
         updateProfileHeader();
         const sessionUser = await ensureSessionReady();
         if (!sessionUser) throw new Error('Sessione non confermata. Riprova tra un attimo.');
@@ -743,6 +770,7 @@ async function submitRegister(event) {
         setAuthDebug('Account creato, confermo sessione...');
         primeSessionToken?.(data.sessionToken);
         currentUser = data.user;
+        authStateLoaded = false;
         updateProfileHeader();
         const sessionUser = await ensureSessionReady();
         if (!sessionUser) throw new Error('Sessione non confermata. Riprova tra un attimo.');
@@ -765,6 +793,7 @@ async function logoutUser() {
 
     clearSessionToken?.();
     currentUser = null;
+    authStateLoaded = false;
     if (cacheUserId) {
         localStorage.removeItem(`${CACHE_KEY}:${cacheUserId}`);
     }
@@ -841,6 +870,7 @@ const TRANSLATIONS = {
     'mail.settingsDesc': { en: 'Configure the IMAP mailbox used to read requests and conversations.', it: 'Configura la casella IMAP usata per leggere richieste e conversazioni.' },
     'mail.settingEmail': { en: 'Email', it: 'Email' },
     'mail.settingUsername': { en: 'Username', it: 'Username' },
+    'mail.customUsername': { en: 'IMAP username is different from the email', it: "Username IMAP diverso dall'email" },
     'mail.settingPassword': { en: 'Password', it: 'Password' },
     'mail.settingHost': { en: 'IMAP host', it: 'Host IMAP' },
     'mail.settingPort': { en: 'Port', it: 'Porta' },
@@ -1450,10 +1480,10 @@ let managementPinEnabled = false;
 
 async function loadManagementPinSettings() {
     try {
-        const data = await apiGet(API.auth);
-        managementPinEnabled = Boolean(data.managementPinEnabled);
-        mailAccount = data.mailAccount || { configured: false };
-        syncMailSettingsInputs(mailAccount);
+        if (!authStateLoaded) {
+            const data = await apiGet(API.auth);
+            applyAuthState(data);
+        }
 
         const legacyPin = localStorage.getItem('gs_emp_pin');
         if (legacyPin && !managementPinEnabled && /^\d{4}$/.test(legacyPin)) {
@@ -1634,6 +1664,7 @@ function archiveMail(id) { return window.GroupStayMail?.archiveMail?.(id); }
 function saveMailSettings() { return window.GroupStayMail?.saveMailSettings?.(); }
 function testMailConnection() { return window.GroupStayMail?.testMailConnection?.(); }
 function syncMailSettingsInputs(account) { return window.GroupStayMail?.syncMailSettingsInputs?.(account); }
+function toggleMailUsernameField() { return window.GroupStayMail?.toggleMailUsernameField?.(); }
 
 // =============================================
 // RESERVATIONS

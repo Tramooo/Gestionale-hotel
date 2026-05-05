@@ -190,7 +190,7 @@ test('markMailHandled refreshes visible linked reservation mail lists for old an
     assert.match(res2List.innerHTML, /mail\.status\.handled/);
 });
 
-test('testMailConnection posts the current settings form values', async () => {
+test('testMailConnection uses the email as IMAP username by default', async () => {
     const { elements, mail } = loadMailFeature();
     let postedUrl = '';
     let postedPayload = null;
@@ -207,12 +207,13 @@ test('testMailConnection posts the current settings form values', async () => {
         }
     }));
 
-    for (const id of ['mailSettingEmail', 'mailSettingUsername', 'mailSettingPassword', 'mailSettingHost', 'mailSettingPort', 'mailSettingSecure']) {
+    for (const id of ['mailSettingEmail', 'mailSettingUsername', 'mailSettingUseCustomUsername', 'mailSettingPassword', 'mailSettingHost', 'mailSettingPort', 'mailSettingSecure']) {
         elements.set(id, createElement());
     }
 
     elements.get('mailSettingEmail').value = 'desk@example.com';
-    elements.get('mailSettingUsername').value = 'desk@example.com';
+    elements.get('mailSettingUsername').value = 'custom-login';
+    elements.get('mailSettingUseCustomUsername').checked = false;
     elements.get('mailSettingPassword').value = 'new-secret';
     elements.get('mailSettingHost').value = 'imap.aruba.it';
     elements.get('mailSettingPort').value = '993';
@@ -232,6 +233,34 @@ test('testMailConnection posts the current settings form values', async () => {
     assert.equal(accountUpdates, 0);
 });
 
+test('testMailConnection posts a custom IMAP username only when enabled', async () => {
+    const { elements, mail } = loadMailFeature();
+    let postedPayload = null;
+
+    mail.init(baseDeps({
+        apiPost(_url, payload) {
+            postedPayload = payload;
+            return { success: true, testedAccount: { configured: true } };
+        }
+    }));
+
+    for (const id of ['mailSettingEmail', 'mailSettingUsername', 'mailSettingUseCustomUsername', 'mailSettingPassword', 'mailSettingHost', 'mailSettingPort', 'mailSettingSecure']) {
+        elements.set(id, createElement());
+    }
+
+    elements.get('mailSettingEmail').value = 'desk@example.com';
+    elements.get('mailSettingUsername').value = 'custom-login';
+    elements.get('mailSettingUseCustomUsername').checked = true;
+    elements.get('mailSettingPassword').value = 'new-secret';
+    elements.get('mailSettingHost').value = 'imap.aruba.it';
+    elements.get('mailSettingPort').value = '993';
+    elements.get('mailSettingSecure').checked = true;
+
+    await mail.testMailConnection();
+
+    assert.equal(postedPayload.username, 'custom-login');
+});
+
 test('index loads mail feature before the main script', () => {
     const html = fs.readFileSync('index.html', 'utf8');
     const mailFeatureIndex = html.indexOf('js/features/mail.js');
@@ -249,6 +278,8 @@ test('settings modal uses the wide settings layout for mail configuration', () =
     assert.match(html, /<div class="modal-body settings-modal-body">/);
     assert.match(html, /<div class="settings-section settings-mail-section">/);
     assert.match(html, /<div class="settings-mail-grid">/);
+    assert.match(html, /id="mailSettingUseCustomUsername"/);
+    assert.match(html, /class="form-group settings-username-field"/);
     assert.match(html, /<div class="settings-mail-actions">/);
 });
 

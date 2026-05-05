@@ -275,15 +275,30 @@
         return document.getElementById(id)?.value || '';
     }
 
+    function usesCustomMailUsername() {
+        return document.getElementById('mailSettingUseCustomUsername')?.checked === true;
+    }
+
     function getMailSettingsPayload() {
+        const email = inputValue('mailSettingEmail');
         return {
-            email: inputValue('mailSettingEmail'),
-            username: inputValue('mailSettingUsername'),
+            email,
+            username: usesCustomMailUsername() ? inputValue('mailSettingUsername') : email,
             password: inputValue('mailSettingPassword'),
             host: inputValue('mailSettingHost'),
             port: inputValue('mailSettingPort'),
             secure: document.getElementById('mailSettingSecure')?.checked !== false
         };
+    }
+
+    function toggleMailUsernameField() {
+        const field = document.querySelector?.('.settings-username-field') || document.getElementById('mailSettingUsername')?.closest?.('.form-group');
+        const username = document.getElementById('mailSettingUsername');
+        const email = inputValue('mailSettingEmail');
+        const useCustom = usesCustomMailUsername();
+
+        if (field) field.hidden = !useCustom;
+        if (!useCustom && username) username.value = email;
     }
 
     async function saveMailSettings() {
@@ -322,9 +337,10 @@
     function syncMailSettingsInputs(account) {
         if (!account?.configured) return;
 
+        const hasCustomUsername = Boolean(account.username && account.email && account.username !== account.email);
         const fields = {
             mailSettingEmail: account.email || '',
-            mailSettingUsername: account.username || '',
+            mailSettingUsername: hasCustomUsername ? account.username : account.email || '',
             mailSettingHost: account.host || 'imaps.aruba.it',
             mailSettingPort: account.port || 993
         };
@@ -336,6 +352,10 @@
 
         const secure = document.getElementById('mailSettingSecure');
         if (secure) secure.checked = account.secure !== false;
+
+        const customUsername = document.getElementById('mailSettingUseCustomUsername');
+        if (customUsername) customUsername.checked = hasCustomUsername;
+        toggleMailUsernameField();
     }
 
     global.GroupStayMail = {
@@ -354,6 +374,7 @@
         setMailFilter,
         syncMail,
         syncMailSettingsInputs,
+        toggleMailUsernameField,
         testMailConnection
     };
 })(window);
