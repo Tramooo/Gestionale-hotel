@@ -1451,12 +1451,12 @@
 
     <!-- Settings Modal -->
     <div class="modal-overlay" id="settingsModal">
-        <div class="modal" style="max-width:440px">
+        <div class="modal settings-modal">
             <div class="modal-header">
                 <h2 data-i18n="settings.title">Impostazioni</h2>
                 <button class="modal-close" onclick="closeModal('settingsModal')">&times;</button>
             </div>
-            <div class="modal-body" style="padding:20px">
+            <div class="modal-body settings-modal-body">
                 <div class="settings-section">
                     <label class="settings-label" data-i18n="settings.language">Lingua</label>
                     <div class="settings-toggle-group">
@@ -1511,10 +1511,10 @@
 
                 <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
 
-                <div class="settings-section">
+                <div class="settings-section settings-mail-section">
                     <label class="settings-label" data-i18n="mail.settingsTitle">Casella mail Aruba</label>
                     <p style="font-size:12px;color:var(--text-secondary);margin:0 0 10px" data-i18n="mail.settingsDesc">Configura la casella IMAP usata per leggere richieste e conversazioni.</p>
-                    <div class="form-grid">
+                    <div class="settings-mail-grid">
                         <div class="form-group" style="margin:0">
                             <label for="mailSettingEmail" data-i18n="mail.settingEmail">Email</label>
                             <input type="email" id="mailSettingEmail" autocomplete="email" placeholder="booking@example.it">
@@ -1543,20 +1543,10 @@
                             </label>
                         </div>
                     </div>
-                    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
+                    <div class="settings-mail-actions">
                         <button class="btn btn-secondary" type="button" onclick="testMailConnection()" data-i18n="mail.testConnection">Test connessione</button>
                         <button class="btn btn-primary" type="button" onclick="saveMailSettings()" data-i18n="mail.saveSettings">Salva mail</button>
                     </div>
-                </div>
-
-                <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
-
-                <div class="settings-section">
-                    <label class="settings-label" data-i18n="settings.importScidoo">Importa Prenotazioni da Scidoo</label>
-                    <p style="font-size:12px;color:var(--text-secondary);margin:0 0 10px" data-i18n="settings.importScidooDesc">Carica un CSV esportato da Scidoo. Mapperai le colonne prima dell'importazione.</p>
-                    <input type="file" id="csvFileInput" accept=".csv,.txt" style="display:none" onchange="handleCsvFile(event)">
-                    <button class="btn btn-secondary" onclick="document.getElementById('csvFileInput').click()" data-i18n="settings.chooseCsv">Scegli File CSV</button>
-                    <span id="csvFileName" style="font-size:12px;color:var(--text-secondary);margin-left:8px"></span>
                 </div>
 
                 <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">

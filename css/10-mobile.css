@@ -961,9 +961,22 @@
     }
 
     .form-grid,
+    .settings-mail-grid,
     .csv-mapping-grid,
     .menu-meal-fields {
         grid-template-columns: 1fr;
+    }
+
+    .settings-mail-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .settings-mail-actions .btn {
+        width: 100%;
+        justify-content: center;
+        min-height: 44px;
     }
 
     .form-group input,

@@ -241,3 +241,20 @@ test('index loads mail feature before the main script', () => {
     assert.notEqual(mainScriptIndex, -1);
     assert.ok(mailFeatureIndex < mainScriptIndex);
 });
+
+test('settings modal uses the wide settings layout for mail configuration', () => {
+    const html = fs.readFileSync('index.html', 'utf8');
+
+    assert.match(html, /<div class="modal settings-modal">/);
+    assert.match(html, /<div class="modal-body settings-modal-body">/);
+    assert.match(html, /<div class="settings-section settings-mail-section">/);
+    assert.match(html, /<div class="settings-mail-grid">/);
+    assert.match(html, /<div class="settings-mail-actions">/);
+});
+
+test('settings modal no longer exposes the Scidoo import entry point', () => {
+    const html = fs.readFileSync('index.html', 'utf8');
+
+    assert.doesNotMatch(html, /settings\.importScidoo/);
+    assert.doesNotMatch(html, /csvFileInput/);
+});

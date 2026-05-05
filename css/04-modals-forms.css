@@ -44,6 +44,35 @@
     max-width: 800px;
 }
 
+.settings-modal {
+    max-width: 820px;
+}
+
+.settings-modal-body {
+    padding: 22px 24px;
+}
+
+.settings-mail-section {
+    margin-bottom: 18px;
+}
+
+.settings-mail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 14px;
+}
+
+.settings-mail-grid .form-group {
+    min-width: 0;
+}
+
+.settings-mail-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 14px;
+}
+
 .modal-sm {
     max-width: 400px;
 }
