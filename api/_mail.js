@@ -140,6 +140,34 @@ function createClient(ClientClass, account) {
   });
 }
 
+function normalizeImapErrorText(value) {
+  return String(value ?? '')
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 240);
+}
+
+function createConnectionTestError(stage, error) {
+  const status = normalizeImapErrorText(error?.responseStatus);
+  const responseText = normalizeImapErrorText(error?.responseText);
+  const message = normalizeImapErrorText(error?.message);
+  const detailParts = [];
+
+  if (status) {
+    detailParts.push(status);
+  }
+
+  if (responseText) {
+    detailParts.push(responseText);
+  } else if (message && message !== 'Command failed') {
+    detailParts.push(message);
+  }
+
+  const detail = detailParts.length ? ` (${detailParts.join(': ')})` : '';
+  return new Error(`Test connessione mail fallito durante ${stage}${detail}.`);
+}
+
 async function upsertMailMessage(sql, userId, message) {
   const safeMessage = sanitizeMessagePayload(message);
   const rows = await sql`
@@ -265,12 +293,25 @@ export function createMailService({
     requireMailAccount(account);
 
     const client = createClient(ClientClass, account);
+    let connected = false;
 
     try {
-      await client.connect();
-      await client.mailboxOpen(MAILBOX, { readOnly: true });
+      try {
+        await client.connect();
+        connected = true;
+      } catch (error) {
+        throw createConnectionTestError('il collegamento IMAP', error);
+      }
+
+      try {
+        await client.mailboxOpen(MAILBOX, { readOnly: true });
+      } catch (error) {
+        throw createConnectionTestError("l'apertura INBOX", error);
+      }
     } finally {
-      await client.logout().catch(() => {});
+      if (connected) {
+        await client.logout().catch(() => {});
+      }
     }
 
     const rows = await sql`

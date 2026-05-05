@@ -170,6 +170,68 @@ test('syncMailMessages uses the saved Aruba IMAP host', async () => {
   assert.equal(ClientClass.instances[0].config.secure, true);
 });
 
+test('testMailConnection exposes sanitized IMAP response details when connect fails', async () => {
+  class FailingConnectClient {
+    static instances = [];
+
+    constructor() {
+      FailingConnectClient.instances.push(this);
+    }
+
+    async connect() {
+      const error = new Error('Command failed');
+      error.responseStatus = 'NO';
+      error.responseText = 'LOGIN failed';
+      throw error;
+    }
+
+    async logout() {}
+  }
+
+  const service = createMailService({ ClientClass: FailingConnectClient, parser });
+  const sql = createSyncSql();
+
+  await assert.rejects(
+    () => service.testMailConnection(sql, 'user_1'),
+    /collegamento IMAP.*NO.*LOGIN failed/i,
+  );
+});
+
+test('testMailConnection exposes sanitized IMAP response details when INBOX open fails', async () => {
+  class FailingOpenClient {
+    static instances = [];
+
+    constructor() {
+      this.actions = [];
+      FailingOpenClient.instances.push(this);
+    }
+
+    async connect() {
+      this.actions.push(['connect']);
+    }
+
+    async mailboxOpen() {
+      const error = new Error('Command failed');
+      error.responseStatus = 'BAD';
+      error.responseText = 'Mailbox does not exist';
+      throw error;
+    }
+
+    async logout() {
+      this.actions.push(['logout']);
+    }
+  }
+
+  const service = createMailService({ ClientClass: FailingOpenClient, parser });
+  const sql = createSyncSql();
+
+  await assert.rejects(
+    () => service.testMailConnection(sql, 'user_1'),
+    /apertura INBOX.*BAD.*Mailbox does not exist/i,
+  );
+  assert.deepEqual(FailingOpenClient.instances[0].actions, [['connect'], ['logout']]);
+});
+
 test('syncMailMessages continues after parser failure and reports failed UID', async () => {
   const ClientClass = makeClientClass([
     { uid: 20, source: Buffer.from('bad') },
