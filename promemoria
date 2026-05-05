@@ -1,1 +1,0 @@
-Nota operativa: per usare davvero la funzione mail serve impostare in ambiente server la variabile MAIL_CREDENTIALS_SECRET con un valore privato di almeno 16 caratteri. Non ho fatto il test reale con Aruba perché servono credenziali IMAP effettive.
