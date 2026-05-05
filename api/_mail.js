@@ -288,8 +288,35 @@ export function createMailService({
     return sanitizeMailAccount(rows[0]);
   }
 
-  async function testMailConnection(sql, userId) {
-    const account = await getMailAccount(sql, userId);
+  async function testMailConnection(sql, userId, payload = null) {
+    const existing = await getMailAccount(sql, userId);
+    let account = existing;
+    let shouldPersistLastTest = true;
+
+    if (payload) {
+      const input = normalizeMailAccountInput(payload);
+      const hasNewPassword = input.password.trim() !== '';
+      const encryptedPassword = hasNewPassword
+        ? encryptSecret(input.password)
+        : existing?.encrypted_password;
+
+      if (!encryptedPassword) {
+        throw new Error('Password IMAP obbligatoria');
+      }
+
+      account = {
+        owner_user_id: userId,
+        imap_email: input.email,
+        imap_username: input.username,
+        imap_host: input.host,
+        imap_port: input.port,
+        imap_secure: input.secure,
+        encrypted_password: encryptedPassword,
+        last_sync_at: existing?.last_sync_at,
+      };
+      shouldPersistLastTest = false;
+    }
+
     requireMailAccount(account);
 
     const client = createClient(ClientClass, account);
@@ -312,6 +339,10 @@ export function createMailService({
       if (connected) {
         await client.logout().catch(() => {});
       }
+    }
+
+    if (!shouldPersistLastTest) {
+      return sanitizeMailAccount(account);
     }
 
     const rows = await sql`

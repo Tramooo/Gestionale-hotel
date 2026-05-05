@@ -232,6 +232,36 @@ test('testMailConnection exposes sanitized IMAP response details when INBOX open
   assert.deepEqual(FailingOpenClient.instances[0].actions, [['connect'], ['logout']]);
 });
 
+test('testMailConnection can test current form credentials without saving them', async () => {
+  const ClientClass = makeClientClass([]);
+  const service = createMailService({ ClientClass, parser });
+  const sql = createSyncSql();
+
+  const result = await service.testMailConnection(sql, 'user_1', {
+    email: 'new@example.com',
+    username: 'new@example.com',
+    password: 'new-secret',
+    host: 'imap.aruba.it',
+    port: '993',
+    secure: true,
+  });
+
+  assert.equal(ClientClass.instances[0].config.host, 'imap.aruba.it');
+  assert.equal(ClientClass.instances[0].config.auth.user, 'new@example.com');
+  assert.equal(ClientClass.instances[0].config.auth.pass, 'new-secret');
+  assert.equal(sql.state.syncUpdated, false);
+  assert.deepEqual(result, {
+    configured: true,
+    email: 'new@example.com',
+    username: 'new@example.com',
+    host: 'imap.aruba.it',
+    port: 993,
+    secure: true,
+    lastTestedAt: undefined,
+    lastSyncAt: null,
+  });
+});
+
 test('syncMailMessages continues after parser failure and reports failed UID', async () => {
   const ClientClass = makeClientClass([
     { uid: 20, source: Buffer.from('bad') },

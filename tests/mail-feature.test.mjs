@@ -190,6 +190,48 @@ test('markMailHandled refreshes visible linked reservation mail lists for old an
     assert.match(res2List.innerHTML, /mail\.status\.handled/);
 });
 
+test('testMailConnection posts the current settings form values', async () => {
+    const { elements, mail } = loadMailFeature();
+    let postedUrl = '';
+    let postedPayload = null;
+    let accountUpdates = 0;
+
+    mail.init(baseDeps({
+        apiPost(url, payload) {
+            postedUrl = url;
+            postedPayload = payload;
+            return { success: true, testedAccount: { configured: true } };
+        },
+        setMailAccount() {
+            accountUpdates += 1;
+        }
+    }));
+
+    for (const id of ['mailSettingEmail', 'mailSettingUsername', 'mailSettingPassword', 'mailSettingHost', 'mailSettingPort', 'mailSettingSecure']) {
+        elements.set(id, createElement());
+    }
+
+    elements.get('mailSettingEmail').value = 'desk@example.com';
+    elements.get('mailSettingUsername').value = 'desk@example.com';
+    elements.get('mailSettingPassword').value = 'new-secret';
+    elements.get('mailSettingHost').value = 'imap.aruba.it';
+    elements.get('mailSettingPort').value = '993';
+    elements.get('mailSettingSecure').checked = true;
+
+    await mail.testMailConnection();
+
+    assert.equal(postedUrl, '/api/auth?action=testMailConnection');
+    assert.deepEqual(JSON.parse(JSON.stringify(postedPayload)), {
+        email: 'desk@example.com',
+        username: 'desk@example.com',
+        password: 'new-secret',
+        host: 'imap.aruba.it',
+        port: '993',
+        secure: true
+    });
+    assert.equal(accountUpdates, 0);
+});
+
 test('index loads mail feature before the main script', () => {
     const html = fs.readFileSync('index.html', 'utf8');
     const mailFeatureIndex = html.indexOf('js/features/mail.js');

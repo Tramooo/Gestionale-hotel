@@ -275,9 +275,8 @@
         return document.getElementById(id)?.value || '';
     }
 
-    async function saveMailSettings() {
-        const { API, apiPost, setMailAccount, showToast, t } = requireDeps();
-        const payload = {
+    function getMailSettingsPayload() {
+        return {
             email: inputValue('mailSettingEmail'),
             username: inputValue('mailSettingUsername'),
             password: inputValue('mailSettingPassword'),
@@ -285,6 +284,11 @@
             port: inputValue('mailSettingPort'),
             secure: document.getElementById('mailSettingSecure')?.checked !== false
         };
+    }
+
+    async function saveMailSettings() {
+        const { API, apiPost, setMailAccount, showToast, t } = requireDeps();
+        const payload = getMailSettingsPayload();
 
         try {
             const response = await apiPost(`${API.auth}?action=saveMailSettings`, payload);
@@ -304,9 +308,11 @@
     async function testMailConnection() {
         const { API, apiPost, setMailAccount, showToast, t } = requireDeps();
         try {
-            const response = await apiPost(`${API.auth}?action=testMailConnection`, {});
-            setMailAccount(response.mailAccount || { configured: false });
-            syncMailSettingsInputs(response.mailAccount);
+            const response = await apiPost(`${API.auth}?action=testMailConnection`, getMailSettingsPayload());
+            if (response.mailAccount) {
+                setMailAccount(response.mailAccount || { configured: false });
+                syncMailSettingsInputs(response.mailAccount);
+            }
             showToast(t('mail.connectionOk'), 'success');
         } catch (error) {
             showToast(error.message || t('mail.connectionFail'), 'error');

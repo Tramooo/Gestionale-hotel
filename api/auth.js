@@ -16,6 +16,11 @@ function validatePin(pin) {
   return /^\d{4}$/.test(String(pin || ''));
 }
 
+function hasMailSettingsPayload(body = {}) {
+  return ['email', 'username', 'password', 'host', 'port', 'secure']
+    .some((key) => Object.prototype.hasOwnProperty.call(body, key));
+}
+
 export default async function handler(req, res) {
   try {
     await ensureAuthTables();
@@ -98,8 +103,12 @@ export default async function handler(req, res) {
         return res.status(200).json({ mailAccount });
       }
 
-      const mailAccount = await testMailConnection(sql, user.id);
-      return res.status(200).json({ mailAccount, success: true });
+      const hasPayload = hasMailSettingsPayload(req.body || {});
+      const mailAccount = await testMailConnection(sql, user.id, hasPayload ? req.body : null);
+      if (hasPayload) {
+        return res.status(200).json({ testedAccount: mailAccount, persisted: false, success: true });
+      }
+      return res.status(200).json({ mailAccount, persisted: true, success: true });
     }
 
     if (action === 'register') {
