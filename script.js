@@ -2755,6 +2755,28 @@ function printAssignments(mode) {
     const r = reservations.find(x => x.id === currentAssignmentReservationId);
     if (!r) return;
 
+    if (window.GroupStayAssignmentPrint?.buildAssignmentPrintDocument) {
+        const printHtml = window.GroupStayAssignmentPrint.buildAssignmentPrintDocument({
+            reservation: r,
+            rooms,
+            assignmentData,
+            plannerColumns,
+            mode,
+            labels: {
+                room: t('rooms.room'),
+                roomType: t('assign.roomType'),
+                notes: t('assign.notes'),
+                floor: t('rooms.floor'),
+                printCleaning: t('assign.printCleaning')
+            },
+            escapeHtml
+        });
+        const w = window.open('', '_blank');
+        w.document.write(printHtml);
+        w.document.close();
+        return;
+    }
+
     const sortedRooms = [...rooms].sort((a, b) => a.floor - b.floor || a.number.localeCompare(b.number, undefined, { numeric: true }));
     const floors = {};
     sortedRooms.forEach(rm => {
