@@ -60,8 +60,11 @@ test('cleaning print uses A4 landscape and creates one page per floor', () => {
     assert.match(html, /@page \{ size: A4 landscape; margin: 0; \}/);
     assert.equal((html.match(/class="page-block print-cleaning-page"/g) || []).length, 3);
     assert.match(html, /class="print-cleaning-floor-label"[^>]*>Piano 1<\/td>/);
-    assert.match(html, /\.print-cleaning-floor-label \{[^}]*font-size: 34px/);
-    assert.match(html, /\.print-cleaning-room-cell \{[^}]*font-size: 26px/);
+    assert.match(html, /\.print-cleaning-floor-label \{[^}]*font-size: 30px/);
+    assert.match(html, /\.print-cleaning-table th \{[^}]*font-size: 18px/);
+    assert.match(html, /\.print-cleaning-room-cell \{[^}]*font-size: 22px/);
+    assert.match(html, /\.print-cleaning-type-cell, \.print-cleaning-notes-cell \{[^}]*font-size: 20px/);
+    assert.match(html, /\.print-cleaning-room-cell \{[^}]*padding: 6px 10px/);
     assert.match(html, /\.print-cleaning-notes-head, \.print-cleaning-notes-cell \{[^}]*width: 57%/);
 });
 
@@ -73,6 +76,9 @@ test('standard print keeps two floors per page and avoids cleaning landscape ori
     assert.match(html, /<span class="print-floor-badge">Piano 1<\/span>/);
     assert.match(html, /<span class="print-floor-badge">Piano 2<\/span>/);
     assert.match(html, /\.print-floor-badge \{[^}]*font-size: 22px/);
+    assert.match(html, /\.print-floor-badge \{[^}]*font-weight: 700/);
+    assert.match(html, /\.print-assign-table th \{[^}]*font-weight: 650/);
+    assert.match(html, /\.print-room-cell \{[^}]*font-weight: 700/);
     assert.match(html, /\.print-room-cell, \.print-value-cell \{[^}]*border-bottom: 1\.5px solid #333/);
 });
 

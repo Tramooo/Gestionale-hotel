@@ -136,24 +136,24 @@
             .page-block { page-break-after: always; break-after: page; }
             .page-block:last-child { page-break-after: avoid; break-after: avoid; }
 
-            .print-cleaning-page { padding: 6mm 7mm; }
-            .print-cleaning-table { border: 2px solid #111; }
-            .print-cleaning-table th { padding: 10px 12px; font-size: 21px; line-height: 1.1; text-align: left; font-weight: 800; border: 2px solid #111; color: #111; background: #fff; }
+            .print-cleaning-page { padding: 4mm 6mm; }
+            .print-cleaning-table { border: 1.5px solid #111; }
+            .print-cleaning-table th { padding: 6px 10px; font-size: 18px; line-height: 1.05; text-align: left; font-weight: 750; border: 1.5px solid #111; color: #111; background: #fff; }
             .print-cleaning-room-head, .print-cleaning-room-cell { width: 18%; }
             .print-cleaning-type-head, .print-cleaning-type-cell { width: 25%; }
             .print-cleaning-notes-head, .print-cleaning-notes-cell { width: 57%; }
-            .print-cleaning-floor-label { padding: 12px 14px; font-size: 34px; line-height: 1; font-weight: 800; border: 2px solid #111; color: #111; background: #fff; }
-            .print-cleaning-room-cell { padding: 11px 12px; font-size: 26px; line-height: 1.08; font-weight: 900; border: 2px solid #111; color: #111; background: #fff; }
-            .print-cleaning-type-cell, .print-cleaning-notes-cell { padding: 11px 12px; font-size: 24px; line-height: 1.08; font-weight: 600; border: 2px solid #111; color: #111; background: #fff; }
+            .print-cleaning-floor-label { padding: 7px 10px; font-size: 30px; line-height: 1; font-weight: 800; border: 1.5px solid #111; color: #111; background: #fff; }
+            .print-cleaning-room-cell { padding: 6px 10px; font-size: 22px; line-height: 1.05; font-weight: 850; border: 1.5px solid #111; color: #111; background: #fff; }
+            .print-cleaning-type-cell, .print-cleaning-notes-cell { padding: 6px 10px; font-size: 20px; line-height: 1.05; font-weight: 500; border: 1.5px solid #111; color: #111; background: #fff; }
 
             .print-standard-page { padding: 7mm 10mm; }
             .print-assign-table { border: 2px solid #111; }
-            .print-assign-table th { padding: 7px 10px; text-align: left; font-size: 11.5px; line-height: 1.2; font-weight: 800; text-transform: uppercase; border-bottom: 2px solid #111; color: #111; background: #fff; }
+            .print-assign-table th { padding: 7px 10px; text-align: left; font-size: 11.5px; line-height: 1.2; font-weight: 650; text-transform: uppercase; border-bottom: 2px solid #111; color: #111; background: #fff; }
             .print-floor-row td { padding: 8px 10px; border-top: 2px solid #111; border-bottom: 2px solid #111; color: #111; background: #fff; }
-            .print-floor-badge { display: block; font-size: 22px; line-height: 1.05; font-weight: 800; color: #111; background: #fff; }
+            .print-floor-badge { display: block; font-size: 22px; line-height: 1.05; font-weight: 700; color: #111; background: #fff; }
             .print-room-cell, .print-value-cell { padding: 7px 10px; font-size: 12.5px; line-height: 1.25; border-bottom: 1.5px solid #333; color: #111; background: #fff; }
-            .print-room-cell { font-weight: 800; width: 72px; }
-            .print-value-cell { font-weight: 500; }
+            .print-room-cell { font-weight: 700; width: 72px; }
+            .print-value-cell { font-weight: 400; }
             .print-assign-table tbody tr:last-child td { border-bottom: none; }
         `;
     }
