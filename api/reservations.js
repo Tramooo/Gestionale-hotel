@@ -4,6 +4,7 @@ import {
   ensureMailTables,
   getMailMessage,
   listMailMessages,
+  sendMail,
   syncMailMessages,
   updateMailMessage
 } from './_mail.js';
@@ -73,6 +74,16 @@ export default async function handler(req, res) {
         await ensureMailTables(sql);
         const message = await updateMailMessage(sql, user.id, req.body || {});
         return res.status(200).json({ message });
+      }
+
+      if (action === 'sendMail') {
+        await ensureMailTables(sql);
+        const { to, subject, body, inReplyTo, references } = req.body || {};
+        if (!to || !subject || !body) {
+          return res.status(400).json({ error: 'Campi obbligatori: to, subject, body' });
+        }
+        await sendMail(sql, user.id, { to, subject, body, inReplyTo, references });
+        return res.status(200).json({ success: true });
       }
 
       const r = req.body;

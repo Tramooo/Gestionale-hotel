@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
+import nodemailer from 'nodemailer';
 import { decryptSecret, encryptSecret } from './_mail-crypto.js';
 import {
   computeMailStatus,
@@ -470,6 +471,40 @@ export function createMailService({
     return mapMailRow(rows[0]);
   }
 
+  async function sendMail(sql, userId, { to, subject, body, inReplyTo = '', references = '' }) {
+    const account = await getMailAccount(sql, userId);
+    requireMailAccount(account);
+
+    const smtpHost = account.imap_host
+      .replace(/^imaps\./, 'smtps.')
+      .replace(/^imap\./, 'smtp.');
+
+    const transport = nodemailer.createTransport({
+      host: smtpHost,
+      port: 465,
+      secure: true,
+      auth: {
+        user: account.imap_username,
+        pass: decryptSecret(account.encrypted_password),
+      },
+    });
+
+    const mailOptions = {
+      from: `"${account.imap_email}" <${account.imap_email}>`,
+      to: cleanString(to),
+      subject: cleanString(subject),
+      text: cleanString(body),
+    };
+
+    if (inReplyTo) {
+      mailOptions.inReplyTo = inReplyTo;
+      mailOptions.references = references || inReplyTo;
+    }
+
+    await transport.sendMail(mailOptions);
+    return { success: true };
+  }
+
   async function updateMailMessage(
     sql,
     userId,
@@ -518,6 +553,7 @@ export function createMailService({
     listMailMessages,
     getMailMessage,
     updateMailMessage,
+    sendMail,
   };
 }
 
@@ -531,3 +567,4 @@ export const syncMailMessages = defaultService.syncMailMessages;
 export const listMailMessages = defaultService.listMailMessages;
 export const getMailMessage = defaultService.getMailMessage;
 export const updateMailMessage = defaultService.updateMailMessage;
+export const sendMail = defaultService.sendMail;
