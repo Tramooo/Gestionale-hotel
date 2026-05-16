@@ -389,10 +389,9 @@
                         <span class="kpi-figure-meta">aperte</span>
                     </div>
                     <div class="kpi-progress">
-                        <ul class="kpi-task-list">
-                            <li><span class="kpi-tag kpi-tag-urgent">Urgente</span>2 alloggiati ISTAT scadono alle 10:00</li>
-                            <li><span class="kpi-tag kpi-tag-warn">Oggi</span>Controllare deposito gruppo Müller</li>
-                        </ul>
+                        <div class="kpi-task-list" id="dash-tasks-upcoming">
+                            <!-- populated by dashboard.js -->
+                        </div>
                     </div>
                 </article>
             </section>
@@ -434,198 +433,7 @@
                         </div>
 
                         <div class="movements-list" id="movements-list">
-                            <!-- ARRIVALS -->
-                            <div class="movement-row" data-panel="arrivi">
-                                <div class="movement-time">
-                                    <span class="time-tag time-now">Adesso</span>
-                                    <span class="time-eta">09:42</span>
-                                </div>
-                                <div class="movement-guest">
-                                    <div class="guest-avatar guest-avatar-vip">RM</div>
-                                    <div class="guest-text">
-                                        <strong>Famiglia Romano <span class="badge-vip">VIP</span></strong>
-                                        <span class="guest-meta">4 ospiti · 2 camere · 5 notti · da Milano</span>
-                                        <span class="guest-flags">
-                                            <span class="mov-flag mov-flag-anniv">25° anniversario · spumante in camera</span>
-                                            <span class="mov-flag mov-flag-soft">Camera al piano alto</span>
-                                        </span>
-                                    </div>
-                                </div>
-                                <div class="movement-room">
-                                    <span class="room-num">302</span>
-                                    <span class="room-meta">Suite vista mare</span>
-                                </div>
-                                <div class="movement-status">
-                                    <span class="mov-status-pill status-ready">Camera pronta</span>
-                                    <button class="link-btn" type="button">Check-in →</button>
-                                </div>
-                            </div>
-
-                            <div class="movement-row" data-panel="arrivi">
-                                <div class="movement-time">
-                                    <span class="time-tag time-soon">12:30</span>
-                                    <span class="time-eta">tra 2h 48m</span>
-                                </div>
-                                <div class="movement-guest">
-                                    <div class="guest-avatar">MB</div>
-                                    <div class="guest-text">
-                                        <strong>Mario Bianchi</strong>
-                                        <span class="guest-meta">2 ospiti · 1 camera · 3 notti · da Bologna</span>
-                                        <span class="guest-flags">
-                                            <span class="mov-flag mov-flag-repeat">5° soggiorno</span>
-                                            <span class="mov-flag mov-flag-pet">Cane piccolo</span>
-                                        </span>
-                                    </div>
-                                </div>
-                                <div class="movement-room">
-                                    <span class="room-num">214</span>
-                                    <span class="room-meta">Doppia comfort</span>
-                                </div>
-                                <div class="movement-status">
-                                    <span class="mov-status-pill status-cleaning">In pulizia</span>
-                                    <button class="link-btn" type="button" onclick="navigateTo('reservations')">Apri →</button>
-                                </div>
-                            </div>
-
-                            <div class="movement-row" data-panel="arrivi">
-                                <div class="movement-time">
-                                    <span class="time-tag time-soon">14:00</span>
-                                    <span class="time-eta">tra 4h 18m</span>
-                                </div>
-                                <div class="movement-guest">
-                                    <div class="guest-avatar guest-avatar-group">G+</div>
-                                    <div class="guest-text">
-                                        <strong>Gruppo Müller <span class="badge-group">Gruppo · 12</span></strong>
-                                        <span class="guest-meta">12 ospiti · 6 camere · 4 notti · da Monaco di Baviera</span>
-                                        <span class="guest-flags">
-                                            <span class="mov-flag mov-flag-warn">Deposito da verificare</span>
-                                            <span class="mov-flag mov-flag-soft">Cena di gruppo h. 20:00</span>
-                                        </span>
-                                    </div>
-                                </div>
-                                <div class="movement-room">
-                                    <span class="room-num">2.OP</span>
-                                    <span class="room-meta">2° piano · ala ovest</span>
-                                </div>
-                                <div class="movement-status">
-                                    <span class="mov-status-pill status-partial">3/6 pronte</span>
-                                    <button class="link-btn" type="button" onclick="navigateTo('reservations')">Apri →</button>
-                                </div>
-                            </div>
-
-                            <div class="movement-row" data-panel="arrivi">
-                                <div class="movement-time">
-                                    <span class="time-tag time-soon">15:30</span>
-                                    <span class="time-eta">tra 5h 48m</span>
-                                </div>
-                                <div class="movement-guest">
-                                    <div class="guest-avatar">SP</div>
-                                    <div class="guest-text">
-                                        <strong>Sophie Petit</strong>
-                                        <span class="guest-meta">1 ospite · 1 camera · 2 notti · da Lione</span>
-                                        <span class="guest-flags">
-                                            <span class="mov-flag mov-flag-soft">Check-in tardo confermato</span>
-                                        </span>
-                                    </div>
-                                </div>
-                                <div class="movement-room">
-                                    <span class="room-num">108</span>
-                                    <span class="room-meta">Singola</span>
-                                </div>
-                                <div class="movement-status">
-                                    <span class="mov-status-pill status-ready">Camera pronta</span>
-                                    <button class="link-btn" type="button" onclick="navigateTo('reservations')">Apri →</button>
-                                </div>
-                            </div>
-
-                            <div class="movement-row" data-panel="arrivi">
-                                <div class="movement-time">
-                                    <span class="time-tag time-late">18:45</span>
-                                    <span class="time-eta">tra 9h</span>
-                                </div>
-                                <div class="movement-guest">
-                                    <div class="guest-avatar">JK</div>
-                                    <div class="guest-text">
-                                        <strong>James Kowalski</strong>
-                                        <span class="guest-meta">2 ospiti · 1 camera · 7 notti · da Cracovia</span>
-                                        <span class="guest-flags">
-                                            <span class="mov-flag mov-flag-soft">Volo LOT 482 · navetta richiesta</span>
-                                        </span>
-                                    </div>
-                                </div>
-                                <div class="movement-room">
-                                    <span class="room-num">405</span>
-                                    <span class="room-meta">Doppia superior</span>
-                                </div>
-                                <div class="movement-status">
-                                    <span class="mov-status-pill status-cleaning">Pulizia in corso</span>
-                                    <button class="link-btn" type="button" onclick="navigateTo('reservations')">Apri →</button>
-                                </div>
-                            </div>
-
-                            <!-- DEPARTURES -->
-                            <div class="movement-row" data-panel="partenze" hidden>
-                                <div class="movement-time">
-                                    <span class="time-tag time-late">In ritardo</span>
-                                    <span class="time-eta">era 10:00</span>
-                                </div>
-                                <div class="movement-guest">
-                                    <div class="guest-avatar">LR</div>
-                                    <div class="guest-text">
-                                        <strong>Lucia Ricci</strong>
-                                        <span class="guest-meta">3 notti · stanza 220 · richiesta late check-out</span>
-                                        <span class="guest-flags"><span class="mov-flag mov-flag-warn">Sollecitare bagagli</span></span>
-                                    </div>
-                                </div>
-                                <div class="movement-room"><span class="room-num">220</span><span class="room-meta">Doppia</span></div>
-                                <div class="movement-status">
-                                    <span class="mov-status-pill status-late">+ 1h 42m</span>
-                                    <button class="link-btn" type="button">Contatta →</button>
-                                </div>
-                            </div>
-
-                            <div class="movement-row" data-panel="partenze" hidden>
-                                <div class="movement-time"><span class="time-tag time-soon">11:00</span><span class="time-eta">tra 1h 18m</span></div>
-                                <div class="movement-guest">
-                                    <div class="guest-avatar guest-avatar-group">SC</div>
-                                    <div class="guest-text">
-                                        <strong>Scuola di Pesaro <span class="badge-group">Gruppo · 18</span></strong>
-                                        <span class="guest-meta">18 ospiti · 9 camere · 2 notti</span>
-                                        <span class="guest-flags"><span class="mov-flag mov-flag-soft">Pullman alle 11:15</span></span>
-                                    </div>
-                                </div>
-                                <div class="movement-room"><span class="room-num">1.OP</span><span class="room-meta">1° piano · ala est</span></div>
-                                <div class="movement-status"><span class="mov-status-pill status-partial">6/9 fatti</span><button class="link-btn" type="button" onclick="navigateTo('reservations')">Apri →</button></div>
-                            </div>
-
-                            <div class="movement-row" data-panel="partenze" hidden>
-                                <div class="movement-time"><span class="time-tag time-soon">11:30</span><span class="time-eta">tra 1h 48m</span></div>
-                                <div class="movement-guest">
-                                    <div class="guest-avatar">AS</div>
-                                    <div class="guest-text">
-                                        <strong>Anna Schmidt</strong>
-                                        <span class="guest-meta">5 notti · stanza 311 · feedback ottimo</span>
-                                        <span class="guest-flags"><span class="mov-flag mov-flag-repeat">8° soggiorno · invitare a programma fedeltà</span></span>
-                                    </div>
-                                </div>
-                                <div class="movement-room"><span class="room-num">311</span><span class="room-meta">Junior suite</span></div>
-                                <div class="movement-status"><span class="mov-status-pill status-ready">Pronto</span><button class="link-btn" type="button">Check-out →</button></div>
-                            </div>
-
-                            <!-- STAYOVER -->
-                            <div class="movement-row" data-panel="presenti" hidden>
-                                <div class="movement-time"><span class="time-tag time-stay">2/5</span><span class="time-eta">notte</span></div>
-                                <div class="movement-guest">
-                                    <div class="guest-avatar">FT</div>
-                                    <div class="guest-text">
-                                        <strong>Federica Toti</strong>
-                                        <span class="guest-meta">In camera dal 14/05 · partenza 19/05</span>
-                                        <span class="guest-flags"><span class="mov-flag mov-flag-soft">Spa prenotata h. 16:00</span></span>
-                                    </div>
-                                </div>
-                                <div class="movement-room"><span class="room-num">203</span><span class="room-meta">Doppia comfort</span></div>
-                                <div class="movement-status"><span class="mov-status-pill status-stay">In casa</span><button class="link-btn" type="button" onclick="navigateTo('reservations')">Apri →</button></div>
-                            </div>
+                            <!-- populated by dashboard.js -->
                         </div>
                     </div>
                 </article>
@@ -643,95 +451,19 @@
                     <div class="dash-panel-body rooms-body">
                         <div class="hk-progress">
                             <div class="hk-progress-head">
-                                <span>Pulizie giornaliere</span>
-                                <strong>18/27 completate</strong>
+                                <span>Stato camere</span>
+                                <strong id="dash-hk-status-text">—</strong>
                             </div>
                             <div class="hk-bar">
-                                <div class="hk-bar-fill hk-done" style="width:67%"></div>
-                                <div class="hk-bar-fill hk-progress2" style="width:18%;left:67%"></div>
+                                <div class="hk-bar-fill hk-done" id="dash-hk-bar-fill" style="width:0%"></div>
                             </div>
-                            <div class="hk-legend">
-                                <span><span class="hk-dot hk-dot-done"></span>Pulite</span>
-                                <span><span class="hk-dot hk-dot-progress"></span>In corso</span>
-                                <span><span class="hk-dot hk-dot-todo"></span>Da fare 9</span>
+                            <div class="hk-legend" id="dash-floor-legend">
+                                <!-- populated by dashboard.js -->
                             </div>
                         </div>
 
-                        <div class="floor-board">
-                            <div class="floor-row">
-                                <span class="floor-label">P4</span>
-                                <div class="floor-cells">
-                                    <span class="room-cell c-occ" title="401 · occupata">401</span>
-                                    <span class="room-cell c-occ" title="402 · occupata">402</span>
-                                    <span class="room-cell c-clean" title="403 · pulita">403</span>
-                                    <span class="room-cell c-occ" title="404 · occupata">404</span>
-                                    <span class="room-cell c-occ" title="405 · in arrivo">405</span>
-                                    <span class="room-cell c-dirty" title="406 · da pulire">406</span>
-                                    <span class="room-cell c-clean" title="407 · pulita">407</span>
-                                    <span class="room-cell c-occ" title="408 · occupata">408</span>
-                                </div>
-                            </div>
-                            <div class="floor-row">
-                                <span class="floor-label">P3</span>
-                                <div class="floor-cells">
-                                    <span class="room-cell c-occ">301</span>
-                                    <span class="room-cell c-clean">302</span>
-                                    <span class="room-cell c-progress" title="303 · in pulizia">303</span>
-                                    <span class="room-cell c-occ">304</span>
-                                    <span class="room-cell c-occ">305</span>
-                                    <span class="room-cell c-dirty">306</span>
-                                    <span class="room-cell c-occ">307</span>
-                                    <span class="room-cell c-clean">308</span>
-                                    <span class="room-cell c-occ">309</span>
-                                    <span class="room-cell c-occ">310</span>
-                                    <span class="room-cell c-progress">311</span>
-                                    <span class="room-cell c-occ">312</span>
-                                </div>
-                            </div>
-                            <div class="floor-row">
-                                <span class="floor-label">P2</span>
-                                <div class="floor-cells">
-                                    <span class="room-cell c-occ">201</span>
-                                    <span class="room-cell c-occ">202</span>
-                                    <span class="room-cell c-occ">203</span>
-                                    <span class="room-cell c-dirty">204</span>
-                                    <span class="room-cell c-occ">205</span>
-                                    <span class="room-cell c-occ">206</span>
-                                    <span class="room-cell c-occ">207</span>
-                                    <span class="room-cell c-occ">208</span>
-                                    <span class="room-cell c-clean">209</span>
-                                    <span class="room-cell c-progress">210</span>
-                                    <span class="room-cell c-oop" title="211 · fuori uso">211</span>
-                                    <span class="room-cell c-occ">212</span>
-                                    <span class="room-cell c-occ">213</span>
-                                    <span class="room-cell c-clean">214</span>
-                                </div>
-                            </div>
-                            <div class="floor-row">
-                                <span class="floor-label">P1</span>
-                                <div class="floor-cells">
-                                    <span class="room-cell c-occ">101</span>
-                                    <span class="room-cell c-clean">102</span>
-                                    <span class="room-cell c-dirty">103</span>
-                                    <span class="room-cell c-occ">104</span>
-                                    <span class="room-cell c-occ">105</span>
-                                    <span class="room-cell c-occ">106</span>
-                                    <span class="room-cell c-clean">107</span>
-                                    <span class="room-cell c-clean">108</span>
-                                    <span class="room-cell c-progress">109</span>
-                                    <span class="room-cell c-occ">110</span>
-                                    <span class="room-cell c-occ">111</span>
-                                    <span class="room-cell c-oop">112</span>
-                                </div>
-                            </div>
-
-                            <div class="floor-legend">
-                                <span><span class="room-cell c-clean small"></span>Pulita (12)</span>
-                                <span><span class="room-cell c-occ small"></span>Occupata (32)</span>
-                                <span><span class="room-cell c-progress small"></span>In pulizia (5)</span>
-                                <span><span class="room-cell c-dirty small"></span>Da pulire (5)</span>
-                                <span><span class="room-cell c-oop small"></span>Fuori uso (2)</span>
-                            </div>
+                        <div class="floor-board" id="dash-floor-board">
+                            <!-- populated by dashboard.js -->
                         </div>
                     </div>
                 </article>
@@ -745,104 +477,20 @@
                         </div>
                     </header>
 
-                    <div class="tasks-add-bar">
-                        <select class="tasks-add-type" id="tasks-add-type" aria-label="Tipo">
-                            <option value="activity">Attività</option>
-                            <option value="maintenance">Camera</option>
-                            <option value="appointment">Tecnico</option>
-                        </select>
-                        <input type="text" class="tasks-add-input" id="tasks-add-text" placeholder="Descrizione…" autocomplete="off" />
-                        <input type="time" class="tasks-add-time" id="tasks-add-time" />
-                        <button class="tasks-add-btn" id="tasks-add-btn" type="button" aria-label="Aggiungi">
+                    <form class="tasks-add-bar" id="dashboard-task-form">
+                        <input type="date" id="dashboard-task-date" style="display:none" aria-hidden="true">
+                        <button type="button" id="dashboard-task-today" style="display:none" aria-hidden="true"></button>
+                        <input type="text" class="tasks-add-input" id="dashboard-task-text" placeholder="Nuova attività…" autocomplete="off" />
+                        <input type="time" class="tasks-add-time" id="dashboard-task-time" />
+                        <button class="tasks-add-btn" type="submit" aria-label="Aggiungi">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
                         </button>
-                    </div>
+                    </form>
 
                     <div class="dash-panel-body tasks-body">
-                        <ul class="tasks-list" id="tasks-list" aria-label="Lista attività">
-                            <li class="task-item task-done" data-type="activity">
-                                <button class="task-check task-check-done" aria-label="Completata" type="button">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
-                                </button>
-                                <div class="task-body">
-                                    <span class="task-desc">Invio schedine alloggiati questura</span>
-                                    <div class="task-meta">
-                                        <span class="task-tag tag-activity">Attività</span>
-                                        <span class="task-time">10:00</span>
-                                    </div>
-                                </div>
-                            </li>
-                            <li class="task-item" data-type="activity">
-                                <button class="task-check" aria-label="Segna completata" type="button"></button>
-                                <div class="task-body">
-                                    <span class="task-desc">Briefing housekeeping · verifica camere VIP</span>
-                                    <div class="task-meta">
-                                        <span class="task-tag tag-activity">Attività</span>
-                                        <span class="task-time">11:30</span>
-                                    </div>
-                                </div>
-                            </li>
-                            <li class="task-item" data-type="maintenance">
-                                <button class="task-check" aria-label="Segna completata" type="button"></button>
-                                <div class="task-body">
-                                    <span class="task-desc">Camera <strong>211</strong> — climatizzatore guasto</span>
-                                    <div class="task-meta">
-                                        <span class="task-tag tag-maintenance">Camera</span>
-                                        <span class="task-time">Urgente</span>
-                                    </div>
-                                </div>
-                            </li>
-                            <li class="task-item" data-type="appointment">
-                                <button class="task-check" aria-label="Segna completata" type="button"></button>
-                                <div class="task-body">
-                                    <span class="task-desc">Tecnico climatizzazione · camera 211</span>
-                                    <div class="task-meta">
-                                        <span class="task-tag tag-appointment">Tecnico</span>
-                                        <span class="task-time">15:00</span>
-                                    </div>
-                                </div>
-                            </li>
-                            <li class="task-item" data-type="activity">
-                                <button class="task-check" aria-label="Segna completata" type="button"></button>
-                                <div class="task-body">
-                                    <span class="task-desc">Arrivo gruppo Müller — 12 ospiti, 6 camere</span>
-                                    <div class="task-meta">
-                                        <span class="task-tag tag-activity">Attività</span>
-                                        <span class="task-time">14:00</span>
-                                    </div>
-                                </div>
-                            </li>
-                            <li class="task-item" data-type="maintenance">
-                                <button class="task-check" aria-label="Segna completata" type="button"></button>
-                                <div class="task-body">
-                                    <span class="task-desc">Camera <strong>112</strong> — rubinetto bagno da riparare</span>
-                                    <div class="task-meta">
-                                        <span class="task-tag tag-maintenance">Camera</span>
-                                        <span class="task-time">In attesa ricambio</span>
-                                    </div>
-                                </div>
-                            </li>
-                            <li class="task-item" data-type="appointment">
-                                <button class="task-check" aria-label="Segna completata" type="button"></button>
-                                <div class="task-body">
-                                    <span class="task-desc">Pulibianco — ritiro lavanderia, 4 sacchi pronti</span>
-                                    <div class="task-meta">
-                                        <span class="task-tag tag-appointment">Tecnico</span>
-                                        <span class="task-time">12:00</span>
-                                    </div>
-                                </div>
-                            </li>
-                            <li class="task-item" data-type="activity">
-                                <button class="task-check" aria-label="Segna completata" type="button"></button>
-                                <div class="task-body">
-                                    <span class="task-desc">Cena gruppo Müller · Sala Magnolia · 12 coperti</span>
-                                    <div class="task-meta">
-                                        <span class="task-tag tag-activity">Attività</span>
-                                        <span class="task-time">20:00</span>
-                                    </div>
-                                </div>
-                            </li>
-                        </ul>
+                        <div class="tasks-list" id="dashboard-task-list" aria-label="Lista attività">
+                            <!-- populated by dashboard.js -->
+                        </div>
                     </div>
                 </article>
 

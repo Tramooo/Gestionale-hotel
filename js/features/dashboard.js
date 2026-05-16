@@ -106,6 +106,11 @@
         const listEl = document.getElementById('dashboard-task-list');
         if (!listEl) return;
 
+        // Keep tasks KPI badge in sync on every list re-render
+        const todayForBadge = formatDate(new Date());
+        const openCount = loadAgendaItems().filter((item) => item.date === todayForBadge && !item.done).length;
+        setText('dash-tasks-count', openCount);
+
         const selectedDate = getSelectedAgendaDate();
         const locale = getCurrentLang && getCurrentLang() === 'en' ? 'en-GB' : 'it-IT';
         const agendaWindow = Array.from({ length: 3 }, (_, offset) => formatDate(addDays(parseDate(selectedDate), offset)));
@@ -273,6 +278,13 @@
         selectedAgendaDate = selectedAgendaDate || todayStr;
         syncAgendaDateInput();
 
+        // Default time input to current time
+        const timeInput = document.getElementById('dashboard-task-time');
+        if (timeInput && !timeInput.value) {
+            const now = new Date();
+            timeInput.value = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+        }
+
         dateInput.addEventListener('change', () => {
             setAgendaDate(dateInput.value || requireDeps().formatDate(new Date()));
         });
@@ -292,6 +304,165 @@
     function pluralize(lang, count, itSingular, itPlural, enSingular, enPlural) {
         if (lang === 'en') return `${count} ${count === 1 ? enSingular : enPlural}`;
         return `${count} ${count === 1 ? itSingular : itPlural}`;
+    }
+
+    function setMeterW(id, pct) {
+        const el = document.getElementById(id);
+        if (el) el.style.setProperty('--w', pct + '%');
+    }
+
+    function renderNewMovements(checkins, checkouts, inHouse, options) {
+        const { escapeHtml, lang } = options;
+        const listEl = document.getElementById('movements-list');
+        if (!listEl) return;
+
+        function initials(name) {
+            return (name || '?').split(/\s+/).slice(0, 2).map((w) => w[0] || '').join('').toUpperCase() || '?';
+        }
+
+        function pillClass(status) {
+            if (status === 'checked-in') return 'status-stay';
+            if (status === 'confirmed')  return 'status-ready';
+            return 'status-cleaning';
+        }
+
+        function pillLabel(status) {
+            if (status === 'checked-in') return copy(lang, 'Arrivato', 'Checked in');
+            if (status === 'confirmed')  return copy(lang, 'Confermata', 'Confirmed');
+            if (status === 'pending')    return copy(lang, 'In attesa', 'Pending');
+            return status;
+        }
+
+        function makeRow(reservation, panel) {
+            const name = reservation.groupName || '—';
+            const guests = reservation.guestCount || 0;
+            const rooms  = reservation.roomCount  || 0;
+            const meta = [
+                copy(lang, `${guests} ${guests === 1 ? 'ospite' : 'ospiti'}`, `${guests} ${guests === 1 ? 'guest' : 'guests'}`),
+                copy(lang, `${rooms} ${rooms === 1 ? 'camera' : 'camere'}`, `${rooms} ${rooms === 1 ? 'room' : 'rooms'}`)
+            ].join(' · ');
+            const tag = panel === 'partenze'
+                ? '<span class="time-tag time-soon">Check-out</span>'
+                : panel === 'presenti'
+                ? '<span class="time-tag time-stay">In casa</span>'
+                : '<span class="time-tag time-soon">Check-in</span>';
+            return `<div class="movement-row" data-panel="${panel}">
+                <div class="movement-time">${tag}</div>
+                <div class="movement-guest">
+                    <div class="guest-avatar">${escapeHtml(initials(name))}</div>
+                    <div class="guest-text">
+                        <strong>${escapeHtml(name)}</strong>
+                        <span class="guest-meta">${escapeHtml(meta)}</span>
+                    </div>
+                </div>
+                <div class="movement-room"><span class="room-num">—</span></div>
+                <div class="movement-status">
+                    <span class="mov-status-pill ${pillClass(reservation.status)}">${escapeHtml(pillLabel(reservation.status))}</span>
+                    <button class="link-btn" type="button" onclick="openReservationDetail('${reservation.id}')">Apri →</button>
+                </div>
+            </div>`;
+        }
+
+        function emptyRow(panel, msg) {
+            return `<div class="movement-row movement-row-empty" data-panel="${panel}">${escapeHtml(msg)}</div>`;
+        }
+
+        const html = [
+            checkins.length
+                ? checkins.map((r) => makeRow(r, 'arrivi')).join('')
+                : emptyRow('arrivi', copy(lang, 'Nessun arrivo previsto per oggi', 'No arrivals planned for today')),
+            checkouts.length
+                ? checkouts.map((r) => makeRow(r, 'partenze')).join('')
+                : emptyRow('partenze', copy(lang, 'Nessuna partenza prevista per oggi', 'No departures planned for today')),
+            inHouse.length
+                ? inHouse.map((r) => makeRow(r, 'presenti')).join('')
+                : emptyRow('presenti', copy(lang, 'Nessuna presenza attiva', 'No active stays'))
+        ].join('');
+
+        listEl.innerHTML = html;
+
+        // Respect whichever tab is currently active
+        const activeTab = document.querySelector('#movements-tabs .dash-tab.active');
+        const activePanel = activeTab ? activeTab.dataset.tab : 'arrivi';
+        listEl.querySelectorAll('.movement-row').forEach((row) => {
+            row.hidden = row.dataset.panel !== activePanel;
+        });
+
+        // Sync tab counts
+        const tabCounts = document.querySelectorAll('#movements-tabs .dash-tab-count');
+        if (tabCounts[0]) tabCounts[0].textContent = checkins.length;
+        if (tabCounts[1]) tabCounts[1].textContent = checkouts.length;
+
+        // Update progress meter segments
+        if (checkins.length > 0) {
+            const t    = checkins.length;
+            const done = checkins.filter((r) => r.status === 'checked-in').length;
+            const soon = checkins.filter((r) => r.status === 'confirmed').length;
+            const late = checkins.filter((r) => r.status === 'pending').length;
+            setMeterW('dash-meter-ci-done', Math.round(done / t * 100));
+            setMeterW('dash-meter-ci-soon', Math.round(soon / t * 100));
+            setMeterW('dash-meter-ci-late', Math.round(late / t * 100));
+        }
+        if (checkouts.length > 0) {
+            setMeterW('dash-meter-co-done', 0);
+            setMeterW('dash-meter-co-late', 100);
+        }
+    }
+
+    function renderNewFloorBoard(rooms, options) {
+        const { escapeHtml, lang } = options;
+        const boardEl = document.getElementById('dash-floor-board');
+        if (!boardEl) return;
+
+        // Group rooms by floor, render floors top-down
+        const byFloor = {};
+        rooms.forEach((room) => {
+            const f = String(room.floor ?? 0);
+            if (!byFloor[f]) byFloor[f] = [];
+            byFloor[f].push(room);
+        });
+        const floors = Object.keys(byFloor).map(Number).sort((a, b) => b - a);
+
+        function cellClass(status) {
+            if (status === 'occupied')    return 'c-occ';
+            if (status === 'maintenance') return 'c-oop';
+            return 'c-clean';
+        }
+
+        function cellTitle(room) {
+            const label = { occupied: copy(lang, 'occupata', 'occupied'), available: copy(lang, 'disponibile', 'available'), maintenance: copy(lang, 'fuori uso', 'out of service') }[room.status] || room.status;
+            return `${room.number} · ${label}`;
+        }
+
+        boardEl.innerHTML = floors.map((floor) => {
+            const cells = byFloor[floor]
+                .slice()
+                .sort((a, b) => String(a.number).localeCompare(String(b.number), undefined, { numeric: true }))
+                .map((room) => `<span class="room-cell ${cellClass(room.status)}" title="${escapeHtml(cellTitle(room))}">${escapeHtml(String(room.number))}</span>`)
+                .join('');
+            return `<div class="floor-row"><span class="floor-label">P${floor}</span><div class="floor-cells">${cells}</div></div>`;
+        }).join('');
+
+        const occCount   = rooms.filter((r) => r.status === 'occupied').length;
+        const cleanCount = rooms.filter((r) => r.status === 'available').length;
+        const oopCount   = rooms.filter((r) => r.status === 'maintenance').length;
+
+        const legendEl = document.getElementById('dash-floor-legend');
+        if (legendEl) {
+            legendEl.innerHTML = [
+                `<span><span class="room-cell c-clean small"></span>${escapeHtml(copy(lang, `Disponibile (${cleanCount})`, `Available (${cleanCount})`))}</span>`,
+                `<span><span class="room-cell c-occ small"></span>${escapeHtml(copy(lang, `Occupata (${occCount})`, `Occupied (${occCount})`))}</span>`,
+                `<span><span class="room-cell c-oop small"></span>${escapeHtml(copy(lang, `Fuori uso (${oopCount})`, `Out of service (${oopCount})`))}</span>`
+            ].join('');
+        }
+
+        if (rooms.length > 0) {
+            const pct = Math.round(cleanCount / rooms.length * 100);
+            const hkText = document.getElementById('dash-hk-status-text');
+            const hkBar  = document.getElementById('dash-hk-bar-fill');
+            if (hkText) hkText.textContent = copy(lang, `${cleanCount}/${rooms.length} disponibili`, `${cleanCount}/${rooms.length} available`);
+            if (hkBar)  hkBar.style.width = pct + '%';
+        }
     }
 
     function renderMovementList(elementId, reservations, options) {
@@ -442,10 +613,29 @@
         setText('dash-departures-count', todayCheckouts.length);
         setText('dash-maintenance-count', maintenance);
 
+        renderNewMovements(todayCheckins, todayCheckouts, inHouseReservations, { escapeHtml, lang });
+        renderNewFloorBoard(rooms, { escapeHtml, lang });
+
         bindAgendaControls(todayStr);
         if (!selectedAgendaDate) selectedAgendaDate = todayStr;
         syncAgendaDateInput();
         renderAgendaList();
+
+        // Update tasks KPI badge with today's open items
+        const openToday = loadAgendaItems().filter((item) => item.date === todayStr && !item.done).length;
+        setText('dash-tasks-count', openToday);
+
+        // Populate tasks KPI strip with first 2 open items for today
+        const upcomingEl = document.getElementById('dash-tasks-upcoming');
+        if (upcomingEl) {
+            const firstTwo = loadAgendaItems()
+                .filter((item) => item.date === todayStr && !item.done)
+                .sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'))
+                .slice(0, 2);
+            upcomingEl.innerHTML = firstTwo.length
+                ? firstTwo.map((item) => `<div style="display:flex;gap:7px;align-items:flex-start;font-size:11.5px;line-height:1.35;color:var(--text-secondary);">${item.time ? `<span style="font-family:'IBM Plex Mono',monospace;color:var(--text-tertiary);flex-shrink:0;">${escapeHtml(item.time)}</span>` : ''}<span>${escapeHtml(item.text)}</span></div>`).join('')
+                : '';
+        }
 
         const next7Days = Array.from({ length: 7 }, (_, index) => {
             const date = addDays(parseDate(todayStr), index);

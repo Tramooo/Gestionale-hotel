@@ -858,7 +858,7 @@
    ============================================= */
 .tasks-add-bar {
   display: grid;
-  grid-template-columns: 100px 1fr 74px 36px;
+  grid-template-columns: 1fr 74px 36px;
   gap: 6px;
   padding: 10px 14px;
   border-bottom: 1px solid var(--border-light, #ded5c9);
@@ -1016,4 +1016,127 @@
   #page-dashboard { padding: 18px 14px 28px; }
   #page-dashboard .page-title { font-size: 28px; }
   .kpi-strip { grid-template-columns: 1fr; }
+}
+
+/* =============================================
+   AGENDA ITEMS (rendered by dashboard.js into tasks panel)
+   ============================================= */
+#page-dashboard .agenda-window-day { margin-bottom: 10px; }
+#page-dashboard .agenda-window-day.is-empty { display: none; }
+
+#page-dashboard .agenda-window-day-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 8px 6px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid var(--border-light, #ded5c9);
+}
+
+#page-dashboard .agenda-window-day-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-secondary, #675f55);
+}
+
+#page-dashboard .agenda-window-day-date {
+  font-size: 11px;
+  color: var(--text-tertiary, #93887b);
+  margin-left: auto;
+}
+
+#page-dashboard .todo-item {
+  display: grid;
+  grid-template-columns: 28px 1fr 22px;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 8px;
+  border-radius: 8px;
+  transition: background 160ms ease;
+}
+
+#page-dashboard .todo-item:hover { background: var(--surface-quiet, #f3ede3); }
+
+#page-dashboard .todo-item.is-done .todo-text {
+  text-decoration: line-through;
+  color: var(--text-tertiary, #93887b);
+}
+
+#page-dashboard .todo-check {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border, #cfc4b7);
+  background: var(--bg-elevated, #fffdf9);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 14px;
+  color: transparent;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+#page-dashboard .todo-item.is-done .todo-check {
+  background: #e7efe8;
+  border-color: #5f7f68;
+  color: #4d6953;
+}
+
+#page-dashboard .todo-check:hover { border-color: #5f7f68; background: #e7efe8; color: #4d6953; }
+
+#page-dashboard .todo-content { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+#page-dashboard .todo-text { font-size: 13px; line-height: 1.4; color: var(--text-primary, #201c17); }
+
+#page-dashboard .todo-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  color: var(--text-secondary, #675f55);
+}
+
+#page-dashboard .todo-delete {
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text-tertiary, #93887b);
+  font-size: 17px;
+  line-height: 1;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+#page-dashboard .todo-delete:hover {
+  background: var(--bg-tertiary, #ebe4d8);
+  color: var(--text-primary, #201c17);
+}
+
+#page-dashboard .agenda-window-empty {
+  font-size: 12px;
+  color: var(--text-secondary, #675f55);
+  font-style: italic;
+  padding: 4px 8px;
+}
+
+/* Empty movement row (shown when no checkins/checkouts for today) */
+.movement-row-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 16px;
+  color: var(--text-secondary, #675f55);
+  font-size: 13px;
+  border: 1px dashed var(--border-light, #ded5c9);
+  border-radius: 10px;
+  background: var(--bg-primary, #f4f0e8);
 }
