@@ -299,6 +299,11 @@
 }
 
 /* Empty state */
+.mail-reader-empty[hidden],
+.mail-reader-content[hidden] {
+    display: none !important;
+}
+
 .mail-reader-empty {
     flex: 1;
     display: flex;
