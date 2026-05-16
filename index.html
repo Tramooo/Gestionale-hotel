@@ -29,6 +29,7 @@
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/11-new-dashboard.css">
+    <link rel="stylesheet" href="css/12-new-mail.css">
 </head>
 <body class="auth-locked">
     <div class="auth-screen" id="authScreen">
@@ -539,10 +540,9 @@
             <header class="page-header">
                 <div>
                     <h1 class="page-title" data-i18n="mail.title">Mail</h1>
-                    <p class="page-subtitle" data-i18n="mail.subtitle">Richieste e conversazioni collegate ai gruppi</p>
+                    <p class="page-subtitle" id="mailLastSync" data-i18n="mail.neverSynced">Mai sincronizzata</p>
                 </div>
                 <div class="page-actions">
-                    <span class="mail-last-sync" id="mailLastSync" data-i18n="mail.neverSynced">Mai sincronizzata</span>
                     <button class="btn btn-primary" type="button" onclick="syncMail()">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-15.5 6.3"/><path d="M3 12a9 9 0 0 1 15.5-6.3"/><path d="M16 5h3V2"/><path d="M8 19H5v3"/></svg>
                         <span data-i18n="mail.sync">Aggiorna mail</span>
@@ -550,22 +550,51 @@
                 </div>
             </header>
 
-            <div class="filters-bar">
-                <div class="search-box">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                    <input type="text" id="mailSearchInput" data-i18n-placeholder="mail.search" placeholder="Cerca mail..." oninput="filterMail()">
+            <div class="mail-workspace">
+                <!-- LIST PANE -->
+                <div class="mail-list-pane">
+                    <div class="mail-list-header">
+                        <div class="mail-search-box">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <input type="text" id="mailSearchInput" data-i18n-placeholder="mail.search" placeholder="Cerca mail..." oninput="filterMail()">
+                        </div>
+                        <div class="mail-filter-chips">
+                            <button class="mail-chip active" type="button" data-mail-filter="all" onclick="setMailFilter('all')">Tutte <span class="mail-chip-count" id="mail-count-all"></span></button>
+                            <button class="mail-chip" type="button" data-mail-filter="unassigned" onclick="setMailFilter('unassigned')">Non assegnate <span class="mail-chip-count" id="mail-count-unassigned"></span></button>
+                            <button class="mail-chip" type="button" data-mail-filter="assigned" onclick="setMailFilter('assigned')">Assegnate <span class="mail-chip-count" id="mail-count-assigned"></span></button>
+                            <button class="mail-chip" type="button" data-mail-filter="handled" onclick="setMailFilter('handled')">Gestite <span class="mail-chip-count" id="mail-count-handled"></span></button>
+                            <button class="mail-chip" type="button" data-mail-filter="archived" onclick="setMailFilter('archived')">Archiviate <span class="mail-chip-count" id="mail-count-archived"></span></button>
+                        </div>
+                    </div>
+                    <div class="mail-list-scroll" id="mailList">
+                        <!-- Populated by JS -->
+                    </div>
                 </div>
-                <div class="filter-chips">
-                    <button class="chip active" type="button" data-mail-filter="all" onclick="setMailFilter('all')" data-i18n="mail.filter.all">Tutte</button>
-                    <button class="chip" type="button" data-mail-filter="unassigned" onclick="setMailFilter('unassigned')" data-i18n="mail.filter.unassigned">Non assegnate</button>
-                    <button class="chip" type="button" data-mail-filter="assigned" onclick="setMailFilter('assigned')" data-i18n="mail.filter.assigned">Assegnate</button>
-                    <button class="chip" type="button" data-mail-filter="handled" onclick="setMailFilter('handled')" data-i18n="mail.filter.handled">Gestite</button>
-                    <button class="chip" type="button" data-mail-filter="archived" onclick="setMailFilter('archived')" data-i18n="mail.filter.archived">Archiviate</button>
+
+                <!-- READER PANE -->
+                <div class="mail-reader-pane">
+                    <div class="mail-reader-empty" id="mail-reader-empty">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 7l10 7 10-7"/></svg>
+                        <p>Seleziona una mail per leggerla</p>
+                    </div>
+                    <div class="mail-reader-content" id="mail-reader-content" hidden>
+                        <!-- Populated by MailUI.openReader() -->
+                    </div>
                 </div>
             </div>
 
-            <div class="mail-list" id="mailList">
-                <!-- Populated by JS -->
+            <!-- ASSIGN OVERLAY -->
+            <div class="mail-assign-overlay" id="mail-assign-overlay" hidden>
+                <div class="mail-assign-panel">
+                    <div class="mail-assign-header">
+                        <h3>Collega prenotazione</h3>
+                        <button type="button" class="mail-assign-close" onclick="MailUI.closeAssignModal()">×</button>
+                    </div>
+                    <input type="text" class="mail-assign-search" id="mail-assign-search" placeholder="Cerca gruppo..." oninput="MailUI.filterAssignModal()">
+                    <div class="mail-assign-list" id="mail-assign-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -1745,6 +1774,7 @@
     <script src="js/features/planner.js"></script>
     <script src="js/features/planner-drag.js"></script>
     <script src="js/features/mail.js"></script>
+    <script src="js/features/mail-ui.js"></script>
     <script src="js/features/assignment-print.js"></script>
     <script src="js/features/dashboard-ui.js"></script>
     <script src="script.js?v=20260325"></script>

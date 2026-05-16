@@ -4,6 +4,51 @@
     let currentSearch = '';
     let openDetailId = null;
 
+    // ---- Avatar helpers (used by new row design) ----
+    const AVATAR_COLORS = ['#4e6040','#3a5c60','#604050','#4a4030','#384c6a','#5a4838','#3c5c50','#584060'];
+
+    function avatarColor(name) {
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
+        return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+    }
+
+    function initials(name) {
+        const parts = (name || '').trim().split(/\s+/).filter(Boolean);
+        if (!parts.length) return '?';
+        if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+
+    function relativeDate(iso) {
+        if (!iso) return '';
+        const d = new Date(iso);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const msgDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+        const diffDays = Math.round((today - msgDay) / 86400000);
+        if (diffDays === 0) return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+        if (diffDays === 1) return 'ieri';
+        if (diffDays < 7) return ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'][d.getDay()];
+        return d.getDate() + ' ' + ['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'][d.getMonth()];
+    }
+
+    function updateChipCounts() {
+        try {
+            const { getMailMessages } = requireDeps();
+            const all = getMailMessages();
+            const counts = { all: all.length, unassigned: 0, assigned: 0, handled: 0, archived: 0 };
+            all.forEach((m) => {
+                const s = messageStatus(m);
+                if (counts[s] !== undefined) counts[s]++;
+            });
+            Object.entries(counts).forEach(([key, n]) => {
+                const el = document.getElementById('mail-count-' + key);
+                if (el) el.textContent = n > 0 ? n : '';
+            });
+        } catch (_) {}
+    }
+
     function requireDeps() {
         if (!deps) throw new Error('GroupStayMail not initialized');
         return deps;
@@ -83,29 +128,41 @@
 
         const messages = filteredMessages();
         if (messages.length === 0) {
-            list.innerHTML = `<div class="empty-state"><p>${t('mail.empty')}</p></div>`;
+            list.innerHTML = `<div class="mail-list-empty">${t('mail.empty')}</div>`;
+            updateChipCounts();
             return;
         }
+
+        const statusLabels = { unassigned: 'Non assegnata', assigned: 'Assegnata', handled: 'Gestita', archived: 'Archiviata' };
 
         list.innerHTML = messages.map((message) => {
             const linkedName = reservationName(message.reservationId);
             const sender = message.fromName || message.fromEmail || t('mail.unknownSender');
             const status = messageStatus(message);
+            const slabel = statusLabels[status] || status;
+            const color = avatarColor(sender);
+            const init = initials(sender);
+            const unread = window.MailUI?.isUnread?.(message.id) !== false;
 
-            return `
-                <button class="mail-row" type="button" onclick="openMailDetail('${safeHtml(message.id)}')">
-                    <span class="mail-row-main">
-                        <span class="mail-row-title">${safeHtml(message.subject || '')}</span>
-                        <span class="mail-row-meta">${safeHtml(sender)} &middot; ${safeHtml(formatDateDisplay(message.sentAt))}</span>
-                        <span class="mail-row-preview">${safeHtml(message.previewText || '')}</span>
+            return `<button class="mail-row${unread ? ' unread' : ''}" type="button" data-id="${safeHtml(message.id)}" onclick="openMailDetail('${safeHtml(message.id)}')">
+                <span class="mail-unread-dot" aria-hidden="true"></span>
+                <span class="mail-avatar" style="background:${color}">${safeHtml(init)}</span>
+                <span class="mail-row-body">
+                    <span class="mail-row-top">
+                        <span class="mail-row-sender">${safeHtml(sender)}</span>
+                        <span class="mail-row-date">${relativeDate(message.sentAt)}</span>
                     </span>
-                    <span class="mail-row-side">
-                        <span class="mail-status mail-status-${safeHtml(status)}">${safeHtml(statusLabel(status))}</span>
-                        ${linkedName ? `<span class="mail-linked-res">${safeHtml(linkedName)}</span>` : ''}
+                    <span class="mail-row-subject">${safeHtml(message.subject || '')}</span>
+                    <span class="mail-row-preview">${safeHtml(message.previewText || '')}</span>
+                    <span class="mail-row-footer">
+                        <span class="mail-status-chip status-${safeHtml(status)}"><span class="mail-status-dot"></span>${safeHtml(slabel)}</span>
+                        ${linkedName ? `<span class="mail-linked-name">${safeHtml(linkedName)}</span>` : ''}
                     </span>
-                </button>
-            `;
+                </span>
+            </button>`;
         }).join('');
+
+        updateChipCounts();
     }
 
     function renderLinkedReservationMail(reservationId) {
@@ -190,12 +247,20 @@
     }
 
     function openMailDetail(id) {
-        const { formatDateDisplay, getMailMessages, openModal, t } = requireDeps();
+        const { getMailMessages } = requireDeps();
         const message = getMailMessages().find((entry) => entry.id === id);
         if (!message) return;
 
         openDetailId = id;
 
+        // Prefer the new split-pane reader when available
+        if (window.MailUI?.openReader) {
+            window.MailUI.openReader(id);
+            return;
+        }
+
+        // Fallback: old modal (kept for non-mail pages that call openMailDetail)
+        const { formatDateDisplay, openModal, t } = requireDeps();
         const title = document.getElementById('mailDetailTitle');
         const body = document.getElementById('mailDetailBody');
         if (!title || !body) return;
@@ -234,7 +299,13 @@
             setMailMessages(nextMessages);
             renderMailPage();
             refreshLinkedReservationMailLists([previous?.reservationId, updated.reservationId]);
-            if (openDetailId === updated.id) openMailDetail(updated.id);
+            if (openDetailId === updated.id) {
+                if (window.MailUI?.refreshReader) {
+                    window.MailUI.refreshReader(updated.id);
+                } else {
+                    openMailDetail(updated.id);
+                }
+            }
             showToast(t('mail.updated'), 'success');
         } catch (error) {
             showToast(error.message || t('mail.updateFail'), 'error');
@@ -259,7 +330,7 @@
 
     function setMailFilter(filter) {
         currentFilter = filter || 'all';
-        document.querySelectorAll('#page-mail .chip').forEach((chip) => {
+        document.querySelectorAll('#page-mail .chip, #page-mail .mail-chip').forEach((chip) => {
             const chipFilter = chip.dataset.mailFilter || chip.dataset.filter || '';
             chip.classList.toggle('active', chipFilter === currentFilter);
         });
@@ -375,6 +446,7 @@
         syncMail,
         syncMailSettingsInputs,
         toggleMailUsernameField,
-        testMailConnection
+        testMailConnection,
+        updateMailMessage
     };
 })(window);

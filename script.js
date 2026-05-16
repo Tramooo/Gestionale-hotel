@@ -229,6 +229,13 @@ if (window.GroupStayMail) {
     });
 }
 
+if (window.MailUI) {
+    window.MailUI.init({
+        getMailMessages: () => mailMessages,
+        getReservations: () => reservations
+    });
+}
+
 window.GroupStayGuests.init({
     API,
     apiDelete,
