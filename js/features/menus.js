@@ -276,55 +276,101 @@
             FBC: 'FBC – Colazione, Pranzo al Sacco & Cena'
         };
 
-        let daysHtml = '';
-        let lastDate = '';
+        // Group meals by date maintaining order
+        const dateOrder = [];
+        const mealsByDate = new Map();
         days.forEach(({ date, mealType }) => {
-            if (date !== lastDate) {
-                if (lastDate) daysHtml += '</div>';
-                daysHtml += `<div class="print-day"><div class="print-day-header">${formatDateDisplay(date)}</div>`;
-                lastDate = date;
+            if (!mealsByDate.has(date)) {
+                mealsByDate.set(date, []);
+                dateOrder.push(date);
             }
-            const menu = menuMap[`${date}_${mealType}`] || {};
-            const mealLabel = mealType === 'lunch' ? 'Pranzo' : 'Cena';
-            const fields = [['Primo', menu.primo], ['Secondo', menu.secondo], ['Contorno', menu.contorno], ['Dessert', menu.dessert]];
-            const { participants, totalGuests, intolerances } = getSharedMealSummary(date, mealType);
-            const hasVeggieBuffet = participants.some((item) => item.veggieBuffet);
-            const veggieRow = hasVeggieBuffet ? '<tr><td class="print-field-label">Antipasto</td><td class="print-field-val print-veggie">Buffet di verdure</td></tr>' : '';
-
-            participants.forEach((item) => periodGroups.set(item.id, item));
-
-            const groupsHtml = participants.length > 0
-                ? participants.map((item) => `${escapeHtml(item.groupName || 'Gruppo senza nome')} (${item.guestCount || 0})`).join(' · ')
-                : 'Nessun gruppo associato';
-
-            const intolerancesHtml = intolerances.length > 0
-                ? `<div class="print-service-intol">
-                    <div class="print-service-intol-title">Intolleranze</div>
-                    <ul class="print-service-intol-list">
-                        ${intolerances.map((item) => {
-                            const groupDetails = item.groups
-                                .map((group) => `${escapeHtml(group.groupName)}: ${group.count}`)
-                                .join(' · ');
-                            return `<li><strong>${item.count}</strong> × ${escapeHtml(item.label)} <span class="print-service-intol-groups">(${groupDetails})</span></li>`;
-                        }).join('')}
-                    </ul>
-                </div>`
-                : '<div class="print-service-intol print-service-intol-empty">Nessuna intolleranza segnalata</div>';
-
-            daysHtml += `<div class="print-meal">
-                <div class="print-meal-type">${mealLabel}</div>
-                <div class="print-service-meta">
-                    <div class="print-service-total">Ospiti totali: <strong>${totalGuests}</strong></div>
-                    <div class="print-service-groups">${groupsHtml}</div>
-                </div>
-                <table class="print-meal-table">
-                    ${veggieRow}
-                    ${fields.map(([label, val]) => `<tr><td class="print-field-label">${label}</td><td class="print-field-val">${escapeHtml(val || '—')}</td></tr>`).join('')}
-                </table>
-                ${intolerancesHtml}
-            </div>`;
+            mealsByDate.get(date).push(mealType);
         });
-        if (lastDate) daysHtml += '</div>';
+
+        // Pre-compute summaries for all meals
+        const mealSummaries = new Map();
+        days.forEach(({ date, mealType }) => {
+            mealSummaries.set(`${date}_${mealType}`, getSharedMealSummary(date, mealType));
+        });
+
+        let daysHtml = '';
+        dateOrder.forEach((date) => {
+            const mealTypes = mealsByDate.get(date);
+
+            // Union of all groups across all meals of the day
+            const dayGroupMap = new Map();
+            mealTypes.forEach((mealType) => {
+                const { participants } = mealSummaries.get(`${date}_${mealType}`);
+                participants.forEach((p) => {
+                    dayGroupMap.set(p.id, p);
+                    periodGroups.set(p.id, p);
+                });
+            });
+
+            // Build day-level intollerances (shown once per day)
+            const dayIntolMap = new Map();
+            Array.from(dayGroupMap.values()).forEach((reservation) => {
+                (reservation.intolerances || []).forEach((item) => {
+                    const label = (item.note || '').trim();
+                    const count = parseInt(item.count, 10) || 1;
+                    if (!label) return;
+                    const key = label.toLowerCase();
+                    if (!dayIntolMap.has(key)) {
+                        dayIntolMap.set(key, { label, count: 0, groups: [] });
+                    }
+                    const entry = dayIntolMap.get(key);
+                    const groupName = reservation.groupName || 'Gruppo senza nome';
+                    const existing = entry.groups.find((g) => g.groupName === groupName);
+                    if (!existing) {
+                        entry.count += count;
+                        entry.groups.push({ groupName, count });
+                    }
+                });
+            });
+            const dayIntolerances = Array.from(dayIntolMap.values())
+                .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+
+            const dayIntolHtml = dayIntolerances.length > 0
+                ? `<div class="print-day-intol">
+                    <span class="print-day-intol-title">Intolleranze:</span>
+                    ${dayIntolerances.map((item) => {
+                        const groupDetails = item.groups
+                            .map((group) => `${escapeHtml(group.groupName)}: ${group.count}`)
+                            .join(' · ');
+                        return `<span class="print-day-intol-item"><strong>${item.count}</strong> × ${escapeHtml(item.label)} <span class="print-day-intol-groups">(${groupDetails})</span></span>`;
+                    }).join('')}
+                </div>`
+                : '';
+
+            daysHtml += `<div class="print-day"><div class="print-day-header">${formatDateDisplay(date)}</div>${dayIntolHtml}`;
+
+            mealTypes.forEach((mealType) => {
+                const menu = menuMap[`${date}_${mealType}`] || {};
+                const mealLabel = mealType === 'lunch' ? 'Pranzo' : 'Cena';
+                const fields = [['Primo', menu.primo], ['Secondo', menu.secondo], ['Contorno', menu.contorno], ['Dessert', menu.dessert]];
+                const { participants, totalGuests } = mealSummaries.get(`${date}_${mealType}`);
+                const hasVeggieBuffet = participants.some((item) => item.veggieBuffet);
+                const veggieRow = hasVeggieBuffet ? '<tr><td class="print-field-label">Antipasto</td><td class="print-field-val print-veggie">Buffet di verdure</td></tr>' : '';
+
+                const groupsHtml = participants.length > 0
+                    ? participants.map((item) => `${escapeHtml(item.groupName || 'Gruppo senza nome')} (${item.guestCount || 0})`).join(' · ')
+                    : 'Nessun gruppo associato';
+
+                daysHtml += `<div class="print-meal">
+                    <div class="print-meal-type">${mealLabel}</div>
+                    <div class="print-service-meta">
+                        <div class="print-service-total">Ospiti totali: <strong>${totalGuests}</strong></div>
+                        <div class="print-service-groups">${groupsHtml}</div>
+                    </div>
+                    <table class="print-meal-table">
+                        ${veggieRow}
+                        ${fields.map(([label, val]) => `<tr><td class="print-field-label">${label}</td><td class="print-field-val">${escapeHtml(val || '—')}</td></tr>`).join('')}
+                    </table>
+                </div>`;
+            });
+
+            daysHtml += '</div>';
+        });
 
         const periodGroupsHtml = Array.from(periodGroups.values())
             .sort((a, b) => (b.guestCount || 0) - (a.guestCount || 0) || (a.groupName || '').localeCompare(b.groupName || ''))
@@ -335,35 +381,32 @@
         <title>Menu condiviso – ${escapeHtml(reservation.groupName)}</title>
         <style>
             * { box-sizing: border-box; margin: 0; padding: 0; }
-            body { font-family: 'Georgia', serif; color: #1a1a1a; background: #fff; padding: 22px 24px; max-width: 860px; margin: 0 auto; font-size: 14.5px; line-height: 1.34; }
-            .print-header { text-align: center; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 2px solid #1a1a1a; }
-            .print-hotel { font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: #666; margin-bottom: 6px; }
-            .print-group { font-size: 26px; font-weight: bold; margin-bottom: 4px; }
-            .print-dates { font-size: 15px; color: #555; margin-bottom: 3px; }
-            .print-plan { display: inline-block; margin-top: 8px; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; background: #f0f0f0; padding: 5px 12px; border-radius: 14px; color: #333; }
-            .print-groups-line { margin-top: 8px; font-size: 13px; color: #333; line-height: 1.28; }
-            .print-day { margin-bottom: 18px; break-inside: avoid; page-break-inside: avoid; }
-            .print-day-header { font-size: 14.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #888; border-bottom: 1px solid #ddd; padding-bottom: 4px; margin-bottom: 8px; }
-            .print-meal { margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #1a1a1a; }
-            .print-meal-type { font-size: 14px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #1a1a1a; margin-bottom: 5px; }
-            .print-service-meta { margin-bottom: 7px; padding: 7px 9px; background: #f7f7f7; border-radius: 4px; }
-            .print-service-total { font-size: 15px; color: #1a1a1a; margin-bottom: 2px; }
-            .print-service-groups { font-size: 13px; color: #555; line-height: 1.28; }
+            body { font-family: 'Georgia', serif; color: #1a1a1a; background: #fff; padding: 14px 18px; max-width: 860px; margin: 0 auto; font-size: 12.5px; line-height: 1.28; }
+            .print-header { text-align: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 2px solid #1a1a1a; }
+            .print-hotel { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #666; margin-bottom: 4px; }
+            .print-group { font-size: 22px; font-weight: bold; margin-bottom: 3px; }
+            .print-dates { font-size: 13px; color: #555; margin-bottom: 2px; }
+            .print-plan { display: inline-block; margin-top: 5px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; background: #f0f0f0; padding: 3px 10px; border-radius: 12px; color: #333; }
+            .print-groups-line { margin-top: 5px; font-size: 11.5px; color: #333; line-height: 1.25; }
+            .print-day { margin-bottom: 10px; }
+            .print-day-header { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #888; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin-bottom: 4px; }
+            .print-day-intol { font-size: 11px; color: #7a5000; background: #fff8f0; border-left: 3px solid #e8a020; padding: 4px 8px; margin-bottom: 5px; border-radius: 3px; line-height: 1.4; }
+            .print-day-intol-title { font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: #888; margin-right: 4px; }
+            .print-day-intol-item { display: inline; margin-right: 10px; }
+            .print-day-intol-groups { color: #999; font-size: 10.5px; }
+            .print-meal { margin-bottom: 7px; padding-left: 8px; border-left: 3px solid #1a1a1a; break-inside: avoid; page-break-inside: avoid; }
+            .print-meal-type { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #1a1a1a; margin-bottom: 3px; }
+            .print-service-meta { margin-bottom: 4px; padding: 4px 8px; background: #f7f7f7; border-radius: 3px; }
+            .print-service-total { font-size: 12px; color: #1a1a1a; margin-bottom: 1px; }
+            .print-service-groups { font-size: 11px; color: #555; line-height: 1.25; }
             .print-meal-table { width: 100%; border-collapse: collapse; }
-            .print-field-label { font-size: 13.5px; color: #888; width: 86px; padding: 2px 0; vertical-align: top; }
-            .print-field-val { font-size: 16.5px; color: #1a1a1a; padding: 2px 0; }
+            .print-field-label { font-size: 11.5px; color: #888; width: 76px; padding: 1px 0; vertical-align: top; }
+            .print-field-val { font-size: 13.5px; color: #1a1a1a; padding: 1px 0; }
             .print-veggie { color: #27ae60; font-style: italic; }
-            .print-service-intol { margin-top: 8px; padding: 8px 10px; background: #fff8f0; border-left: 4px solid #e8a020; border-radius: 4px; }
-            .print-service-intol-empty { color: #777; }
-            .print-service-intol-title { font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #888; margin-bottom: 5px; }
-            .print-service-intol-list { padding-left: 16px; }
-            .print-service-intol-list li { font-size: 14px; margin-bottom: 3px; }
-            .print-service-intol-groups { color: #666; font-size: 12.5px; }
-            .print-footer { margin-top: 22px; padding-top: 10px; border-top: 1px solid #ddd; text-align: center; font-size: 11px; color: #aaa; }
-            @page { margin: 8mm 9mm; }
+            .print-footer { margin-top: 14px; padding-top: 8px; border-top: 1px solid #ddd; text-align: center; font-size: 10px; color: #aaa; }
+            @page { margin: 6mm 8mm; }
             @media print {
-                body { padding: 0; font-size: 14px; }
-                .print-day { break-inside: avoid-page; }
+                body { padding: 0; font-size: 12px; }
             }
         </style>
         </head><body>
