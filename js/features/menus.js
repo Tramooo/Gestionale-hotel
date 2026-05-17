@@ -52,35 +52,49 @@
         const days = [];
         if (!reservation.checkin || !reservation.checkout) return days;
         const plan = reservation.mealPlan || 'BB';
-        if (plan === 'BB') return days;
 
-        const checkinMs = new Date(reservation.checkin).getTime();
-        const checkoutMs = new Date(reservation.checkout).getTime();
+        if (plan !== 'BB') {
+            const checkinMs = new Date(reservation.checkin).getTime();
+            const checkoutMs = new Date(reservation.checkout).getTime();
 
-        if (plan === 'FB') {
-            let current = new Date(reservation.checkin);
-            while (current.getTime() <= checkoutMs) {
-                const dateStr = formatDate(current);
-                const isFirst = current.getTime() === checkinMs;
-                const isLast = current.getTime() === checkoutMs;
-                if (isFirst) {
-                    days.push({ date: dateStr, mealType: 'dinner' });
-                } else if (isLast) {
-                    days.push({ date: dateStr, mealType: 'lunch' });
-                } else {
-                    days.push({ date: dateStr, mealType: 'lunch' });
-                    days.push({ date: dateStr, mealType: 'dinner' });
+            if (plan === 'FB') {
+                let current = new Date(reservation.checkin);
+                while (current.getTime() <= checkoutMs) {
+                    const dateStr = formatDate(current);
+                    const isFirst = current.getTime() === checkinMs;
+                    const isLast = current.getTime() === checkoutMs;
+                    if (isFirst) {
+                        days.push({ date: dateStr, mealType: 'dinner' });
+                    } else if (isLast) {
+                        days.push({ date: dateStr, mealType: 'lunch' });
+                    } else {
+                        days.push({ date: dateStr, mealType: 'lunch' });
+                        days.push({ date: dateStr, mealType: 'dinner' });
+                    }
+                    current.setDate(current.getDate() + 1);
                 }
-                current.setDate(current.getDate() + 1);
-            }
-        } else {
-            let d = new Date(reservation.checkin);
-            const end = new Date(reservation.checkout);
-            while (d < end) {
-                days.push({ date: formatDate(d), mealType: 'dinner' });
-                d.setDate(d.getDate() + 1);
+            } else {
+                let d = new Date(reservation.checkin);
+                const end = new Date(reservation.checkout);
+                while (d < end) {
+                    days.push({ date: formatDate(d), mealType: 'dinner' });
+                    d.setDate(d.getDate() + 1);
+                }
             }
         }
+
+        // Merge extra meals (skip duplicates already covered by the base plan)
+        (reservation.extraMeals || []).forEach((extra) => {
+            if (!days.some((d) => d.date === extra.date && d.mealType === extra.mealType)) {
+                days.push({ date: extra.date, mealType: extra.mealType, isExtra: true });
+            }
+        });
+
+        // Sort chronologically, lunch before dinner within the same day
+        days.sort((a, b) => {
+            if (a.date !== b.date) return a.date.localeCompare(b.date);
+            return (a.mealType === 'lunch' ? 0 : 1) - (b.mealType === 'lunch' ? 0 : 1);
+        });
 
         return days;
     }
@@ -114,18 +128,19 @@
             </div>`;
         const sharedMenuNote = '<div class="menu-bb-note">Menu condiviso con tutti i gruppi presenti nello stesso giorno.</div>';
 
-        if (plan === 'BB') {
-            container.innerHTML = `${intolHtml}<div class="menu-bb-note">Solo colazione — nessun menu da inserire</div>`;
-            return;
-        }
-
         const days = getMealDays(reservation);
         const menuMap = {};
         menus.forEach((menu) => { menuMap[`${menu.date}_${menu.mealType}`] = menu; });
 
-        let html = `${intolHtml}${sharedMenuNote}`;
+        let html = intolHtml;
+        if (plan === 'BB' && days.length === 0) {
+            html += '<div class="menu-bb-note">Solo colazione — nessun menu da inserire</div>';
+        } else if (plan !== 'BB') {
+            html += sharedMenuNote;
+        }
+
         let lastDate = '';
-        days.forEach(({ date, mealType }) => {
+        days.forEach(({ date, mealType, isExtra }) => {
             if (date !== lastDate) {
                 if (lastDate) html += '</div>';
                 html += `<div class="menu-day"><div class="menu-day-header">${formatDateDisplay(date)}</div>`;
@@ -135,8 +150,16 @@
             const menu = menuMap[key] || {};
             const mealLabel = mealType === 'lunch' ? 'Pranzo' : 'Cena';
             const fields = ['primo', 'secondo', 'contorno', 'dessert'];
-            html += `<div class="menu-meal">
-                <div class="menu-meal-type">${mealLabel}</div>
+            const extraControls = isExtra
+                ? `<span class="menu-extra-badge">Extra</span>
+                   <button class="btn btn-ghost btn-sm menu-extra-del-btn"
+                       onclick="removeExtraMeal('${reservation.id}','${date}','${mealType}')"
+                       title="Rimuovi pasto extra">
+                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                   </button>`
+                : '';
+            html += `<div class="menu-meal${isExtra ? ' menu-meal--extra' : ''}">
+                <div class="menu-meal-type${isExtra ? ' menu-meal-type--extra' : ''}">${mealLabel}${extraControls}</div>
                 <div class="menu-meal-fields">`;
             if (reservation.veggieBuffet) {
                 html += `<div class="menu-field menu-field-full">
@@ -155,6 +178,27 @@
             html += '</div></div>';
         });
         if (lastDate) html += '</div>';
+
+        html += `<div class="menu-extra-section">
+            <button class="btn btn-sm btn-secondary menu-extra-add-btn"
+                    onclick="showAddExtraMealForm('${reservation.id}')">+ Aggiungi pasto extra</button>
+            <div id="extraMealForm_${reservation.id}" class="menu-extra-form" style="display:none">
+                <div class="menu-extra-form-row">
+                    <input type="date" id="extraMealDate_${reservation.id}" class="form-control"
+                        min="${reservation.checkin}" max="${reservation.checkout}"
+                        value="${reservation.checkin}">
+                    <select id="extraMealType_${reservation.id}" class="form-control">
+                        <option value="dinner">Cena</option>
+                        <option value="lunch">Pranzo</option>
+                    </select>
+                    <button class="btn btn-primary btn-sm"
+                            onclick="confirmAddExtraMeal('${reservation.id}')">Aggiungi</button>
+                    <button class="btn btn-ghost btn-sm"
+                            onclick="cancelAddExtraMealForm('${reservation.id}')">Annulla</button>
+                </div>
+            </div>
+        </div>`;
+
         container.innerHTML = html;
     }
 
@@ -507,6 +551,78 @@
         }
     }
 
+    function showAddExtraMealForm(resId) {
+        const form = document.getElementById(`extraMealForm_${resId}`);
+        if (form) form.style.display = '';
+    }
+
+    function cancelAddExtraMealForm(resId) {
+        const form = document.getElementById(`extraMealForm_${resId}`);
+        if (form) form.style.display = 'none';
+    }
+
+    async function confirmAddExtraMeal(resId) {
+        const dateInput = document.getElementById(`extraMealDate_${resId}`);
+        const typeSelect = document.getElementById(`extraMealType_${resId}`);
+        if (!dateInput || !typeSelect) return;
+        const date = dateInput.value;
+        const mealType = typeSelect.value;
+        if (!date) return;
+        await addExtraMeal(resId, date, mealType);
+    }
+
+    async function addExtraMeal(resId, date, mealType) {
+        const { getReservations, setReservations, showToast } = requireDeps();
+        const reservations = getReservations();
+        const reservation = reservations.find((item) => item.id === resId);
+        if (!reservation) return;
+
+        const alreadyPresent = getMealDays(reservation).some(
+            (d) => d.date === date && d.mealType === mealType
+        );
+        if (alreadyPresent) {
+            showToast('Questo pasto è già presente nel menu', 'warning');
+            return;
+        }
+
+        if (!reservation.extraMeals) reservation.extraMeals = [];
+        reservation.extraMeals.push({ date, mealType });
+        setReservations([...reservations]);
+        const saved = await saveExtraMeals(resId);
+        if (saved) {
+            renderMenuSection(reservation, lastMenus || []);
+            markMenusDirty();
+        }
+    }
+
+    async function removeExtraMeal(resId, date, mealType) {
+        const { getReservations, setReservations } = requireDeps();
+        const reservations = getReservations();
+        const reservation = reservations.find((item) => item.id === resId);
+        if (!reservation || !reservation.extraMeals) return;
+        reservation.extraMeals = reservation.extraMeals.filter(
+            (e) => !(e.date === date && e.mealType === mealType)
+        );
+        setReservations([...reservations]);
+        const saved = await saveExtraMeals(resId);
+        if (saved) renderMenuSection(reservation, lastMenus || []);
+    }
+
+    async function saveExtraMeals(resId) {
+        const { API, apiPut, getReservations } = requireDeps();
+        const reservation = getReservations().find((item) => item.id === resId);
+        if (!reservation) return false;
+        try {
+            await apiPut(API.reservations, { ...reservation, id: resId });
+            setMenuSaveStatus('saved', 'Ultime modifiche salvate');
+            return true;
+        } catch (err) {
+            console.error('Extra meal save error', err);
+            setMenuSaveStatus('error', 'Errore nel salvataggio');
+            return false;
+        }
+    }
+
     global.GroupStayMenus = {
         init(nextDeps) {
             deps = nextDeps;
@@ -520,6 +636,12 @@
         printMenu,
         markMenusDirty,
         saveAllMenus,
-        saveMenuField
+        saveMenuField,
+        showAddExtraMealForm,
+        cancelAddExtraMealForm,
+        confirmAddExtraMeal,
+        addExtraMeal,
+        removeExtraMeal,
+        saveExtraMeals
     };
 })(window);

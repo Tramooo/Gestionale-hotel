@@ -909,6 +909,17 @@ select.cell-input {
         line-height: 1.4;
     }
 
+    .menu-extra-form-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .menu-extra-form-row .form-control,
+    .menu-extra-form-row .btn {
+        width: 100%;
+        min-height: 44px;
+    }
+
     .mobile-more-overlay {
         align-items: flex-end;
     }

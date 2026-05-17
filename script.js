@@ -1726,6 +1726,10 @@ function printMenu(resId) { return window.GroupStayMenus.printMenu(resId); }
 function markMenusDirty() { return window.GroupStayMenus.markMenusDirty(); }
 async function saveAllMenus(resId) { return window.GroupStayMenus.saveAllMenus(resId); }
 async function saveMenuField(input) { return window.GroupStayMenus.saveMenuField(input); }
+function showAddExtraMealForm(resId) { return window.GroupStayMenus.showAddExtraMealForm(resId); }
+function cancelAddExtraMealForm(resId) { return window.GroupStayMenus.cancelAddExtraMealForm(resId); }
+async function confirmAddExtraMeal(resId) { return window.GroupStayMenus.confirmAddExtraMeal(resId); }
+async function removeExtraMeal(resId, date, mealType) { return window.GroupStayMenus.removeExtraMeal(resId, date, mealType); }
 
 async function loadReservationFiles(reservationId) { return window.GroupStayReservationFiles.loadReservationFiles(reservationId); }
 function renderReservationFiles(reservationId, files) { return window.GroupStayReservationFiles.renderReservationFiles(reservationId, files); }
