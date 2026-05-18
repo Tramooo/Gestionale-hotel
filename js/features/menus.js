@@ -424,33 +424,33 @@
         <title>Menu condiviso – ${escapeHtml(reservation.groupName)}</title>
         <style>
             * { box-sizing: border-box; margin: 0; padding: 0; }
-            body { font-family: 'Georgia', serif; color: #1a1a1a; background: #fff; padding: 14px 18px; max-width: 860px; margin: 0 auto; font-size: 16px; line-height: 1.45; }
-            .print-header { text-align: center; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 2px solid #1a1a1a; }
-            .print-hotel { font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: #666; margin-bottom: 4px; }
-            .print-group { font-size: 26px; font-weight: bold; margin-bottom: 3px; }
-            .print-dates { font-size: 16px; color: #555; margin-bottom: 2px; }
-            .print-plan { display: inline-block; margin-top: 5px; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; background: #f0f0f0; padding: 3px 10px; border-radius: 12px; color: #333; }
-            .print-groups-line { margin-top: 6px; font-size: 14px; color: #333; line-height: 1.4; }
-            .print-period-intol { margin-top: 14px; background: #fff3e0; border: 2px solid #e8a020; border-radius: 6px; padding: 12px 16px; text-align: left; }
-            .print-period-intol-title { display: block; font-size: 12px; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase; color: #b84000; margin-bottom: 10px; }
-            .print-period-intol-item { display: flex; align-items: baseline; gap: 6px; margin-bottom: 5px; font-size: 16px; color: #5a3000; line-height: 1.4; }
-            .print-period-intol-item::before { content: '⚠'; font-size: 14px; color: #e8a020; flex-shrink: 0; }
-            .print-period-intol-groups { color: #888; font-size: 13px; margin-left: 4px; }
-            .print-day { margin-bottom: 22px; }
-            .print-day-header { font-size: 17px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #888; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 10px; }
-            .print-meal { margin-bottom: 14px; padding: 6px 0 6px 12px; border-left: 3px solid #1a1a1a; break-inside: avoid; page-break-inside: avoid; }
-            .print-meal-type { font-size: 16px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #1a1a1a; margin-bottom: 6px; }
-            .print-service-meta { margin-bottom: 7px; padding: 7px 12px; background: #f7f7f7; border-radius: 3px; }
-            .print-service-total { font-size: 16px; color: #1a1a1a; margin-bottom: 3px; }
-            .print-service-groups { font-size: 14px; color: #555; line-height: 1.4; }
+            body { font-family: 'Georgia', serif; color: #1a1a1a; background: #fff; padding: 14px 18px; max-width: 860px; margin: 0 auto; font-size: 14.5px; line-height: 1.38; }
+            .print-header { text-align: center; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 2px solid #1a1a1a; }
+            .print-hotel { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: #666; margin-bottom: 4px; }
+            .print-group { font-size: 24px; font-weight: bold; margin-bottom: 3px; }
+            .print-dates { font-size: 15px; color: #555; margin-bottom: 2px; }
+            .print-plan { display: inline-block; margin-top: 5px; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; background: #f0f0f0; padding: 3px 10px; border-radius: 12px; color: #333; }
+            .print-groups-line { margin-top: 6px; font-size: 13px; color: #333; line-height: 1.3; }
+            .print-period-intol { margin-top: 12px; background: #fff3e0; border: 2px solid #e8a020; border-radius: 6px; padding: 10px 14px; text-align: left; }
+            .print-period-intol-title { display: block; font-size: 11px; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase; color: #b84000; margin-bottom: 8px; }
+            .print-period-intol-item { display: flex; align-items: baseline; gap: 6px; margin-bottom: 4px; font-size: 14px; color: #5a3000; line-height: 1.4; }
+            .print-period-intol-item::before { content: '⚠'; font-size: 12px; color: #e8a020; flex-shrink: 0; }
+            .print-period-intol-groups { color: #888; font-size: 12px; margin-left: 4px; }
+            .print-day { margin-bottom: 14px; }
+            .print-day-header { font-size: 14px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #888; border-bottom: 1px solid #ddd; padding-bottom: 4px; margin-bottom: 6px; }
+            .print-meal { margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #1a1a1a; break-inside: avoid; page-break-inside: avoid; }
+            .print-meal-type { font-size: 14px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #1a1a1a; margin-bottom: 4px; }
+            .print-service-meta { margin-bottom: 5px; padding: 5px 10px; background: #f7f7f7; border-radius: 3px; }
+            .print-service-total { font-size: 14px; color: #1a1a1a; margin-bottom: 2px; }
+            .print-service-groups { font-size: 13px; color: #555; line-height: 1.3; }
             .print-meal-table { width: 100%; border-collapse: collapse; }
-            .print-field-label { font-size: 15px; color: #888; width: 95px; padding: 4px 0; vertical-align: top; }
-            .print-field-val { font-size: 19px; color: #1a1a1a; padding: 4px 0; }
+            .print-field-label { font-size: 13px; color: #888; width: 82px; padding: 2px 0; vertical-align: top; }
+            .print-field-val { font-size: 16px; color: #1a1a1a; padding: 2px 0; }
             .print-veggie { color: #27ae60; font-style: italic; }
-            .print-footer { margin-top: 20px; padding-top: 10px; border-top: 1px solid #ddd; text-align: center; font-size: 12px; color: #aaa; }
+            .print-footer { margin-top: 16px; padding-top: 8px; border-top: 1px solid #ddd; text-align: center; font-size: 11px; color: #aaa; }
             @page { margin: 6mm 8mm; }
             @media print {
-                body { padding: 0; font-size: 16px; }
+                body { padding: 0; font-size: 14.5px; }
             }
         </style>
         </head><body>
