@@ -1,6 +1,6 @@
 (function initBootstrap(global) {
     const INIT_CACHE_PREFIX = 'gs_init_cache';
-    const DEFAULT_SCHEMA_VERSION = '2026-05-05-startup-performance';
+    const DEFAULT_SCHEMA_VERSION = '2026-05-22-extra-costs';
 
     function getInitCacheKey(userId) {
         return `${INIT_CACHE_PREFIX}:${userId || 'anonymous'}`;
