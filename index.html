@@ -1141,6 +1141,19 @@
                                     <label data-i18n="res.notes">Note</label>
                                     <textarea id="resNotes" rows="3" data-i18n-placeholder="res.notesPlaceholder" placeholder="Richieste speciali, esigenze alimentari, ecc."></textarea>
                                 </div>
+                                <div class="form-group full">
+                                    <div class="extra-costs-header">
+                                        <label>Costi Extra</label>
+                                        <button type="button" class="btn btn-sm btn-ghost" onclick="addExtraCostRow('res')">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                            Aggiungi
+                                        </button>
+                                    </div>
+                                    <div id="resExtraCostsList" class="extra-costs-list"></div>
+                                    <div class="extra-costs-subtotal" id="resExtraCostsSubtotal" style="display:none">
+                                        Totale extra: <strong id="resExtraCostsTotal">€0</strong>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <!-- Right: room selection list -->
@@ -1286,6 +1299,19 @@
                         <div class="form-group full">
                             <label data-i18n="res.notes">Note</label>
                             <textarea id="indNotes" rows="3" placeholder="Richieste speciali..."></textarea>
+                        </div>
+                        <div class="form-group full">
+                            <div class="extra-costs-header">
+                                <label>Costi Extra</label>
+                                <button type="button" class="btn btn-sm btn-ghost" onclick="addExtraCostRow('ind')">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                    Aggiungi
+                                </button>
+                            </div>
+                            <div id="indExtraCostsList" class="extra-costs-list"></div>
+                            <div class="extra-costs-subtotal" id="indExtraCostsSubtotal" style="display:none">
+                                Totale extra: <strong id="indExtraCostsTotal">€0</strong>
+                            </div>
                         </div>
                     </div>
                     <div class="modal-actions">

@@ -12,11 +12,15 @@
         const pricePerPerson = reservation.pricePerPerson || 0;
         const gratuity = reservation.gratuity || 0;
         const nights = (reservation.checkin && reservation.checkout) ? nightsBetween(reservation.checkin, reservation.checkout) : 0;
+        const extraCostsTotal = (reservation.extraCosts || []).reduce((s, c) => s + (parseFloat(c.amount) || 0), 0);
+        let base;
         if (pricePerPerson > 0 && guestCount > 0 && nights > 0) {
             const free = gratuity > 0 ? Math.floor(guestCount / gratuity) : 0;
-            return Math.max(0, guestCount - free) * nights * pricePerPerson;
+            base = Math.max(0, guestCount - free) * nights * pricePerPerson;
+        } else {
+            base = reservation.price || 0;
         }
-        return reservation.price || 0;
+        return base + extraCostsTotal;
     }
 
     function renderManagement() {

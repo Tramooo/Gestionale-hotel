@@ -67,8 +67,14 @@
         const checkout = document.getElementById('indCheckout').value;
         const ppn = parseFloat(document.getElementById('indPricePerNight').value) || 0;
         const nights = (checkin && checkout) ? nightsBetween(checkin, checkout) : 0;
-        const total = ppn * nights;
-        document.getElementById('indTotalPrice').textContent = '€' + total.toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+        const baseTotal = ppn * nights;
+        const extraTotal = window.updateExtraCostsSubtotal ? window.updateExtraCostsSubtotal('ind') : 0;
+        const total = baseTotal + extraTotal;
+        let display = '€' + total.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        if (extraTotal > 0) {
+            display += ` <span class="res-calc-detail">(+€${extraTotal.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} extra)</span>`;
+        }
+        document.getElementById('indTotalPrice').innerHTML = display;
         document.getElementById('indPrice').value = total;
     }
 
@@ -82,6 +88,7 @@
         document.getElementById('indStatus').value = 'confirmed';
         document.getElementById('indTotalPrice').textContent = '€0';
         document.getElementById('indPrice').value = 0;
+        if (window.setExtraCosts) window.setExtraCosts('ind', []);
         populateIndRoomSelect(null);
         openModal('individualModal');
     }
@@ -116,6 +123,7 @@
         if (reservation.roomIds && reservation.roomIds.length > 0) {
             document.getElementById('indRoomId').value = reservation.roomIds[0];
         }
+        if (window.setExtraCosts) window.setExtraCosts('ind', reservation.extraCosts || []);
         calcIndividualPrice();
         closeModal('reservationDetailModal');
         openModal('individualModal');
@@ -172,7 +180,8 @@
             gratuity: 0,
             price: parseFloat(document.getElementById('indPrice').value) || 0,
             notes: document.getElementById('indNotes').value.trim(),
-            resType: 'individual'
+            resType: 'individual',
+            extraCosts: window.getExtraCosts ? window.getExtraCosts('ind') : []
         };
 
         try {

@@ -109,9 +109,20 @@
                         <span class="detail-info-label">Presenze</span>
                         <span class="detail-info-value">${(() => { const gc = reservation.guestCount || 0; const fg = reservation.gratuity > 0 ? Math.floor(gc / reservation.gratuity) : 0; return Math.max(0, gc - fg) * nights; })()}</span>
                     </div>` : ''}
+                    ${(reservation.extraCosts && reservation.extraCosts.length > 0) ? `
+                    <div class="detail-info-item full" style="grid-column:1/-1">
+                        <span class="detail-info-label">Costi Extra</span>
+                        <div class="detail-extra-costs">
+                            ${reservation.extraCosts.map((c) => `
+                            <div class="detail-extra-cost-item">
+                                <span>${escapeHtml(c.label || '—')}</span>
+                                <span>&euro;${(parseFloat(c.amount) || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>`).join('')}
+                        </div>
+                    </div>` : ''}
                     <div class="detail-info-item detail-info-price">
                         <span class="detail-info-label">${t('res.totalPrice')}</span>
-                        <span class="detail-info-value">&euro;${calcReservationRevenue(reservation).toLocaleString()}</span>
+                        <span class="detail-info-value">&euro;${calcReservationRevenue(reservation).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                     ${reservation.status === 'pending' && reservation.expiration ? `<div class="detail-info-item">
                         <span class="detail-info-label">${t('detail.expires')}</span>

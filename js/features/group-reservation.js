@@ -32,6 +32,7 @@
         document.getElementById('resGratuity').value = '';
         document.getElementById('resTotalPrice').textContent = '\u20AC0';
         document.getElementById('resPrice').value = 0;
+        if (window.setExtraCosts) window.setExtraCosts('res', []);
         populateRoomChecklist([], null);
         toggleExpirationField();
         openModal('reservationModal');
@@ -65,6 +66,7 @@
         document.getElementById('resNotes').value = reservation.notes || '';
         document.getElementById('resMealPlan').value = reservation.mealPlan || 'BB';
         document.getElementById('resVeggieBuffet').checked = reservation.veggieBuffet || false;
+        if (window.setExtraCosts) window.setExtraCosts('res', reservation.extraCosts || []);
         calcReservationPrice();
         toggleExpirationField();
 
@@ -109,7 +111,8 @@
             price: parseFloat(document.getElementById('resPrice').value) || 0,
             notes: document.getElementById('resNotes').value.trim(),
             mealPlan: document.getElementById('resMealPlan').value,
-            veggieBuffet: document.getElementById('resVeggieBuffet').checked
+            veggieBuffet: document.getElementById('resVeggieBuffet').checked,
+            extraCosts: window.getExtraCosts ? window.getExtraCosts('res') : []
         };
 
         if (new Date(data.checkout) <= new Date(data.checkin)) {

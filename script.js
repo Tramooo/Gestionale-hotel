@@ -1452,6 +1452,80 @@ function applyTranslations() {
 
 // ---- HELPERS ----
 
+// ---- COSTI EXTRA ----
+
+/**
+ * Aggiunge una riga costo extra alla lista del modal specificato.
+ * @param {string} prefix - 'ind' per individuale, 'res' per gruppo
+ * @param {string} label - descrizione opzionale (usata al caricamento)
+ * @param {number} amount - importo opzionale (usato al caricamento)
+ */
+function addExtraCostRow(prefix, label, amount) {
+    const list = document.getElementById(`${prefix}ExtraCostsList`);
+    if (!list) return;
+    const row = document.createElement('div');
+    row.className = 'extra-cost-row';
+    row.innerHTML = `
+        <input type="text" placeholder="Descrizione (es. Parcheggio, Minibar\u2026)" class="extra-cost-label"
+            value="${label ? label.replace(/"/g, '&quot;') : ''}"
+            oninput="${prefix === 'ind' ? 'calcIndividualPrice()' : 'calcReservationPrice()'}">
+        <input type="number" min="0" step="0.01" placeholder="0.00" class="extra-cost-amount"
+            value="${amount != null ? amount : ''}"
+            oninput="${prefix === 'ind' ? 'calcIndividualPrice()' : 'calcReservationPrice()'}">
+        <button type="button" class="extra-cost-remove" onclick="removeExtraCostRow(this, '${prefix}')" title="Rimuovi">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+        </button>`;
+    list.appendChild(row);
+    if (prefix === 'ind') calcIndividualPrice();
+    else calcReservationPrice();
+}
+
+/**
+ * Rimuove una riga costo extra.
+ */
+function removeExtraCostRow(btn, prefix) {
+    btn.closest('.extra-cost-row').remove();
+    if (prefix === 'ind') calcIndividualPrice();
+    else calcReservationPrice();
+}
+
+/**
+ * Legge i costi extra dalla UI come array [{label, amount}].
+ */
+function getExtraCosts(prefix) {
+    const list = document.getElementById(`${prefix}ExtraCostsList`);
+    if (!list) return [];
+    return Array.from(list.querySelectorAll('.extra-cost-row')).map((row) => ({
+        label: row.querySelector('.extra-cost-label').value.trim(),
+        amount: parseFloat(row.querySelector('.extra-cost-amount').value) || 0
+    })).filter((c) => c.label || c.amount > 0);
+}
+
+/**
+ * Popola la UI dei costi extra da un array [{label, amount}].
+ */
+function setExtraCosts(prefix, costs) {
+    const list = document.getElementById(`${prefix}ExtraCostsList`);
+    if (!list) return;
+    list.innerHTML = '';
+    (costs || []).forEach((c) => addExtraCostRow(prefix, c.label, c.amount));
+}
+
+/**
+ * Restituisce la somma totale dei costi extra e aggiorna il subtotale visibile.
+ */
+function updateExtraCostsSubtotal(prefix) {
+    const costs = getExtraCosts(prefix);
+    const total = costs.reduce((s, c) => s + c.amount, 0);
+    const subtotalEl = document.getElementById(`${prefix}ExtraCostsSubtotal`);
+    const totalEl = document.getElementById(`${prefix}ExtraCostsTotal`);
+    if (subtotalEl) subtotalEl.style.display = total > 0 ? '' : 'none';
+    if (totalEl) totalEl.textContent = '\u20AC' + total.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return total;
+}
+
 function calcReservationPrice() {
     const guestCount = parseInt(document.getElementById('resGuestCount').value) || 0;
     const pricePerPerson = parseFloat(document.getElementById('resPricePerPerson').value) || 0;
@@ -1462,7 +1536,9 @@ function calcReservationPrice() {
     const nights = (checkin && checkout) ? nightsBetween(checkin, checkout) : 0;
     const freeGuests = gratuity > 0 ? Math.floor(guestCount / gratuity) : 0;
     const payingGuests = Math.max(0, guestCount - freeGuests);
-    const total = payingGuests * nights * pricePerPerson;
+    const baseTotal = payingGuests * nights * pricePerPerson;
+    const extraTotal = updateExtraCostsSubtotal('res');
+    const total = baseTotal + extraTotal;
 
     document.getElementById('resPrice').value = total;
     const display = document.getElementById('resTotalPrice');
@@ -1471,6 +1547,7 @@ function calcReservationPrice() {
     let detail = '';
     if (freeGuests > 0) detail += `${freeGuests} gratuiti, `;
     if (presenze > 0) detail += `${presenze} presenze`;
+    if (extraTotal > 0) detail += `${detail ? ', ' : ''}+\u20AC${extraTotal.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} extra`;
     if (detail) {
         display.innerHTML += ` <span class="res-calc-detail">(${detail})</span>`;
     }

@@ -1020,6 +1020,113 @@ select.cell-input option {
     background: var(--red-light) !important;
 }
 
+/* =============================================
+   COSTI EXTRA
+   ============================================= */
+
+.extra-costs-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.extra-costs-header label {
+    margin-bottom: 0;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.extra-costs-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.extra-cost-row {
+    display: grid;
+    grid-template-columns: 1fr 110px 32px;
+    gap: 6px;
+    align-items: center;
+}
+
+.extra-cost-row input[type="text"],
+.extra-cost-row input[type="number"] {
+    padding: 7px 10px;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    transition: border-color var(--transition);
+    width: 100%;
+}
+
+.extra-cost-row input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,122,255,0.08);
+}
+
+.extra-cost-remove {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--transition), color var(--transition);
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.extra-cost-remove:hover {
+    background: var(--red-light, #fff0f0);
+    color: var(--red, #e53e3e);
+}
+
+.extra-costs-subtotal {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--border-light);
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.extra-costs-subtotal strong {
+    color: var(--accent);
+    font-size: 15px;
+}
+
+/* Nella vista dettaglio */
+.detail-extra-costs {
+    margin-top: 8px;
+}
+
+.detail-extra-cost-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    padding: 3px 0;
+    color: var(--text-secondary);
+}
+
+.detail-extra-cost-item span:last-child {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
 .detail-info-card {
     background: var(--bg-primary);
     border: 1px solid var(--border-light);

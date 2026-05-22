@@ -190,6 +190,7 @@ export default async function handler(req, res) {
     await sql`ALTER TABLE reservations ADD COLUMN IF NOT EXISTS meal_plan TEXT DEFAULT 'BB'`;
     await sql`ALTER TABLE reservations ADD COLUMN IF NOT EXISTS intolerances TEXT DEFAULT '[]'`;
     await sql`ALTER TABLE reservations ADD COLUMN IF NOT EXISTS veggie_buffet BOOLEAN DEFAULT FALSE`;
+    await sql`ALTER TABLE reservations ADD COLUMN IF NOT EXISTS extra_costs TEXT DEFAULT '[]'`;
 
     await sql`
       CREATE TABLE IF NOT EXISTS menus (
