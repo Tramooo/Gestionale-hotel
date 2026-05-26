@@ -2843,10 +2843,10 @@ function renamePlannerColumn(el) {
 const ROOM_TRANSLATION_DICT = {
     // Tipi camera
     'singola': 'single', 'singolo': 'single',
-    'doppia': 'double', 'doppio': 'double',
+    'doppia': 'twin', 'doppio': 'twin',
     'tripla': 'triple', 'triplo': 'triple',
     'quadrupla': 'quadruple', 'quadruplo': 'quadruple',
-    'matrimoniale': 'double bed', 'matrimoniali': 'double beds',
+    'matrimoniale': 'double', 'matrimoniali': 'double',
     'suite': 'suite',
     'junior': 'junior',
     'standard': 'standard',
@@ -2915,15 +2915,31 @@ const ROOM_TRANSLATION_DICT = {
 function translateAssignmentsToEnglish() {
     let translatedCount = 0;
 
-    // Traduce una singola stringa IT→EN parola per parola
+    // Frasi multi-parola: applicate prima della sostituzione singola-parola
+    const MULTI_WORD_PHRASES = [
+        { it: /letto\s+a\s+castello/gi, en: 'bunk bed' },
+        { it: /letti\s+a\s+castello/gi, en: 'bunk beds' },
+        { it: /aria\s+condizionata/gi, en: 'air conditioning' },
+        { it: /mezza\s+pensione/gi, en: 'half board' },
+        { it: /pensione\s+completa/gi, en: 'full board' },
+    ];
+
+    // Traduce una singola stringa IT→EN
     function translateText(text) {
         if (!text || !text.trim()) return text;
-        // Divide preservando separatori (spazi, trattini, virgole…)
-        return text.replace(/[A-Za-zÀ-ÖØ-öø-ÿ]+/g, word => {
+        // 1. Sostituisci prima le frasi multi-parola (case-insensitive)
+        let result = text;
+        MULTI_WORD_PHRASES.forEach(({ it, en }) => {
+            result = result.replace(it, match => {
+                const firstUp = match[0] === match[0].toUpperCase() && match[0] !== match[0].toLowerCase();
+                return firstUp ? en.charAt(0).toUpperCase() + en.slice(1) : en;
+            });
+        });
+        // 2. Poi sostituisci le singole parole rimaste
+        return result.replace(/[A-Za-zÀ-ÖØ-öø-ÿ]+/g, word => {
             const lower = word.toLowerCase();
             const en = ROOM_TRANSLATION_DICT[lower];
             if (!en) return word;
-            // Mantieni maiuscola iniziale se il token originale la aveva
             const firstUp = word[0] === word[0].toUpperCase() && word[0] !== word[0].toLowerCase();
             return firstUp ? en.charAt(0).toUpperCase() + en.slice(1) : en;
         });
