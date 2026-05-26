@@ -2839,6 +2839,135 @@ function renamePlannerColumn(el) {
     plannerColumns[idx].name = newName;
 }
 
+// ── Dizionario IT → EN per assegnazione camere ──────────────────────────────
+const ROOM_TRANSLATION_DICT = {
+    // Tipi camera
+    'singola': 'single', 'singolo': 'single',
+    'doppia': 'double', 'doppio': 'double',
+    'tripla': 'triple', 'triplo': 'triple',
+    'quadrupla': 'quadruple', 'quadruplo': 'quadruple',
+    'matrimoniale': 'double bed', 'matrimoniali': 'double beds',
+    'suite': 'suite',
+    'junior': 'junior',
+    'standard': 'standard',
+    'superior': 'superior',
+    'deluxe': 'deluxe',
+    'economy': 'economy',
+    'comunicante': 'connecting', 'comunicanti': 'connecting',
+    // Genere / composizione
+    'maschi': 'boys', 'maschio': 'boy',
+    'femmine': 'girls', 'femmina': 'girl',
+    'mista': 'mixed', 'misto': 'mixed',
+    'uomini': 'men', 'uomo': 'man',
+    'donne': 'women', 'donna': 'woman',
+    'ragazzi': 'boys', 'ragazzo': 'boy',
+    'ragazze': 'girls', 'ragazza': 'girl',
+    'bambini': 'children', 'bambino': 'child', 'bambina': 'child',
+    'adulti': 'adults', 'adulto': 'adult',
+    'persone': 'people', 'persona': 'person',
+    // Letti
+    'letto': 'bed', 'letti': 'beds',
+    'gemelli': 'twin',
+    // Servizi
+    'bagno': 'bathroom',
+    'balcone': 'balcony', 'balconi': 'balconies',
+    'terrazza': 'terrace', 'terrazzo': 'terrace',
+    'piscina': 'pool',
+    'aria': 'air', 'condizionata': 'conditioning', 'condizionato': 'conditioning',
+    'riscaldamento': 'heating',
+    'jacuzzi': 'jacuzzi',
+    // Vista
+    'vista': 'view',
+    'mare': 'sea',
+    'giardino': 'garden',
+    'montagna': 'mountain',
+    'lago': 'lake',
+    'interno': 'interior', 'interna': 'interior',
+    'esterno': 'exterior', 'esterna': 'exterior',
+    // Stato
+    'libera': 'free', 'libero': 'free',
+    'occupata': 'occupied', 'occupato': 'occupied',
+    'riservata': 'reserved', 'riservato': 'reserved',
+    'pulizia': 'cleaning',
+    'manutenzione': 'maintenance',
+    'riparazione': 'repair',
+    'fuori': 'out',
+    'servizio': 'service',
+    'uso': 'use',
+    // Struttura
+    'piano': 'floor',
+    'primo': '1st', 'seconda': '2nd', 'secondo': '2nd', 'terzo': '3rd', 'terza': '3rd',
+    'quarto': '4th', 'quarta': '4th', 'quinto': '5th',
+    // Varie
+    'gruppo': 'group',
+    'famiglia': 'family',
+    'famiglie': 'families',
+    'guide': 'guides', 'guida': 'guide',
+    'accompagnatori': 'chaperones', 'accompagnatore': 'chaperone',
+    'professori': 'teachers', 'professore': 'teacher', 'prof': 'teacher',
+    'note': 'notes', 'nota': 'note',
+    'notti': 'nights', 'notte': 'night',
+    'colazione': 'breakfast',
+    'mezza': 'half', 'pensione': 'board',
+    'completa': 'full',
+};
+
+function translateAssignmentsToEnglish() {
+    let translatedCount = 0;
+
+    // Traduce una singola stringa IT→EN parola per parola
+    function translateText(text) {
+        if (!text || !text.trim()) return text;
+        // Divide preservando separatori (spazi, trattini, virgole…)
+        return text.replace(/[A-Za-zÀ-ÖØ-öø-ÿ]+/g, word => {
+            const lower = word.toLowerCase();
+            const en = ROOM_TRANSLATION_DICT[lower];
+            if (!en) return word;
+            // Mantieni maiuscola iniziale se il token originale la aveva
+            const firstUp = word[0] === word[0].toUpperCase() && word[0] !== word[0].toLowerCase();
+            return firstUp ? en.charAt(0).toUpperCase() + en.slice(1) : en;
+        });
+    }
+
+    // Traduci tutte le celle
+    const cellInputs = document.querySelectorAll('#roomAssignmentBody .cell-input');
+    cellInputs.forEach(input => {
+        const original = input.value;
+        const translated = translateText(original);
+        if (translated !== original) {
+            input.value = translated;
+            // Aggiorna il modello dati e marca come dirty
+            onAssignmentChange(input);
+            translatedCount++;
+        }
+    });
+
+    // Traduci anche i nomi delle colonne
+    const colInputs = document.querySelectorAll('#roomAssignmentBody .col-header-input');
+    colInputs.forEach(input => {
+        const original = input.value;
+        const translated = translateText(original);
+        if (translated !== original) {
+            input.value = translated;
+            renamePlannerColumn(input);
+        }
+    });
+
+    // Traduci le note camera nella sidebar
+    const roomNotes = document.getElementById('assignmentRoomNotes');
+    if (roomNotes && roomNotes.value) {
+        const translated = translateText(roomNotes.value);
+        if (translated !== roomNotes.value) {
+            roomNotes.value = translated;
+            saveAssignmentRoomNotes();
+        }
+    }
+
+    showToast(translatedCount > 0
+        ? `Tradotte ${translatedCount} celle in inglese`
+        : 'Nessuna parola da tradurre trovata', translatedCount > 0 ? 'success' : 'info');
+}
+
 function printAssignments(mode) {
     const r = reservations.find(x => x.id === currentAssignmentReservationId);
     if (!r) return;
