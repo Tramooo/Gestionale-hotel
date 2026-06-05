@@ -338,7 +338,7 @@
         });
 
         let daysHtml = '';
-        dateOrder.forEach((date) => {
+        dateOrder.forEach((date, dayIndex) => {
             const mealTypes = mealsByDate.get(date);
 
             // Union of all groups across all meals of the day
@@ -379,6 +379,9 @@
             });
 
             daysHtml += '</div>';
+            if ((dayIndex + 1) % 3 === 0 && dayIndex < dateOrder.length - 1) {
+                daysHtml += '<div class="print-page-break"></div>';
+            }
         });
 
         const periodGroupsHtml = Array.from(periodGroups.values())
@@ -436,7 +439,8 @@
             .print-period-intol-item { display: flex; align-items: baseline; gap: 6px; margin-bottom: 4px; font-size: 14px; color: #5a3000; line-height: 1.4; }
             .print-period-intol-item::before { content: '⚠'; font-size: 12px; color: #e8a020; flex-shrink: 0; }
             .print-period-intol-groups { color: #888; font-size: 12px; margin-left: 4px; }
-            .print-day { margin-bottom: 14px; }
+            .print-day { margin-bottom: 14px; break-inside: avoid; page-break-inside: avoid; }
+            .print-page-break { page-break-after: always; break-after: page; }
             .print-day-header { font-size: 14px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #888; border-bottom: 1px solid #ddd; padding-bottom: 4px; margin-bottom: 6px; }
             .print-meal { margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #1a1a1a; break-inside: avoid; page-break-inside: avoid; }
             .print-meal-type { font-size: 14px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #1a1a1a; margin-bottom: 4px; }
