@@ -1600,7 +1600,21 @@ function syncAppViewportState() {
     const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 
-    document.documentElement.style.setProperty('--app-height', `${Math.round(viewportHeight)}px`);
+    // Bug iPadOS in standalone: env(safe-area-inset-top) vale 0 e il viewport
+    // è più corto dello schermo dell'altezza della status bar. Si misura il
+    // delta reale e lo si espone come --ios-status-gap per compensare via CSS.
+    let statusBarGap = 0;
+    if (isIos && isStandalone) {
+        const portrait = window.innerHeight >= window.innerWidth;
+        const screenH = portrait
+            ? Math.max(window.screen.width, window.screen.height)
+            : Math.min(window.screen.width, window.screen.height);
+        const delta = screenH - window.innerHeight;
+        if (delta > 0 && delta <= 50) statusBarGap = delta;
+    }
+
+    document.documentElement.style.setProperty('--ios-status-gap', `${statusBarGap}px`);
+    document.documentElement.style.setProperty('--app-height', `${Math.round(viewportHeight + (keyboardOpen ? 0 : statusBarGap))}px`);
     document.documentElement.style.setProperty('--app-width', `${Math.round(viewportWidth)}px`);
     document.body.classList.toggle('is-mobile-viewport', isMobileViewport());
     document.body.classList.toggle('is-ios', !!isIos);

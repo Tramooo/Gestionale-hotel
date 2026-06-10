@@ -159,18 +159,42 @@
 /* =============================================
    STANDALONE su iPad: contenuto sotto la status bar
    (con black-translucent la webview è full screen)
+   Su iPadOS env(safe-area-inset-top) vale 0 (bug
+   WebKit) e il viewport è corto dell'altezza della
+   status bar: --ios-status-gap, misurata in JS da
+   syncAppViewportState, copre entrambi i casi.
    ============================================= */
 @media (display-mode: standalone) and (min-width: 769px) {
+    :root {
+        --safe-top: max(env(safe-area-inset-top, 0px), var(--ios-status-gap, 0px));
+    }
+
+    /* Il viewport riportato è più corto dello schermo: 100svh lascia una
+       fascia vuota in fondo. --app-height include il gap misurato. */
+    body {
+        min-height: var(--app-height);
+    }
+
+    .main-content {
+        height: var(--app-height);
+        min-height: var(--app-height);
+    }
+
+    .sidebar {
+        bottom: auto;
+        height: var(--app-height);
+    }
+
     .sidebar-header {
-        padding-top: calc(20px + env(safe-area-inset-top, 0px));
+        padding-top: calc(20px + var(--safe-top, 0px));
     }
 
     .page {
-        padding-top: calc(24px + env(safe-area-inset-top, 0px));
+        padding-top: calc(24px + var(--safe-top, 0px));
     }
 
     #page-dashboard {
-        padding-top: calc(20px + env(safe-area-inset-top, 0px));
+        padding-top: calc(20px + var(--safe-top, 0px));
     }
 
     #page-mail.active {
@@ -178,11 +202,11 @@
     }
 
     #page-mail .page-header {
-        padding-top: calc(14px + env(safe-area-inset-top, 0px));
+        padding-top: calc(14px + var(--safe-top, 0px));
     }
 
     .planner-toolbar {
-        padding-top: calc(12px + env(safe-area-inset-top, 0px));
+        padding-top: calc(12px + var(--safe-top, 0px));
     }
 }
 
