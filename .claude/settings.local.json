@@ -3,7 +3,9 @@
     "allow": [
       "WebFetch(domain:api.anthropic.com)",
       "Bash(powershell -Command ' *)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "PowerShell(Get-ChildItem css | Select-Object Name, Length; \\(Get-Content index.html | Measure-Object -Line\\).Lines; \\(Get-Content script.js | Measure-Object -Line\\).Lines)",
+      "PowerShell(node --check js\\\\features\\\\mail-ui.js)"
     ]
   }
 }

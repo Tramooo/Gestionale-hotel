@@ -65,10 +65,18 @@
         if (!contentEl) return;
         contentEl.hidden = false;
 
+        document.querySelector('#page-mail .mail-workspace')?.classList.add('mail-reader-open');
+
         var status = messageStatus(message);
         var linked = reservationName(message.reservationId);
 
         contentEl.innerHTML =
+            '<div class="mail-reader-mobilebar">' +
+                '<button class="mail-reader-back" type="button" onclick="MailUI.closeReader()">' +
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="16" height="16" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>' +
+                    ' Tutte le mail' +
+                '</button>' +
+            '</div>' +
             '<div class="mail-reader-topbar">' +
                 '<div class="mail-reader-topbar-left">' +
                     '<h2 class="mail-reader-subject">' + escH(message.subject || '(nessun oggetto)') + '</h2>' +
@@ -118,6 +126,13 @@
 
     function refreshReader(id) {
         if (currentMailId === id) openReader(id);
+    }
+
+    function closeReader() {
+        document.querySelector('#page-mail .mail-workspace')?.classList.remove('mail-reader-open');
+        document.querySelectorAll('#mailList .mail-row.active').forEach(function (row) {
+            row.classList.remove('active');
+        });
     }
 
     function openAssignModal() {
@@ -350,6 +365,7 @@
         init: function (nextDeps) { deps = nextDeps; },
         openReader: openReader,
         refreshReader: refreshReader,
+        closeReader: closeReader,
         openAssignModal: openAssignModal,
         closeAssignModal: closeAssignModal,
         filterAssignModal: filterAssignModal,
