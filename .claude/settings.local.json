@@ -5,7 +5,9 @@
       "Bash(powershell -Command ' *)",
       "Bash(npm install *)",
       "PowerShell(Get-ChildItem css | Select-Object Name, Length; \\(Get-Content index.html | Measure-Object -Line\\).Lines; \\(Get-Content script.js | Measure-Object -Line\\).Lines)",
-      "PowerShell(node --check js\\\\features\\\\mail-ui.js)"
+      "PowerShell(node --check js\\\\features\\\\mail-ui.js)",
+      "Bash(node --check js/features/room-status-print.js)",
+      "Bash(node --check script.js)"
     ]
   }
 }

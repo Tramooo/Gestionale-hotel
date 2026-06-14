@@ -1399,6 +1399,20 @@ const TRANSLATIONS = {
     'settings.empPinSaved': { en: 'PIN saved', it: 'PIN salvato' },
     'settings.empPinRemoved': { en: 'PIN removed', it: 'PIN rimosso' },
     'settings.empPinInvalid': { en: 'PIN must be 4 digits', it: 'Il PIN deve essere di 4 cifre' },
+    'roomStatus.button': { en: 'Cleaning List', it: 'Lista Pulizie' },
+    'roomStatus.title': { en: 'Daily room status', it: 'Stato camere giornaliero' },
+    'roomStatus.status': { en: 'Status', it: 'Stato' },
+    'roomStatus.detail': { en: 'Detail', it: 'Dettaglio' },
+    'roomStatus.deep': { en: 'Deep clean', it: 'Pulire a fondo' },
+    'roomStatus.arrivalStatus': { en: 'Arrival', it: 'Arrivo' },
+    'roomStatus.touchup': { en: 'Touch-up', it: 'Ripasso' },
+    'roomStatus.empty': { en: 'Empty', it: 'Vuota' },
+    'roomStatus.maintenance': { en: 'Maintenance', it: 'Manutenzione' },
+    'roomStatus.departure': { en: 'Departure', it: 'Partenza' },
+    'roomStatus.arrival': { en: 'Arrival', it: 'Arrivo' },
+    'roomStatus.inHouse': { en: 'In house', it: 'In casa' },
+    'roomStatus.unavailable': { en: 'Print module not available', it: 'Modulo di stampa non disponibile' },
+    'roomStatus.popupBlocked': { en: 'Allow pop-ups to print', it: 'Abilita i pop-up per stampare' },
 };
 
 function t(key, replacements) {
@@ -3106,6 +3120,66 @@ function printAssignments(mode) {
     </body></html>`;
 
     const w = window.open('', '_blank');
+    w.document.write(printHtml);
+    w.document.close();
+}
+
+async function printDailyRoomStatus() {
+    if (!window.GroupStayRoomStatusPrint?.buildRoomStatusPrintDocument) {
+        showToast(t('roomStatus.unavailable'), 'error');
+        return;
+    }
+    const date = new Date();
+    // Open the print window synchronously (inside the click gesture) so it isn't blocked after the await.
+    const w = window.open('', '_blank');
+    if (!w) {
+        showToast(t('roomStatus.popupBlocked'), 'error');
+        return;
+    }
+    // Load every group's saved room assignments in a single request so the list can show
+    // the real usage recorded per group (e.g. a quad used as a triple), not just the room's default type.
+    let assignments = [];
+    try {
+        assignments = await apiGet(API.assignments);
+    } catch (err) {
+        console.warn('Failed to load assignments for room status print:', err);
+    }
+    const printHtml = window.GroupStayRoomStatusPrint.buildRoomStatusPrintDocument({
+        date,
+        dateLabel: formatDateDisplay(formatDate(date), currentLang),
+        rooms,
+        reservations,
+        guests,
+        assignments,
+        usageColumnId: 'usage',
+        labels: {
+            title: t('roomStatus.title'),
+            room: t('rooms.room'),
+            type: t('assign.roomType'),
+            status: t('roomStatus.status'),
+            detail: t('roomStatus.detail'),
+            notes: t('assign.notes'),
+            floor: t('rooms.floor'),
+            deep: t('roomStatus.deep'),
+            arrivalStatus: t('roomStatus.arrivalStatus'),
+            touchup: t('roomStatus.touchup'),
+            empty: t('roomStatus.empty'),
+            maintenance: t('roomStatus.maintenance'),
+            departure: t('roomStatus.departure'),
+            arrival: t('roomStatus.arrival'),
+            inHouse: t('roomStatus.inHouse')
+        },
+        roomTypeLabels: {
+            single: t('roomType.single'),
+            double: t('roomType.double'),
+            twin: t('roomType.twin'),
+            triple: t('roomType.triple'),
+            quad: t('roomType.quad'),
+            suite: t('roomType.suite'),
+            family: t('roomType.family')
+        },
+        escapeHtml
+    });
     w.document.write(printHtml);
     w.document.close();
 }
