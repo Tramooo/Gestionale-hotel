@@ -1,6 +1,5 @@
 import { requireAuth } from './_auth.js';
 import { ensureAuthTables, getSQL } from './_db.js';
-import { ensureMailTables } from './_mail.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -282,7 +281,6 @@ export default async function handler(req, res) {
     await sql`ALTER TABLE agenda_items ADD COLUMN IF NOT EXISTS owner_user_id TEXT`;
     await sql`CREATE INDEX IF NOT EXISTS idx_agenda_items_owner_date ON agenda_items(owner_user_id, agenda_date, agenda_time, created_at)`;
 
-    await ensureMailTables(sql);
 
     await sql`
       CREATE TABLE IF NOT EXISTS alloggiati_submissions (

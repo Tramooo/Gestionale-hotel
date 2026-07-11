@@ -52,44 +52,6 @@
     padding: 22px 24px;
 }
 
-.settings-mail-section {
-    margin-bottom: 18px;
-}
-
-.settings-mail-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px 14px;
-}
-
-.settings-mail-grid .form-group {
-    min-width: 0;
-}
-
-.settings-username-field[hidden] {
-    display: none;
-}
-
-.settings-username-toggle {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-height: 38px;
-    color: var(--text-secondary);
-    font-size: 13px;
-    grid-column: 1 / -1;
-}
-
-.settings-username-toggle input {
-    margin: 0;
-}
-
-.settings-mail-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    margin-top: 14px;
-}
 
 .modal-sm {
     max-width: 400px;

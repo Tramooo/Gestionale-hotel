@@ -1,7 +1,6 @@
 import crypto from 'node:crypto';
 import { createSession, destroySession, getAuthenticatedUser, hashPassword, verifyPassword } from './_auth.js';
 import { ensureAuthTables, getSQL } from './_db.js';
-import { ensureMailTables, getSanitizedMailAccount, saveMailAccount, testMailConnection } from './_mail.js';
 
 function sanitizeUser(row) {
   return {
@@ -14,11 +13,6 @@ function sanitizeUser(row) {
 
 function validatePin(pin) {
   return /^\d{4}$/.test(String(pin || ''));
-}
-
-function hasMailSettingsPayload(body = {}) {
-  return ['email', 'username', 'password', 'host', 'port', 'secure']
-    .some((key) => Object.prototype.hasOwnProperty.call(body, key));
 }
 
 export default async function handler(req, res) {
@@ -35,12 +29,9 @@ export default async function handler(req, res) {
         WHERE id = ${user.id}
         LIMIT 1
       `;
-      await ensureMailTables(sql);
-      const mailAccount = await getSanitizedMailAccount(sql, user.id);
       return res.status(200).json({
         user,
-        managementPinEnabled: Boolean(rows[0]?.management_pin_hash),
-        mailAccount
+        managementPinEnabled: Boolean(rows[0]?.management_pin_hash)
       });
     }
 
@@ -91,24 +82,6 @@ export default async function handler(req, res) {
       `;
       const storedHash = rows[0]?.management_pin_hash || '';
       return res.status(200).json({ verified: Boolean(storedHash && verifyPassword(pin, storedHash)) });
-    }
-
-    if (action === 'saveMailSettings' || action === 'testMailConnection') {
-      const user = await getAuthenticatedUser(req);
-      if (!user) return res.status(401).json({ error: 'Unauthorized' });
-      await ensureMailTables(sql);
-
-      if (action === 'saveMailSettings') {
-        const mailAccount = await saveMailAccount(sql, user.id, req.body || {});
-        return res.status(200).json({ mailAccount });
-      }
-
-      const hasPayload = hasMailSettingsPayload(req.body || {});
-      const mailAccount = await testMailConnection(sql, user.id, hasPayload ? req.body : null);
-      if (hasPayload) {
-        return res.status(200).json({ testedAccount: mailAccount, persisted: false, success: true });
-      }
-      return res.status(200).json({ mailAccount, persisted: true, success: true });
     }
 
     if (action === 'register') {
