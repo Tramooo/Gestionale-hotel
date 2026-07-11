@@ -20,10 +20,7 @@ function parseCookies(req) {
 }
 
 function getSessionToken(req) {
-  const headerToken = req.headers['x-session-token'];
-  if (typeof headerToken === 'string' && headerToken.trim()) return headerToken.trim();
-  const cookieToken = parseCookies(req)[SESSION_COOKIE];
-  return cookieToken || null;
+  return parseCookies(req)[SESSION_COOKIE] || null;
 }
 
 function cookieParts(value, maxAge = SESSION_DAYS * 24 * 60 * 60) {
@@ -55,7 +52,6 @@ export async function createSession(res, userId) {
   `;
 
   res.setHeader('Set-Cookie', cookieParts(token).join('; '));
-  return token;
 }
 
 export async function destroySession(req, res) {

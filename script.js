@@ -18,9 +18,7 @@ const {
     apiGet,
     apiPost,
     apiPut,
-    apiDelete,
-    clearSessionToken,
-    primeSessionToken
+    apiDelete
 } = window.GroupStayApi;
 
 const {
@@ -537,8 +535,6 @@ let _compDocFileName = '';
 let empViewMonth = new Date(); // currently viewed month for employee pay
 let currentUser = null;
 let authStateLoaded = false;
-let currentAuthMode = 'login';
-const REMEMBERED_LOGIN_KEY = 'gs_remembered_login';
 
 function delay(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -575,12 +571,9 @@ function setAuthLocked(locked) {
 
 function clearAuthErrors() {
     const loginError = document.getElementById('loginError');
-    const registerError = document.getElementById('registerError');
     const authDebug = document.getElementById('authDebug');
     if (loginError) loginError.textContent = '';
-    if (registerError) registerError.textContent = '';
     if (authDebug) authDebug.textContent = '';
-}
 
 function setAuthDebug(message) {
     const authDebug = document.getElementById('authDebug');
@@ -595,54 +588,6 @@ function formatErrorMessage(error) {
     return parts.join(' - ') || 'Errore sconosciuto';
 }
 
-function saveRememberedLogin(email, password, shouldRemember) {
-    try {
-        if (!shouldRemember) {
-            localStorage.removeItem(REMEMBERED_LOGIN_KEY);
-            return;
-        }
-        localStorage.setItem(REMEMBERED_LOGIN_KEY, JSON.stringify({
-            email,
-            password
-        }));
-    } catch (error) {
-        console.warn('Unable to persist remembered login:', error);
-    }
-}
-
-function restoreRememberedLogin() {
-    const emailInput = document.getElementById('loginEmail');
-    const passwordInput = document.getElementById('loginPassword');
-    const rememberInput = document.getElementById('loginRemember');
-    if (!emailInput || !passwordInput || !rememberInput) return;
-
-    try {
-        const raw = localStorage.getItem(REMEMBERED_LOGIN_KEY);
-        if (!raw) {
-            rememberInput.checked = false;
-            return;
-        }
-        const saved = JSON.parse(raw);
-        emailInput.value = saved?.email || '';
-        passwordInput.value = saved?.password || '';
-        rememberInput.checked = Boolean(saved?.email || saved?.password);
-    } catch (error) {
-        localStorage.removeItem(REMEMBERED_LOGIN_KEY);
-        rememberInput.checked = false;
-    }
-}
-
-function setupRememberedLoginToggle() {
-    const rememberInput = document.getElementById('loginRemember');
-    if (!rememberInput || rememberInput.dataset.bound === 'true') return;
-
-    rememberInput.addEventListener('change', () => {
-        if (!rememberInput.checked) {
-            saveRememberedLogin('', '', false);
-        }
-    });
-    rememberInput.dataset.bound = 'true';
-}
 
 function updateProfileHeader() {
     const nameEl = document.querySelector('.profile-name');
@@ -663,15 +608,6 @@ function applyAuthState(data = {}) {
     updateProfileHeader();
 }
 
-function switchAuthMode(mode) {
-    currentAuthMode = mode === 'register' ? 'register' : 'login';
-    const isRegister = currentAuthMode === 'register';
-    document.getElementById('loginForm').style.display = isRegister ? 'none' : '';
-    document.getElementById('registerForm').style.display = isRegister ? '' : 'none';
-    document.getElementById('authTabLogin').classList.toggle('active', !isRegister);
-    document.getElementById('authTabRegister').classList.toggle('active', isRegister);
-    clearAuthErrors();
-}
 
 async function fetchSession() {
     try {
@@ -703,11 +639,8 @@ async function submitLogin(event) {
         setAuthDebug('Invio login...');
         const email = document.getElementById('loginEmail').value.trim();
         const password = document.getElementById('loginPassword').value;
-        const shouldRemember = document.getElementById('loginRemember')?.checked;
         const data = await apiPost(`${API.auth}?action=login`, { email, password });
         setAuthDebug('Login ok, confermo sessione...');
-        primeSessionToken?.(data.sessionToken);
-        saveRememberedLogin(email, password, shouldRemember);
         currentUser = data.user;
         authStateLoaded = false;
         updateProfileHeader();
@@ -722,52 +655,17 @@ async function submitLogin(event) {
     }
 }
 
-async function submitRegister(event) {
-    event.preventDefault();
-    clearAuthErrors();
-
-    const password = document.getElementById('registerPassword').value;
-    const confirm = document.getElementById('registerPasswordConfirm').value;
-    if (password !== confirm) {
-        document.getElementById('registerError').textContent = 'Le password non coincidono';
-        return;
-    }
-
-    try {
-        setAuthDebug('Creazione account...');
-        const fullName = document.getElementById('registerName').value.trim();
-        const email = document.getElementById('registerEmail').value.trim();
-        const data = await apiPost(`${API.auth}?action=register`, { fullName, email, password });
-        setAuthDebug('Account creato, confermo sessione...');
-        primeSessionToken?.(data.sessionToken);
-        currentUser = data.user;
-        authStateLoaded = false;
-        updateProfileHeader();
-        const sessionUser = await ensureSessionReady();
-        if (!sessionUser) throw new Error('Sessione non confermata. Riprova tra un attimo.');
-        setAuthDebug('Sessione confermata, avvio app...');
-        setAuthLocked(false);
-        await startApplication(true);
-    } catch (error) {
-        setAuthDebug(`Registrazione fallita: ${formatErrorMessage(error)}`);
-        document.getElementById('registerError').textContent = error.message || 'Registrazione non riuscita';
-    }
 }
 
 async function logoutUser() {
-    const cacheUserId = currentUser?.id;
     try {
         await apiPost(`${API.auth}?action=logout`, {});
     } catch (error) {
         console.error('Logout failed:', error);
     }
 
-    clearSessionToken?.();
     currentUser = null;
     authStateLoaded = false;
-    if (cacheUserId) {
-        localStorage.removeItem(`${CACHE_KEY}:${cacheUserId}`);
-    }
     reservations = [];
     rooms = [];
     guests = [];
@@ -779,9 +677,7 @@ async function logoutUser() {
     complianceDocs = [];
     agendaItems = [];
     clearAuthErrors();
-    switchAuthMode('login');
     document.getElementById('loginForm')?.reset();
-    document.getElementById('registerForm')?.reset();
     setAuthLocked(true);
     window.location.reload();
 }
@@ -4683,9 +4579,6 @@ async function startApplication(forceRestart = false) {
 }
 
 (async function init() {
-    switchAuthMode('login');
-    restoreRememberedLogin();
-    setupRememberedLoginToggle();
     applyTranslations();
     const user = await fetchSession();
     if (!user) {

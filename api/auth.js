@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { createSession, destroySession, getAuthenticatedUser, hashPassword, verifyPassword } from './_auth.js';
 import { ensureAuthTables, getSQL } from './_db.js';
+import { sendApiError, sendInternalError, sendMethodNotAllowed } from './_http.js';
 
 function sanitizeUser(row) {
   return {
@@ -16,13 +17,22 @@ function validatePin(pin) {
 }
 
 export default async function handler(req, res) {
+  const action = req.query.action || req.body?.action;
+  if (
+    req.method === 'POST'
+    && action === 'register'
+    && process.env.PUBLIC_REGISTRATION_ENABLED !== 'true'
+  ) {
+    return sendApiError(res, 403, 'REGISTRATION_DISABLED', 'Registrazione pubblica non disponibile');
+  }
+
   try {
     await ensureAuthTables();
     const sql = getSQL();
 
     if (req.method === 'GET') {
       const user = await getAuthenticatedUser(req);
-      if (!user) return res.status(401).json({ error: 'Unauthorized' });
+      if (!user) return sendApiError(res, 401, 'UNAUTHORIZED', 'Sessione non valida o scaduta');
       const rows = await sql`
         SELECT management_pin_hash
         FROM users
@@ -36,10 +46,8 @@ export default async function handler(req, res) {
     }
 
     if (req.method !== 'POST') {
-      return res.status(405).json({ error: 'Method not allowed' });
+      return sendMethodNotAllowed(res);
     }
-
-    const action = req.query.action || req.body?.action;
 
     if (action === 'logout') {
       await destroySession(req, res);
@@ -48,7 +56,7 @@ export default async function handler(req, res) {
 
     if (action === 'setManagementPin' || action === 'removeManagementPin' || action === 'verifyManagementPin') {
       const user = await getAuthenticatedUser(req);
-      if (!user) return res.status(401).json({ error: 'Unauthorized' });
+      if (!user) return sendApiError(res, 401, 'UNAUTHORIZED', 'Sessione non valida o scaduta');
 
       if (action === 'setManagementPin') {
         const pin = String(req.body?.pin || '').trim();
@@ -104,8 +112,8 @@ export default async function handler(req, res) {
       `;
 
       const created = await sql`SELECT id, email, full_name, created_at FROM users WHERE id = ${id} LIMIT 1`;
-      const token = await createSession(res, id);
-      return res.status(201).json({ user: sanitizeUser(created[0]), sessionToken: token });
+      await createSession(res, id);
+      return res.status(201).json({ user: sanitizeUser(created[0]) });
     }
 
     if (action === 'login') {
@@ -118,13 +126,12 @@ export default async function handler(req, res) {
         return res.status(401).json({ error: 'Credenziali non valide' });
       }
 
-      const token = await createSession(res, rows[0].id);
-      return res.status(200).json({ user: sanitizeUser(rows[0]), sessionToken: token });
+      await createSession(res, rows[0].id);
+      return res.status(200).json({ user: sanitizeUser(rows[0]) });
     }
 
     return res.status(400).json({ error: 'Auth action non valida' });
-  } catch (err) {
-    console.error('Auth API error:', err);
-    return res.status(500).json({ error: err.message });
+  } catch (error) {
+    return sendInternalError(res, 'auth', error);
   }
 }
