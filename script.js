@@ -514,6 +514,7 @@ function clearAuthErrors() {
     const authDebug = document.getElementById('authDebug');
     if (loginError) loginError.textContent = '';
     if (authDebug) authDebug.textContent = '';
+}
 
 function setAuthDebug(message) {
     const authDebug = document.getElementById('authDebug');
@@ -593,8 +594,6 @@ async function submitLogin(event) {
         setAuthDebug(`Login fallito: ${formatErrorMessage(error)}`);
         document.getElementById('loginError').textContent = error.message || 'Accesso non riuscito';
     }
-}
-
 }
 
 async function logoutUser() {
