@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { createSession, destroySession, getAuthenticatedUser, hashPassword, verifyPassword } from './_auth.js';
-import { ensureAuthTables, getSQL } from './_db.js';
+import { getSQL } from './_db.js';
 import { sendApiError, sendInternalError, sendMethodNotAllowed } from './_http.js';
 
 function sanitizeUser(row) {
@@ -27,7 +27,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    await ensureAuthTables();
     const sql = getSQL();
 
     if (req.method === 'GET') {

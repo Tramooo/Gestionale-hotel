@@ -163,25 +163,6 @@ async function generateTokenInternal(UTENTE, PASSWORD, WSKEY) {
   return extractTag(tokenBlock, 'token');
 }
 
-async function ensureAlloggiatiSubmissionTable(sql) {
-  await sql`
-    CREATE TABLE IF NOT EXISTS alloggiati_submissions (
-      id TEXT PRIMARY KEY,
-      owner_user_id TEXT NOT NULL,
-      reservation_id TEXT NOT NULL REFERENCES reservations(id) ON DELETE CASCADE,
-      submission_date DATE NOT NULL,
-      sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      valid_count INTEGER NOT NULL DEFAULT 0,
-      total_count INTEGER NOT NULL DEFAULT 0,
-      method_name TEXT DEFAULT '',
-      receipt_file_id TEXT,
-      receipt_file_name TEXT DEFAULT '',
-      receipt_saved_at TIMESTAMPTZ
-    )
-  `;
-  await sql`CREATE INDEX IF NOT EXISTS idx_alloggiati_submissions_owner_reservation_sent_at ON alloggiati_submissions(owner_user_id, reservation_id, sent_at DESC)`;
-}
-
 async function getLatestSubmissionForReservation(sql, userId, reservationId) {
   const reservations = await sql`
     SELECT id, group_name
@@ -1033,7 +1014,6 @@ export default async function handler(req, res) {
 
       if (action === 'send' && esito.esito && (parseInt(validCount) || 0) === records.length) {
         try {
-          await ensureAlloggiatiSubmissionTable(sql);
           const submissionDate = formatRomeDate();
           await sql`
             INSERT INTO alloggiati_submissions (
@@ -1059,7 +1039,6 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'reservationId is required' });
       }
 
-      await ensureAlloggiatiSubmissionTable(sql);
       const submissionInfo = await getLatestSubmissionForReservation(sql, user.id, reservationId);
       if (submissionInfo.error) {
         return res.status(submissionInfo.error.status).json({ error: submissionInfo.error.message });

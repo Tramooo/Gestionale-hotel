@@ -6,6 +6,7 @@
   "main": "script.js",
   "scripts": {
     "test": "node --test",
+    "migrate:schema": "node scripts/migrate.mjs",
     "migrate:guest-encryption": "node scripts/migrate-guest-encryption.mjs"
   },
   "keywords": [],

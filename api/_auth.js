@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { ensureAuthTables, getSQL } from './_db.js';
+import { getSQL } from './_db.js';
 
 const SESSION_COOKIE = 'gs_session';
 const SESSION_DAYS = 14;
@@ -41,7 +41,6 @@ export function clearSessionCookie(res) {
 }
 
 export async function createSession(res, userId) {
-  await ensureAuthTables();
   const sql = getSQL();
   const token = crypto.randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
@@ -55,7 +54,6 @@ export async function createSession(res, userId) {
 }
 
 export async function destroySession(req, res) {
-  await ensureAuthTables();
   const sql = getSQL();
   const token = parseCookies(req)[SESSION_COOKIE];
   if (token) {
@@ -65,7 +63,6 @@ export async function destroySession(req, res) {
 }
 
 export async function getAuthenticatedUser(req) {
-  await ensureAuthTables();
   const sql = getSQL();
   const token = getSessionToken(req);
   if (!token) return null;

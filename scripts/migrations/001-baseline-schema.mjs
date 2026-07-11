@@ -1,17 +1,27 @@
-import { requireAuth } from './_auth.js';
-import { ensureAuthTables, getSQL } from './_db.js';
+export const id = '001-baseline-schema';
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+export async function up({ sql, options = {} }) {
 
-  try {
-    const user = await requireAuth(req, res);
-    if (!user) return;
-
-    await ensureAuthTables();
-    const sql = getSQL();
+    await sql`
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        email TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        full_name TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `;
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS management_pin_hash TEXT`;
+    await sql`
+      CREATE TABLE IF NOT EXISTS auth_sessions (
+        token TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        expires_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_id ON auth_sessions(user_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_auth_sessions_expires_at ON auth_sessions(expires_at)`;
 
     await sql`
       CREATE TABLE IF NOT EXISTS rooms (
@@ -299,21 +309,50 @@ export default async function handler(req, res) {
     `;
     await sql`CREATE INDEX IF NOT EXISTS idx_alloggiati_submissions_owner_reservation_sent_at ON alloggiati_submissions(owner_user_id, reservation_id, sent_at DESC)`;
 
-    // Legacy single-tenant rows become owned by the first authenticated user
-    // who runs the migration, preserving existing data for that account only.
-    await sql`UPDATE rooms SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
-    await sql`UPDATE reservations SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
-    await sql`UPDATE guests SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
-    await sql`UPDATE room_assignments SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
-    await sql`UPDATE planner_configs SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
-    await sql`UPDATE employees SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
-    await sql`UPDATE work_entries SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
-    await sql`UPDATE employee_month_overrides SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
-    await sql`UPDATE menus SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
-    await sql`UPDATE reservation_files SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
-    await sql`UPDATE compliance_certs SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
-    await sql`UPDATE compliance_docs SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
-    await sql`UPDATE agenda_items SET owner_user_id = ${user.id} WHERE owner_user_id IS NULL`;
+    const [ownership] = await sql`
+      SELECT (
+        (SELECT COUNT(*) FROM rooms WHERE owner_user_id IS NULL) +
+        (SELECT COUNT(*) FROM reservations WHERE owner_user_id IS NULL) +
+        (SELECT COUNT(*) FROM guests WHERE owner_user_id IS NULL) +
+        (SELECT COUNT(*) FROM room_assignments WHERE owner_user_id IS NULL) +
+        (SELECT COUNT(*) FROM planner_configs WHERE owner_user_id IS NULL) +
+        (SELECT COUNT(*) FROM employees WHERE owner_user_id IS NULL) +
+        (SELECT COUNT(*) FROM work_entries WHERE owner_user_id IS NULL) +
+        (SELECT COUNT(*) FROM employee_month_overrides WHERE owner_user_id IS NULL) +
+        (SELECT COUNT(*) FROM employee_advances WHERE owner_user_id IS NULL) +
+        (SELECT COUNT(*) FROM menus WHERE owner_user_id IS NULL) +
+        (SELECT COUNT(*) FROM reservation_files WHERE owner_user_id IS NULL) +
+        (SELECT COUNT(*) FROM compliance_certs WHERE owner_user_id IS NULL) +
+        (SELECT COUNT(*) FROM compliance_docs WHERE owner_user_id IS NULL) +
+        (SELECT COUNT(*) FROM agenda_items WHERE owner_user_id IS NULL)
+      )::INTEGER AS unowned_count
+    `;
+
+    const legacyOwnerUserId = String(options.legacyOwnerUserId || '').trim();
+    if (Number(ownership.unowned_count) > 0 && !legacyOwnerUserId) {
+      throw new Error('Legacy rows have no owner; rerun with --legacy-owner-user-id=<existing-user-id>');
+    }
+
+    if (Number(ownership.unowned_count) > 0) {
+      const owners = await sql`SELECT id FROM users WHERE id = ${legacyOwnerUserId} LIMIT 1`;
+      if (owners.length === 0) {
+        throw new Error('The --legacy-owner-user-id value does not identify an existing user');
+      }
+      await sql`UPDATE rooms SET owner_user_id = ${legacyOwnerUserId} WHERE owner_user_id IS NULL`;
+      await sql`UPDATE reservations SET owner_user_id = ${legacyOwnerUserId} WHERE owner_user_id IS NULL`;
+      await sql`UPDATE guests SET owner_user_id = ${legacyOwnerUserId} WHERE owner_user_id IS NULL`;
+      await sql`UPDATE room_assignments SET owner_user_id = ${legacyOwnerUserId} WHERE owner_user_id IS NULL`;
+      await sql`UPDATE planner_configs SET owner_user_id = ${legacyOwnerUserId} WHERE owner_user_id IS NULL`;
+      await sql`UPDATE employees SET owner_user_id = ${legacyOwnerUserId} WHERE owner_user_id IS NULL`;
+      await sql`UPDATE work_entries SET owner_user_id = ${legacyOwnerUserId} WHERE owner_user_id IS NULL`;
+      await sql`UPDATE employee_month_overrides SET owner_user_id = ${legacyOwnerUserId} WHERE owner_user_id IS NULL`;
+      await sql`UPDATE employee_advances SET owner_user_id = ${legacyOwnerUserId} WHERE owner_user_id IS NULL`;
+      await sql`UPDATE menus SET owner_user_id = ${legacyOwnerUserId} WHERE owner_user_id IS NULL`;
+      await sql`UPDATE reservation_files SET owner_user_id = ${legacyOwnerUserId} WHERE owner_user_id IS NULL`;
+      await sql`UPDATE compliance_certs SET owner_user_id = ${legacyOwnerUserId} WHERE owner_user_id IS NULL`;
+      await sql`UPDATE compliance_docs SET owner_user_id = ${legacyOwnerUserId} WHERE owner_user_id IS NULL`;
+      await sql`UPDATE agenda_items SET owner_user_id = ${legacyOwnerUserId} WHERE owner_user_id IS NULL`;
+    }
 
     await sql`
       INSERT INTO daily_menus (id, owner_user_id, menu_date, meal_type, primo, secondo, contorno, dessert)
@@ -321,7 +360,7 @@ export default async function handler(req, res) {
       FROM (
         SELECT
           m.id,
-          COALESCE(m.owner_user_id, r.owner_user_id, ${user.id}) AS owner_user_id,
+          COALESCE(m.owner_user_id, r.owner_user_id) AS owner_user_id,
           m.menu_date,
           m.meal_type,
           COALESCE(m.primo, '') AS primo,
@@ -329,7 +368,7 @@ export default async function handler(req, res) {
           COALESCE(m.contorno, '') AS contorno,
           COALESCE(m.dessert, '') AS dessert,
           ROW_NUMBER() OVER (
-            PARTITION BY COALESCE(m.owner_user_id, r.owner_user_id, ${user.id}), m.menu_date, m.meal_type
+            PARTITION BY COALESCE(m.owner_user_id, r.owner_user_id), m.menu_date, m.meal_type
             ORDER BY
               (
                 CASE WHEN COALESCE(m.primo, '') <> '' THEN 1 ELSE 0 END +
@@ -349,9 +388,4 @@ export default async function handler(req, res) {
     `;
     await sql`UPDATE menus SET migrated_to_daily = TRUE WHERE COALESCE(migrated_to_daily, FALSE) = FALSE`;
 
-    res.status(200).json({ message: 'Tables created successfully' });
-  } catch (err) {
-    console.error('Init error:', err);
-    res.status(500).json({ error: err.message });
-  }
 }
