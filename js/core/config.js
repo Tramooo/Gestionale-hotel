@@ -4,7 +4,6 @@
         auth: '/api/auth',
         rooms: '/api/rooms',
         guests: '/api/guests',
-        init: '/api/init',
         assignments: '/api/assignments',
         alloggiati: '/api/alloggiati',
         employees: '/api/employees',
@@ -47,8 +46,6 @@
             'autorizzazione_sanitaria',
             'classificazione',
             'licenza_esercizio'
-        ]),
-        CACHE_KEY: 'gs_data_cache',
-        CACHE_TTL: 60 * 1000
+        ])
     };
 })(window);

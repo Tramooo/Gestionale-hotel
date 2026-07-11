@@ -8,11 +8,9 @@ const {
     API,
     CERT_TYPES,
     DOC_TYPES,
-    NO_EXPIRY_CERTS,
-    CACHE_KEY,
-    CACHE_TTL
+    NO_EXPIRY_CERTS
 } = window.GroupStayConfig;
-const { markInitComplete, shouldRunInit } = window.GroupStayBootstrap || {};
+const preferences = window.GroupStayPreferences;
 
 const {
     apiGet,
@@ -394,66 +392,9 @@ window.GroupStayPlannerDrag.init({
     openBookingTypeChooser
 });
 
-function saveDataCache() {
-    try {
-        if (!currentUser?.id) return;
-        localStorage.setItem(`${CACHE_KEY}:${currentUser.id}`, JSON.stringify({
-            ts: Date.now(),
-            reservations, rooms, guests, employees, workEntries, monthPayOverrides, employeeAdvances, complianceCerts, complianceDocs, agendaItems
-        }));
-    } catch (e) {} // ignore quota errors
-}
-
-function loadDataCache() {
-    try {
-        if (!currentUser?.id) return false;
-        const raw = localStorage.getItem(`${CACHE_KEY}:${currentUser.id}`);
-        if (!raw) return false;
-        const cache = JSON.parse(raw);
-        if (Date.now() - cache.ts > CACHE_TTL) return false;
-        reservations   = cache.reservations   || [];
-        rooms          = cache.rooms          || [];
-        guests         = cache.guests         || [];
-        employees      = cache.employees      || [];
-        workEntries    = cache.workEntries    || [];
-        monthPayOverrides = cache.monthPayOverrides || [];
-        employeeAdvances = cache.employeeAdvances || [];
-        complianceCerts = cache.complianceCerts || [];
-        complianceDocs  = cache.complianceDocs  || [];
-        agendaItems     = cache.agendaItems     || [];
-        computeRoomStatuses();
-        syncRoomFloorSettingsInputs();
-        return true;
-    } catch (e) { return false; }
-}
-
-function getBootstrapStorage() {
-    try {
-        return window.localStorage;
-    } catch (error) {
-        return null;
-    }
-}
-
-async function ensureBootstrapSchema() {
-    const storage = getBootstrapStorage();
-    const userId = currentUser?.id;
-    if (typeof shouldRunInit === 'function' && !shouldRunInit({ storage, userId })) {
-        return;
-    }
-
-    await apiPost(API.init, {});
-
-    if (typeof markInitComplete === 'function') {
-        markInitComplete({ storage, userId });
-    }
-}
 
 async function loadAllData(retryOnUnauthorized = true) {
     try {
-        setAuthDebug('Bootstrap: preparo il database...');
-        try { await ensureBootstrapSchema(); } catch (e) {}
-
         setAuthDebug('Bootstrap: carico dati principali...');
         const [resData, roomData, guestData, empData, agendaData] = await Promise.all([
             apiGet(API.reservations),
@@ -472,7 +413,6 @@ async function loadAllData(retryOnUnauthorized = true) {
         agendaItems     = agendaData;
         computeRoomStatuses();
         syncRoomFloorSettingsInputs();
-        saveDataCache();
         setAuthDebug('Bootstrap completato.');
         return true;
     } catch (err) {
@@ -550,7 +490,7 @@ function nextPaint() {
 
 // ---- i18n ----
 
-let currentLang = localStorage.getItem('gs_lang') || 'it';
+let currentLang = preferences.get('language', 'it');
 
 function setAuthLocked(locked) {
     document.body.classList.toggle('auth-locked', locked);
@@ -1229,8 +1169,7 @@ function t(key, replacements) {
 }
 
 function setLanguage(lang) {
-    currentLang = lang;
-    localStorage.setItem('gs_lang', lang);
+    currentLang = preferences.set('language', lang);
     applyTranslations();
     updateProfileHeader();
     // Re-render current page
@@ -1384,12 +1323,6 @@ async function loadManagementPinSettings() {
             applyAuthState(data);
         }
 
-        const legacyPin = localStorage.getItem('gs_emp_pin');
-        if (legacyPin && !managementPinEnabled && /^\d{4}$/.test(legacyPin)) {
-            await apiPost(`${API.auth}?action=setManagementPin`, { pin: legacyPin });
-            managementPinEnabled = true;
-        }
-        localStorage.removeItem('gs_emp_pin');
     } catch (error) {
         console.error('Failed to load management PIN settings:', error);
         managementPinEnabled = true;
@@ -1525,7 +1458,6 @@ async function saveEmpPin() {
     try {
         const result = await apiPost(`${API.auth}?action=setManagementPin`, { pin: val });
         managementPinEnabled = Boolean(result.managementPinEnabled);
-        localStorage.removeItem('gs_emp_pin');
         empPinUnlocked = false;
         input.value = '';
         showToast(t('settings.empPinSaved'), 'success');
@@ -1538,7 +1470,6 @@ async function removeEmpPin() {
     try {
         const result = await apiPost(`${API.auth}?action=removeManagementPin`, {});
         managementPinEnabled = Boolean(result.managementPinEnabled);
-        localStorage.removeItem('gs_emp_pin');
         empPinUnlocked = false;
         document.getElementById('settingEmpPin').value = '';
         showToast(t('settings.empPinRemoved'), 'success');
@@ -3067,7 +2998,8 @@ async function deleteGuest(guestId, reservationId) { return window.GroupStayGues
 //
 // Only .p-grid-panel scrolls. JS syncs header (h) and rooms (v).
 
-let PLANNER_DAY_WIDTH = 38;
+const initialPlannerDimensions = preferences.get('plannerDimensions');
+let PLANNER_DAY_WIDTH = initialPlannerDimensions.dayWidth;
 const PLANNER_INITIAL_PAST = 180;
 const PLANNER_INITIAL_FUTURE = 365;
 const PLANNER_EXTEND_CHUNK = 90;
@@ -3268,22 +3200,16 @@ function closeFilePreview() { return window.GroupStayCompliance.closeFilePreview
 function exportCompliancePDF() { return window.GroupStayCompliance.exportCompliancePDF(); }
 
 // Calendar size settings
-let PLANNER_ROW_HEIGHT = parseInt(localStorage.getItem('gs_row_height')) || 34;
-const ROOM_FLOOR_RANGE_KEY = 'gs_room_floor_range';
-
-function getRoomFloorRangeStorageKey() {
-    return currentUser?.id ? `${ROOM_FLOOR_RANGE_KEY}:${currentUser.id}` : ROOM_FLOOR_RANGE_KEY;
-}
+let PLANNER_ROW_HEIGHT = initialPlannerDimensions.rowHeight;
 
 function getRoomFloorRange() {
     const fallback = inferFloorRange(rooms);
-    return parseFloorRange(localStorage.getItem(getRoomFloorRangeStorageKey()), fallback);
+    return parseFloorRange(preferences.get('plannerFloorRange', fallback), fallback);
 }
 
 function setRoomFloorRange(start, end) {
     const range = normalizeFloorRange(start, end, getRoomFloorRange());
-    localStorage.setItem(getRoomFloorRangeStorageKey(), JSON.stringify(range));
-    return range;
+    return preferences.set('plannerFloorRange', range);
 }
 
 function syncRoomFloorSettingsInputs() {
@@ -3317,18 +3243,17 @@ function updateCalendarSize() {
     document.getElementById('settingColWidthVal').textContent = cw + 'px';
     document.getElementById('settingRowHeightVal').textContent = rh + 'px';
 
-    PLANNER_DAY_WIDTH = cw;
-    PLANNER_ROW_HEIGHT = rh;
-
-    localStorage.setItem('gs_col_width', cw);
-    localStorage.setItem('gs_row_height', rh);
+    const dimensions = preferences.set('plannerDimensions', { dayWidth: cw, rowHeight: rh });
+    PLANNER_DAY_WIDTH = dimensions.dayWidth;
+    PLANNER_ROW_HEIGHT = dimensions.rowHeight;
 
     renderCalendar();
 }
 
 function initSettingsModal() {
-    const savedCW = parseInt(localStorage.getItem('gs_col_width')) || 38;
-    const savedRH = parseInt(localStorage.getItem('gs_row_height')) || 34;
+    const dimensions = preferences.get('plannerDimensions');
+    const savedCW = dimensions.dayWidth;
+    const savedRH = dimensions.rowHeight;
 
     PLANNER_DAY_WIDTH = savedCW;
     PLANNER_ROW_HEIGHT = savedRH;
@@ -4521,46 +4446,17 @@ async function startApplication(forceRestart = false) {
         });
         setAuthDebug('Avvio applicazione...\nControlli lingua pronti.');
         const bootPage = getBootPage();
-        const hasCached = loadDataCache();
-        if (hasCached) {
-            setAuthDebug('Cache locale trovata, disegno l\'interfaccia...');
-            // Show UI immediately with cached data
-            await nextPaint();
-            if (bootPage === 'calendar') {
-                renderCalendar();
-                setAuthDebug('Calendario disegnato.');
-            } else {
-                renderDashboard();
-                setAuthDebug('Dashboard disegnata.');
-            }
-            setAuthDebug('Cache locale trovata, aggiorno in background...');
-            // Refresh in background silently
-            loadAllData().then((ok) => {
-                if (!ok) return;
-                const current = document.querySelector('.nav-item.active, .tab-item.active');
-                const page = current ? current.dataset.page : 'dashboard';
-                if (page === 'dashboard') renderDashboard();
-                else if (page === 'calendar') renderCalendar();
-            });
-        } else {
-            setAuthDebug('Nessuna cache, carico da server...');
-            showLoading('Caricamento dati...');
-            const ok = await loadAllData();
-            hideLoading();
-            if (!ok) {
-                appStarting = false;
-                return;
-            }
-            setAuthDebug('Dati server caricati, disegno l\'interfaccia...');
-            await nextPaint();
-            if (bootPage === 'calendar') {
-                renderCalendar();
-                setAuthDebug('Calendario disegnato.');
-            } else {
-                renderDashboard();
-                setAuthDebug('Dashboard disegnata.');
-            }
+        setAuthDebug('Carico dati dal server...');
+        showLoading('Caricamento dati...');
+        const ok = await loadAllData();
+        hideLoading();
+        if (!ok) {
+            appStarting = false;
+            return false;
         }
+        await nextPaint();
+        if (bootPage === 'calendar') renderCalendar();
+        else renderDashboard();
         appStarted = true;
         appStarting = false;
         return true;
